@@ -38,6 +38,9 @@ htmlcov/
 # pyenv
 # .python-version
 
+# Ruff
+.ruff_cache/
+
 ### macOS
 # Finder metadata
 .DS_Store
@@ -46,7 +49,8 @@ htmlcov/
 ._*
 
 # Custom folder icons
-Icon
+Icon
+
 
 # Volume root files
 .DocumentRevisions-V100
