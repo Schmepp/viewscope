@@ -1,11 +1,12 @@
 # Ty static type checker configuration file.
 # See: https://docs.astral.sh/ty/configuration/.
 
-target-version = "py314"
-src = [
+[src]
+include = [
     "src/viewscope",
-    "tests"
+    "tests/"
 ]
+exclude = ["src/viewscope_core"]
 
 # See: https://docs.astral.sh/ty/reference/rules/.
 [rules]
