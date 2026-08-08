@@ -32,7 +32,7 @@ jobs:
           ./scripts/setup.sh
 
       - name: Install deps
-        run: uv sync
+        run: uv sync --only-group dev
 
       - name: Lint
         run: uv run ruff check .
