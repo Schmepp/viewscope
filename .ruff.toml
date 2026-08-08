@@ -3,7 +3,7 @@
 
 exclude = [
     "*.pyi",
-    "src/viewscope_core/",
+    "src/viewscope_core",
     ".bzr",
     ".direnv",
     ".eggs",
