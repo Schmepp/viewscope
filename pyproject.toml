@@ -33,6 +33,7 @@ viewscope = "viewscope.main:main"
 [dependency-groups]
 dev = [
     "ruff>=0.15.4",
+    "ty>=0.0.69",
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
 ]
