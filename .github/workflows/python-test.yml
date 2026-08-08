@@ -51,7 +51,8 @@ jobs:
             libgl1-mesa-dri \
             libglx-mesa0 \
             libosmesa6 \
-            libegl1-mesa \
+            libegl1 \
+            libegl-mesa0 \
             freeglut3-dev
 
       - name: Install deps
