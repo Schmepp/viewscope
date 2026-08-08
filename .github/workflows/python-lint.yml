@@ -6,6 +6,7 @@ on:
     branches: ["master", "main"]
     paths:
       - "src/viewscope/**.py"
+      - ".ruff.toml"
       - "pyproject.toml"
       - "uv.lock"
       - ".github/workflows/**"
