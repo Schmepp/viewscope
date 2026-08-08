@@ -72,5 +72,4 @@ jobs:
       - name: Build package
         run: |
           uv build
-          uv venv .wheel-test-venv
-          .wheel-test-venv/bin/pip install dist/*.whl
+          pip install dist/*.whl
