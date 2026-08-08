@@ -26,10 +26,13 @@ jobs:
           persist-credentials: true
           submodules: false
 
-      - name: Setup uv
-        run: |
-          chmod +x scripts/setup.sh
-          ./scripts/setup.sh
+      - uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
+        with:
+          working-directory: "."
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/uv.lock
 
       - name: Install deps
         run: uv sync --only-group dev
