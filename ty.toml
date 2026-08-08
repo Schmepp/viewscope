@@ -2,8 +2,10 @@
 # See: https://docs.astral.sh/ty/configuration/.
 
 target-version = "py314"
-src = ["src/viewscope"]
-exclude = ["src/viewscope_core/"]
+src = [
+    "src/viewscope",
+    "tests"
+]
 
 # See: https://docs.astral.sh/ty/reference/rules/.
 [rules]
