@@ -65,3 +65,10 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" uv run pytest
+
+        # Verify package integrity
+      - name: Build package
+        run: |
+          uv build
+          uv venv .wheel-test-venv
+          .wheel-test-venv/bin/pip install dist/*.whl
