@@ -34,10 +34,10 @@ scores.npz
 
 visibility.npz
   visible: bool of shape (185, 60000), rows in plan order, columns in
-  targets.ply order. meta: json string.
+  targets.ply me, one bit per 0.2 m voxel. Keys: bitsorder. meta: json string.
 
 flyable.npz
-  The collision free flight volume, one bit per 0.2 m voxel. Keys: bits
+  The collision free flight volu
   (numpy packbits), shape, origin, voxel, meta. Voxel [i, j, k] covers the
   cube with minimum corner origin + voxel * (i, j, k). Decode:
 

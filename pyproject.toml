@@ -22,9 +22,12 @@ requires-python = ">=3.14"
 dependencies = [
     "numpy>=2.4.3",
     "pillow>=12.3.0",
+    "pyqt6>=6.11.0",
     "pyrender>=0.1.45",
+    "pyside6<6.10",
     "rtree>=1.4.1",
     "trimesh>=5.0.0",
+    "vtk>=9.6.2",
 ]
 
 [project.scripts]
