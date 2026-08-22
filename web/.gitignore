@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.wrangler/
+
+# Regenerate with: npm run export-data
+public/data/*.bin
+public/data/manifest.json
