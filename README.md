@@ -3,7 +3,9 @@
 ## How to run
 
 ```
-uv run viewscope
+uv run viewscope - compiles simple vtk frame
+uv run python src/viewscope/vs_gui.py - runs pyside6 gui
+
 ```
 
 ---
