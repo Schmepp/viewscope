@@ -1,19 +1,7 @@
-"""ViewScope desktop demo: VTK viewport inside a PySide6 shell.
+"""
+Monolith version of main.py
 
-Carries over everything from view_vtk.py -- textured mesh, raw geometry,
-score-coloured target cloud, camera glyphs, camera flipping, display modes --
-but as real Qt panels instead of 2D actors drawn into the render window.
-
-Install once:
-
-    uv add pyside6 vtk
-
-Run from the repo root:
-
-    uv run python viewscope_gui.py
-
-Panels can be dragged between edges, floated, tabbed or closed, and the
-arrangement is restored on the next launch. View menu brings back closed ones.
+discard later
 """
 
 from __future__ import annotations
