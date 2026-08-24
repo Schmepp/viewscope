@@ -147,7 +147,7 @@ class MainWindow(QMainWindow):
     def _on_field_changed(self, field):
         self.metrics_panel.show_field(self.viewport.set_scalar_field(field))
 
-    def _on_camera_changed(self, info):
+    def _on_camera_changed(self, info): #info, see on_seletion in CameraFlippingPanel.py
         self.metrics_panel.show_camera(info)
         self.viewpoint_panel.select_row(None if info is None else info.index)
         self.statusBar().showMessage(

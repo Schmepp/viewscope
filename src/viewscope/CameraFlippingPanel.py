@@ -1,6 +1,9 @@
 """
 
 Camera flipping panel on left hand side
+
+This panel does not communicate with viewport.py directly
+See _on_camera_changed in window.py
 """
 
 from __future__ import annotations
