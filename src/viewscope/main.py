@@ -1,6 +1,6 @@
 """ViewScope desktop viewer: entry point.
 
-    uv run viewscope
+uv run viewscope
 """
 
 from __future__ import annotations
@@ -10,10 +10,9 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from . import config
-#from .window import MainWindow
 
+# from .window import MainWindow
 from . import window as wd
-
 
 
 def main() -> int:

@@ -6,12 +6,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from . import transform
-
-#viewscope_core as vc
-
+# viewscope_core as vc
 import viewscope_core as vc
 
+from . import transform
 
 
 @dataclass(frozen=True)
@@ -44,7 +42,10 @@ class CameraController:
     def save_overview(self):
         cam = self.renderer.GetActiveCamera()
         self._overview = (
-            cam.GetPosition(), cam.GetFocalPoint(), cam.GetViewUp(), cam.GetViewAngle()
+            cam.GetPosition(),
+            cam.GetFocalPoint(),
+            cam.GetViewUp(),
+            cam.GetViewAngle(),
         )
 
     def show_overview(self):

@@ -9,14 +9,14 @@ See _on_camera_changed in window.py
 from __future__ import annotations
 
 import numpy as np
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QComboBox, QFormLayout, QGroupBox,
-    QHeaderView, QLabel, QSlider, QTableWidget, QTableWidgetItem, QVBoxLayout,
-    QWidget,
+    QAbstractItemView,
+    QHeaderView,
+    QTableWidget,
+    QTableWidgetItem,
 )
 
-from .config import MODE_ALL, MODES, SCALAR_FIELDS
 
 class CameraFlippingPanel(QTableWidget):
     """One row per planned camera; selecting a row jumps the viewport."""

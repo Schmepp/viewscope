@@ -12,9 +12,9 @@ import numpy as np
 import vtk
 from vtk.util import numpy_support as vtknp
 
-from . import transform
 import viewscope_core as vc
 
+from . import transform
 from .config import EDGE_COLOUR, GEOMETRY_COLOUR
 
 
@@ -85,7 +85,7 @@ class TargetCloudView:
         self.scalar_bar = None
         if scores is not None:
             self.lut = vtk.vtkLookupTable()
-            self.lut.SetHueRange(0.667, 0.0)     # blue low, red high
+            self.lut.SetHueRange(0.667, 0.0)  # blue low, red high
             self.lut.Build()
             mapper.SetLookupTable(self.lut)
 

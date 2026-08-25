@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from PySide6.QtCore import QThread, Signal
 
-#from . import viewscope_core as vc
-
+# from . import viewscope_core as vc
 import viewscope_core as vc
-
 
 
 @dataclass
@@ -27,8 +24,8 @@ class SceneData:
     targets: np.ndarray
     normals: np.ndarray
     plan: object
-    scores: Optional[object] = None
-    scores_error: Optional[str] = None
+    scores: object | None = None
+    scores_error: str | None = None
 
     @property
     def has_scores(self) -> bool:

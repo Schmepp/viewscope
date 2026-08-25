@@ -1,10 +1,11 @@
-"""The 3D viewport: for camera povs """
+"""The 3D viewport: for camera povs"""
 
 from __future__ import annotations
 
 # Must be set before the Qt widget module is imported, so VTK binds to the
 # same Qt binding we are using rather than guessing.
 import vtkmodules.qt
+
 vtkmodules.qt.PyQtImpl = "PySide6"
 
 import vtk  # noqa: E402
@@ -15,7 +16,12 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import (  # noqa: E402
 
 from .camera import CameraController  # noqa: E402
 from .config import (  # noqa: E402
-    BACKGROUND, MODE_ALL, MODE_GEOMETRY, MODE_TARGETS, MODE_TEXTURED, YFOV_DEG,
+    BACKGROUND,
+    MODE_ALL,
+    MODE_GEOMETRY,
+    MODE_TARGETS,
+    MODE_TEXTURED,
+    YFOV_DEG,
 )
 from .loading import SceneData  # noqa: E402
 from .scene import CameraGlyphs, MeshView, TargetCloudView  # noqa: E402

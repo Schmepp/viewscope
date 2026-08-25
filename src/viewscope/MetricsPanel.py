@@ -10,15 +10,15 @@ could potentially subdivide into separate panel classes.
 
 from __future__ import annotations
 
-import numpy as np
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QComboBox, QFormLayout, QGroupBox,
-    QHeaderView, QLabel, QSlider, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QFormLayout,
+    QGroupBox,
+    QLabel,
+    QVBoxLayout,
     QWidget,
 )
 
-from .config import MODE_ALL, MODES, SCALAR_FIELDS
 
 class MetricsPanel(QWidget):
     """Read-only figures about the bundle and the current viewpoint."""

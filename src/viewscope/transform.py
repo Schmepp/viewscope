@@ -15,7 +15,9 @@ from vtk.util import numpy_support as vtknp
 def points(array):
     """Wrap an (n, 3) array as vtkPoints."""
     pts = vtk.vtkPoints()
-    pts.SetData(vtknp.numpy_to_vtk(np.ascontiguousarray(array, dtype=np.float64), deep=True))
+    pts.SetData(
+        vtknp.numpy_to_vtk(np.ascontiguousarray(array, dtype=np.float64), deep=True)
+    )
     return pts
 
 

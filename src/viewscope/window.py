@@ -11,29 +11,29 @@ from pathlib import Path
 from PySide6.QtCore import QByteArray, QSettings, Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
-    QDockWidget, QMainWindow, QMessageBox, QStatusBar,
+    QDockWidget,
+    QMainWindow,
+    QMessageBox,
+    QStatusBar,
 )
 
-from .config import APP_NAME, DATA_DIR, MODES, ORG_NAME
-from .loading import SceneData, SceneLoader
-
-from .viewport import Viewport
-
-from .DisplayPanel import DisplayPanel
-from .MetricsPanel import MetricsPanel
 from .CameraFlippingPanel import CameraFlippingPanel
 from .CameraViewport import CameraViewport
+from .config import APP_NAME, DATA_DIR, MODES, ORG_NAME
+from .DisplayPanel import DisplayPanel
+from .loading import SceneData, SceneLoader
+from .MetricsPanel import MetricsPanel
+from .viewport import Viewport
 
 
 class MainWindow(QMainWindow):
-
     def __init__(self, data_dir: Path = DATA_DIR):
         super().__init__()
         self.setWindowTitle("ViewScope")
         self.resize(1500, 950)
 
         self.viewport = Viewport(self)
-        self.setCentralWidget(self.viewport) # set the cental widget vtk
+        self.setCentralWidget(self.viewport)  # set the cental widget vtk
 
         self.display_panel = DisplayPanel()
         self.metrics_panel = MetricsPanel()
@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
 
         self.camera_viewport = CameraViewport(self)
 
-        #self.sector_panel = 
+        # self.sector_panel =
 
         self.docks = {}
         self._add_dock("Viewpoints", self.viewpoint_panel_choice, Qt.LeftDockWidgetArea)
@@ -71,7 +71,7 @@ class MainWindow(QMainWindow):
 
     def _add_dock(self, title, widget, area):
         dock = QDockWidget(title, self)
-        dock.setObjectName(f"dock_{title}")   # required for saveState
+        dock.setObjectName(f"dock_{title}")  # required for saveState
         dock.setWidget(widget)
         dock.setAllowedAreas(Qt.AllDockWidgetAreas)
         self.addDockWidget(area, dock)
@@ -81,18 +81,24 @@ class MainWindow(QMainWindow):
     def _connect(self):
         self.display_panel.mode_changed.connect(self.viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.viewport.set_point_size)
-        #self.display_panel.glyphs_toggled.connect(self.viewport.set_glyphs_visible)
+        # self.display_panel.glyphs_toggled.connect(self.viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
 
-        #self.viewpoint_panel_choice.camera_picked.connect(self.viewport.show_camera)
-        #self.viewport.camera_changed.connect(self._on_camera_changed)
+        # self.viewpoint_panel_choice.camera_picked.connect(self.viewport.show_camera)
+        # self.viewport.camera_changed.connect(self._on_camera_changed)
 
         self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
-        self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
-        self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
+        self.display_panel.point_size_changed.connect(
+            self.camera_viewport.set_point_size
+        )
+        self.display_panel.glyphs_toggled.connect(
+            self.camera_viewport.set_glyphs_visible
+        )
         self.display_panel.field_changed.connect(self._on_field_changed)
 
-        self.viewpoint_panel_choice.camera_picked.connect(self.camera_viewport.show_camera)
+        self.viewpoint_panel_choice.camera_picked.connect(
+            self.camera_viewport.show_camera
+        )
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
 
     def _build_actions(self):
@@ -102,12 +108,12 @@ class MainWindow(QMainWindow):
         self.act_prev = QAction("Previous", self)
         self.act_prev.setShortcuts([QKeySequence("P"), QKeySequence(Qt.Key_Left)])
 
-        #self.act_prev.triggered.connect(self.viewport.prev_camera)
+        # self.act_prev.triggered.connect(self.viewport.prev_camera)
 
         self.act_next = QAction("Next", self)
         self.act_next.setShortcuts([QKeySequence("N"), QKeySequence(Qt.Key_Right)])
 
-        #self.act_next.triggered.connect(self.viewport.next_camera)
+        # self.act_next.triggered.connect(self.viewport.next_camera)
 
         self.act_overview = QAction("Overview", self)
         self.act_overview.setShortcut(QKeySequence("O"))
@@ -117,7 +123,7 @@ class MainWindow(QMainWindow):
         camera_actions = (self.act_prev, self.act_next, self.act_overview)
         for act in camera_actions:
             toolbar.addAction(act)
-            self.addAction(act)      # keeps shortcuts alive when VTK has focus
+            self.addAction(act)  # keeps shortcuts alive when VTK has focus
 
         view_menu = self.menuBar().addMenu("&View")
         for dock in self.docks.values():
@@ -136,18 +142,13 @@ class MainWindow(QMainWindow):
             )
             self.addAction(act)
 
-        # -- camera --- 
+        # -- camera ---
 
-
-
-       
         self.act_prev.triggered.connect(self.camera_viewport.prev_camera)
 
         self.act_next.triggered.connect(self.camera_viewport.next_camera)
 
         self.act_overview.triggered.connect(self.camera_viewport.show_overview)
-
-
 
     # -- callbacks -----------------------------------------------------
 
@@ -180,12 +181,13 @@ class MainWindow(QMainWindow):
 
         self.metrics_panel.show_field(self.camera_viewport.set_scalar_field(field))
 
-    def _on_camera_changed(self, info): #info, see on_seletion in CameraFlippingPanel.py
+    def _on_camera_changed(
+        self, info
+    ):  # info, see on_seletion in CameraFlippingPanel.py
         self.metrics_panel.show_camera(info)
         self.viewpoint_panel_choice.select_row(None if info is None else info.index)
         self.statusBar().showMessage(
-            "Overview" if info is None
-            else f"Camera {info.index + 1} of {info.count}"
+            "Overview" if info is None else f"Camera {info.index + 1} of {info.count}"
         )
 
     # -- layout persistence --------------------------------------------

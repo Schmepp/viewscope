@@ -5,11 +5,14 @@ Display panel. this is the top right panel
 
 from __future__ import annotations
 
-import numpy as np
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QComboBox, QFormLayout, QGroupBox,
-    QHeaderView, QLabel, QSlider, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QCheckBox,
+    QComboBox,
+    QFormLayout,
+    QGroupBox,
+    QSlider,
+    QVBoxLayout,
     QWidget,
 )
 
