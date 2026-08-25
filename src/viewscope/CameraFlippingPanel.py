@@ -26,11 +26,11 @@ class CameraFlippingPanel(QTableWidget):
     def __init__(self):
         super().__init__(0, 4)
         self.setHorizontalHeaderLabels(["#", "Position", "Yaw", "Pitch"])
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.verticalHeader().setVisible(False)
-        self.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.itemSelectionChanged.connect(self._on_selection)
         self._suppress = False
 
@@ -49,7 +49,7 @@ class CameraFlippingPanel(QTableWidget):
             for col, text in enumerate(values):
                 self.setItem(i, col, QTableWidgetItem(text))
         self.resizeColumnsToContents()
-        self.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self._suppress = False
 
     def _on_selection(self):

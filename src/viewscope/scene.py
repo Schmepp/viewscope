@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import vtk
-from vtk.util import numpy_support as vtknp
+from vtkmodules.util import numpy_support as vtknp
 
 import viewscope_core as vc
 
@@ -50,7 +50,10 @@ class MeshView:
 
     def show_textured(self):
         prop = self.actor.GetProperty()
-        self.actor.SetTexture(self.texture)
+
+        if self.texture:
+            self.actor.SetTexture(self.texture)
+
         self.actor.GetMapper().ScalarVisibilityOn()
         prop.SetRepresentationToSurface()
         prop.SetColor(1.0, 1.0, 1.0)
@@ -58,7 +61,7 @@ class MeshView:
 
     def show_geometry(self):
         prop = self.actor.GetProperty()
-        self.actor.SetTexture(None)
+        # self.actor.SetTexture(None)
         self.actor.GetMapper().ScalarVisibilityOff()
         prop.SetRepresentationToSurface()
         prop.SetColor(*GEOMETRY_COLOUR)

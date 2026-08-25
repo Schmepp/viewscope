@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 import vtk
-from vtk.util import numpy_support as vtknp
+from vtkmodules.util import numpy_support as vtknp
 
 
 def points(array):

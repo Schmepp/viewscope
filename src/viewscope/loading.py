@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+import trimesh
 from PySide6.QtCore import QThread, Signal
 
-# from . import viewscope_core as vc
 import viewscope_core as vc
 
 
@@ -20,10 +20,10 @@ class SceneData:
     thread, because the render window's GL context lives there.
     """
 
-    mesh: object
+    mesh: trimesh.Geometry
     targets: np.ndarray
     normals: np.ndarray
-    plan: object
+    plan: vc.Plan
     scores: object | None = None
     scores_error: str | None = None
 

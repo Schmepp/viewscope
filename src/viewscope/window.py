@@ -44,10 +44,20 @@ class MainWindow(QMainWindow):
         # self.sector_panel =
 
         self.docks = {}
-        self._add_dock("Viewpoints", self.viewpoint_panel_choice, Qt.LeftDockWidgetArea)
-        self._add_dock("Display", self.display_panel, Qt.RightDockWidgetArea)
-        self._add_dock("Camera View", self.camera_viewport, Qt.RightDockWidgetArea)
-        self._add_dock("Metrics", self.metrics_panel, Qt.RightDockWidgetArea)
+        self._add_dock(
+            "Viewpoints",
+            self.viewpoint_panel_choice,
+            Qt.DockWidgetArea.LeftDockWidgetArea,
+        )
+        self._add_dock(
+            "Display", self.display_panel, Qt.DockWidgetArea.RightDockWidgetArea
+        )
+        self._add_dock(
+            "Camera View", self.camera_viewport, Qt.DockWidgetArea.RightDockWidgetArea
+        )
+        self._add_dock(
+            "Metrics", self.metrics_panel, Qt.DockWidgetArea.RightDockWidgetArea
+        )
 
         self._connect()
         self._build_actions()
@@ -73,7 +83,7 @@ class MainWindow(QMainWindow):
         dock = QDockWidget(title, self)
         dock.setObjectName(f"dock_{title}")  # required for saveState
         dock.setWidget(widget)
-        dock.setAllowedAreas(Qt.AllDockWidgetAreas)
+        dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.addDockWidget(area, dock)
         self.docks[title] = dock
         return dock
@@ -106,12 +116,12 @@ class MainWindow(QMainWindow):
         toolbar.setObjectName("toolbar_cameras")
 
         self.act_prev = QAction("Previous", self)
-        self.act_prev.setShortcuts([QKeySequence("P"), QKeySequence(Qt.Key_Left)])
+        self.act_prev.setShortcuts([QKeySequence("P"), QKeySequence(Qt.Key.Key_Left)])
 
         # self.act_prev.triggered.connect(self.viewport.prev_camera)
 
         self.act_next = QAction("Next", self)
-        self.act_next.setShortcuts([QKeySequence("N"), QKeySequence(Qt.Key_Right)])
+        self.act_next.setShortcuts([QKeySequence("N"), QKeySequence(Qt.Key.Key_Right)])
 
         # self.act_next.triggered.connect(self.viewport.next_camera)
 

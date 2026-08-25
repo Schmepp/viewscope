@@ -45,7 +45,7 @@ class DisplayPanel(QWidget):
         self.field.currentTextChanged.connect(self.field_changed)
         form.addRow("Colour by", self.field)
 
-        self.point_size = QSlider(Qt.Horizontal)
+        self.point_size = QSlider(Qt.Orientation.Horizontal)
         self.point_size.setRange(1, 10)
         self.point_size.setValue(2)
         self.point_size.valueChanged.connect(self.point_size_changed)
