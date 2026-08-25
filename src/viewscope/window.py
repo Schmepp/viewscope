@@ -22,6 +22,7 @@ from .viewport import Viewport
 from .DisplayPanel import DisplayPanel
 from .MetricsPanel import MetricsPanel
 from .CameraFlippingPanel import CameraFlippingPanel
+from .CameraViewport import CameraViewport
 
 
 class MainWindow(QMainWindow):
@@ -36,13 +37,16 @@ class MainWindow(QMainWindow):
 
         self.display_panel = DisplayPanel()
         self.metrics_panel = MetricsPanel()
-        self.viewpoint_panel = CameraFlippingPanel()
+        self.viewpoint_panel_choice = CameraFlippingPanel()
+
+        self.camera_viewport = CameraViewport(self)
 
         #self.sector_panel = 
 
         self.docks = {}
-        self._add_dock("Viewpoints", self.viewpoint_panel, Qt.LeftDockWidgetArea)
+        self._add_dock("Viewpoints", self.viewpoint_panel_choice, Qt.LeftDockWidgetArea)
         self._add_dock("Display", self.display_panel, Qt.RightDockWidgetArea)
+        self._add_dock("Camera View", self.camera_viewport, Qt.RightDockWidgetArea)
         self._add_dock("Metrics", self.metrics_panel, Qt.RightDockWidgetArea)
 
         self._connect()
@@ -61,6 +65,7 @@ class MainWindow(QMainWindow):
     def start(self):
         """Hand control to the VTK interactor, once the window is visible."""
         self.viewport.start()
+        self.camera_viewport.start()
 
     # -- construction --------------------------------------------------
 
@@ -76,11 +81,19 @@ class MainWindow(QMainWindow):
     def _connect(self):
         self.display_panel.mode_changed.connect(self.viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.viewport.set_point_size)
-        self.display_panel.glyphs_toggled.connect(self.viewport.set_glyphs_visible)
+        #self.display_panel.glyphs_toggled.connect(self.viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
 
-        self.viewpoint_panel.camera_picked.connect(self.viewport.show_camera)
-        self.viewport.camera_changed.connect(self._on_camera_changed)
+        #self.viewpoint_panel_choice.camera_picked.connect(self.viewport.show_camera)
+        #self.viewport.camera_changed.connect(self._on_camera_changed)
+
+        self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
+        self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
+        self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
+        self.display_panel.field_changed.connect(self._on_field_changed)
+
+        self.viewpoint_panel_choice.camera_picked.connect(self.camera_viewport.show_camera)
+        self.camera_viewport.camera_changed.connect(self._on_camera_changed)
 
     def _build_actions(self):
         toolbar = self.addToolBar("Cameras")
@@ -88,14 +101,17 @@ class MainWindow(QMainWindow):
 
         self.act_prev = QAction("Previous", self)
         self.act_prev.setShortcuts([QKeySequence("P"), QKeySequence(Qt.Key_Left)])
-        self.act_prev.triggered.connect(self.viewport.prev_camera)
+
+        #self.act_prev.triggered.connect(self.viewport.prev_camera)
 
         self.act_next = QAction("Next", self)
         self.act_next.setShortcuts([QKeySequence("N"), QKeySequence(Qt.Key_Right)])
-        self.act_next.triggered.connect(self.viewport.next_camera)
+
+        #self.act_next.triggered.connect(self.viewport.next_camera)
 
         self.act_overview = QAction("Overview", self)
         self.act_overview.setShortcut(QKeySequence("O"))
+
         self.act_overview.triggered.connect(self.viewport.show_overview)
 
         camera_actions = (self.act_prev, self.act_next, self.act_overview)
@@ -120,6 +136,19 @@ class MainWindow(QMainWindow):
             )
             self.addAction(act)
 
+        # -- camera --- 
+
+
+
+       
+        self.act_prev.triggered.connect(self.camera_viewport.prev_camera)
+
+        self.act_next.triggered.connect(self.camera_viewport.next_camera)
+
+        self.act_overview.triggered.connect(self.camera_viewport.show_overview)
+
+
+
     # -- callbacks -----------------------------------------------------
 
     def _on_failed(self, message):
@@ -130,7 +159,8 @@ class MainWindow(QMainWindow):
 
     def _on_loaded(self, data: SceneData):
         self.viewport.set_scene(data)
-        self.viewpoint_panel.populate(data.plan)
+        self.camera_viewport.set_scene(data)
+        self.viewpoint_panel_choice.populate(data.plan)
         self.metrics_panel.show_bundle(data)
 
         if data.has_scores:
@@ -142,14 +172,17 @@ class MainWindow(QMainWindow):
                 print(f"scores unavailable: {data.scores_error}")
 
         self.viewport.show_overview()
+        self.camera_viewport.show_overview()
         self.statusBar().showMessage("Ready", 3000)
 
     def _on_field_changed(self, field):
         self.metrics_panel.show_field(self.viewport.set_scalar_field(field))
 
+        self.metrics_panel.show_field(self.camera_viewport.set_scalar_field(field))
+
     def _on_camera_changed(self, info): #info, see on_seletion in CameraFlippingPanel.py
         self.metrics_panel.show_camera(info)
-        self.viewpoint_panel.select_row(None if info is None else info.index)
+        self.viewpoint_panel_choice.select_row(None if info is None else info.index)
         self.statusBar().showMessage(
             "Overview" if info is None
             else f"Camera {info.index + 1} of {info.count}"
@@ -176,4 +209,5 @@ class MainWindow(QMainWindow):
         if self.loader.isRunning():
             self.loader.wait(2000)
         self.viewport.shutdown()
+        self.camera_viewport.shutdown()
         super().closeEvent(event)
