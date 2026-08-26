@@ -5,7 +5,6 @@ from __future__ import annotations
 # Must be set before the Qt widget module is imported, so VTK binds to the
 # same Qt binding we are using rather than guessing.
 import vtkmodules.qt
-
 vtkmodules.qt.PyQtImpl = "PySide6"
 
 import vtk  # noqa: E402
@@ -13,15 +12,11 @@ from PySide6.QtCore import Signal  # noqa: E402
 from vtkmodules.qt.QVTKRenderWindowInteractor import (  # noqa: E402
     QVTKRenderWindowInteractor,
 )
+from vtkmodules.vtkInteractionWidgets import vtkCameraOrientationWidget
 
 from .camera import CameraController  # noqa: E402
 from .config import (  # noqa: E402
-    BACKGROUND,
-    MODE_ALL,
-    MODE_GEOMETRY,
-    MODE_TARGETS,
-    MODE_TEXTURED,
-    YFOV_DEG,
+    BACKGROUND, MODE_ALL, MODE_GEOMETRY, MODE_TARGETS, MODE_TEXTURED, YFOV_DEG,
 )
 from .loading import SceneData  # noqa: E402
 from .scene import CameraGlyphs, MeshView, TargetCloudView  # noqa: E402
@@ -52,6 +47,11 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera = None
         self._mode = MODE_ALL
 
+        # self.show_camera_orientation()  # show the camera orientation widget by default
+        self.orientation_widget = vtkCameraOrientationWidget()
+        self.orientation_widget.SetParentRenderer(self.renderer)
+        self.orientation_widget.On()
+
     # -- lifecycle -----------------------------------------------------
 
     def start(self):
@@ -60,11 +60,11 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def shutdown(self):
         # Release the GL context explicitly; skipping this crashes on macOS.
+
         self.Finalize()
 
     def render(self):
         self.GetRenderWindow().Render()
-
     # -- scene ---------------------------------------------------------
 
     def set_scene(self, data: SceneData):
@@ -145,3 +145,9 @@ class Viewport(QVTKRenderWindowInteractor):
         self.glyphs.set_active(None if info is None else info.index)
         self.camera_changed.emit(info)
         self.render()
+
+    def set_camera_orientation_visible(self, visible: bool):
+        if visible:
+            self.orientation_widget.On()
+        else:
+            self.orientation_widget.Off()
