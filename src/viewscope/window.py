@@ -130,18 +130,23 @@ class MainWindow(QMainWindow):
 
         self.act_overview.triggered.connect(self.viewport.show_overview)
 
-        camera_actions = (self.act_prev, self.act_next, self.act_overview)
+        self.toggle_orientation = QAction("Show Orientation", self, checkable=True) # Camera Orientation toggle action
+        self.toggle_orientation.triggered.connect(self.viewport.toggle_camera_orientation_visible)
+
+        camera_actions = (self.act_prev, self.act_next, self.act_overview, self.toggle_orientation)
         for act in camera_actions:
             toolbar.addAction(act)
             self.addAction(act)  # keeps shortcuts alive when VTK has focus
 
-        view_menu = self.menuBar().addMenu("&View")
+        view_menu = self.menuBar().addMenu("&View") # MARK: Menu
         for dock in self.docks.values():
             view_menu.addAction(dock.toggleViewAction())
 
         camera_menu = self.menuBar().addMenu("&Camera")
         for act in camera_actions:
             camera_menu.addAction(act)
+
+        # camera_menu.addSeparator()
 
         # Number keys mirror the display combo box.
         for i, mode in enumerate(MODES, start=1):
