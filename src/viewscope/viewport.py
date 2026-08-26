@@ -47,10 +47,14 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera = None
         self._mode = MODE_ALL
 
-        # self.show_camera_orientation()  # show the camera orientation widget by default
         self.orientation_widget = vtkCameraOrientationWidget()
         self.orientation_widget.SetParentRenderer(self.renderer)
-        self.orientation_widget.On()
+        representation = self.orientation_widget.GetRepresentation()
+        # representation.SetViewport(0.8, 0.8, 1.0, 1.0)
+        representation.AnchorToUpperLeft()
+        # self.orientation_widget.
+        self.set_camera_orientation_visible(True)  # orientation widget
+        # self.orientation_widget.On()
 
     # -- lifecycle -----------------------------------------------------
 
@@ -146,7 +150,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera_changed.emit(info)
         self.render()
 
-    def set_camera_orientation_visible(self, visible: bool):
+    def set_camera_orientation_visible(self, visible: bool): # orientation widget
         if visible:
             self.orientation_widget.On()
         else:
