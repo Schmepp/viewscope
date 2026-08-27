@@ -153,8 +153,9 @@ class Viewport(QVTKRenderWindowInteractor):
             self.orientation_widget.On()
         else:
             self.orientation_widget.Off()
+        self.render() # 
 
     def toggle_camera_orientation_visible(self):
-        current_visibility = self.orientation_widget.GetRepresentation().GetVisibility()
-        self.set_camera_orientation_visible(self, not current_visibility)
-        print(str(current_visibility) + " is widget visibility")
+        current_visibility = self.orientation_widget.GetEnabled()
+        self.set_camera_orientation_visible(not current_visibility)
+        #print(str(current_visibility) + " is widget visibility")
