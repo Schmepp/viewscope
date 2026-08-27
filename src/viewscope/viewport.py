@@ -1,10 +1,11 @@
 """The 3D viewport: a render window plus the views drawn into it."""
 
-from __future__ import annotations
+from __future__ import annotations # noqa: E402
 
 # Must be set before the Qt widget module is imported, so VTK binds to the
 # same Qt binding we are using rather than guessing.
-import vtkmodules.qt
+import vtkmodules.qt # noqa: E402
+
 vtkmodules.qt.PyQtImpl = "PySide6"
 
 import vtk  # noqa: E402
@@ -12,7 +13,7 @@ from PySide6.QtCore import Signal  # noqa: E402
 from vtkmodules.qt.QVTKRenderWindowInteractor import (  # noqa: E402
     QVTKRenderWindowInteractor,
 )
-from vtkmodules.vtkInteractionWidgets import vtkCameraOrientationWidget
+from vtkmodules.vtkInteractionWidgets import vtkCameraOrientationWidget # noqa: E402
 
 from .camera import CameraController  # noqa: E402
 from .config import (  # noqa: E402
@@ -50,9 +51,10 @@ class Viewport(QVTKRenderWindowInteractor):
         # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
         self.orientation_widget.SetParentRenderer(self.renderer)
-        representation = self.orientation_widget.GetRepresentation() # Representation = the widget that's drawn in render window
+        # Representation = the widget that's drawn in render window
+        representation = self.orientation_widget.GetRepresentation()
         representation.AnchorToUpperLeft() # Change position of drawn widget.
-        self.set_camera_orientation_visible(True) 
+        self.set_camera_orientation_visible(True)
 
     # -- lifecycle -----------------------------------------------------
 
@@ -153,7 +155,7 @@ class Viewport(QVTKRenderWindowInteractor):
             self.orientation_widget.On()
         else:
             self.orientation_widget.Off()
-        self.render() # 
+        self.render()
 
     def toggle_camera_orientation_visible(self):
         current_visibility = self.orientation_widget.GetEnabled()
