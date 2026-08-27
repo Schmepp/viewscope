@@ -58,7 +58,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.orientation_widget.SetParentRenderer(self.renderer)
         # Representation = the widget that's drawn in render window
         representation = self.orientation_widget.GetRepresentation()
-        representation.AnchorToUpperLeft() # Change position of drawn widget.
+        representation.AnchorToUpperLeft()  # Change position of drawn widget.
         self.set_camera_orientation_visible(True)
 
     # -- lifecycle -----------------------------------------------------
@@ -74,6 +74,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def render(self):
         self.GetRenderWindow().Render()
+
     # -- scene ---------------------------------------------------------
 
     def set_scene(self, data: SceneData):
@@ -155,7 +156,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera_changed.emit(info)
         self.render()
 
-    def set_camera_orientation_visible(self, visible: bool): # orientation widget
+    def set_camera_orientation_visible(self, visible: bool):  # orientation widget
         if visible:
             self.orientation_widget.On()
         else:
@@ -165,4 +166,4 @@ class Viewport(QVTKRenderWindowInteractor):
     def toggle_camera_orientation_visible(self):
         current_visibility = self.orientation_widget.GetEnabled()
         self.set_camera_orientation_visible(not current_visibility)
-        #print(str(current_visibility) + " is widget visibility")
+        # print(str(current_visibility) + " is widget visibility")
