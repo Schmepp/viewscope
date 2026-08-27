@@ -1,21 +1,26 @@
-"""ViewScope desktop viewer: entry point.
+"""
+ViewScope desktop viewer: entry point.
 
 uv run viewscope
 """
 
 from __future__ import annotations
 
+import os
+import platform
 import sys
 
 from PySide6.QtWidgets import QApplication
 
 from . import config
-
-# from .window import MainWindow
 from . import window as wd
 
 
 def main() -> int:
+    # Required for running headless on Linux
+    if platform.system() == "Linux":
+        os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
+
     app = QApplication(sys.argv)
     app.setOrganizationName(config.ORG_NAME)
     app.setApplicationName(config.APP_NAME)
