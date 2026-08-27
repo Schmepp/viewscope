@@ -47,10 +47,10 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera = None
         self._mode = MODE_ALL
 
-        # Camera Orientation configuration
+        # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
         self.orientation_widget.SetParentRenderer(self.renderer)
-        representation = self.orientation_widget.GetRepresentation() # Representation = widget that drawn in render window
+        representation = self.orientation_widget.GetRepresentation() # Representation = the widget that's drawn in render window
         representation.AnchorToUpperLeft() # Change position of drawn widget.
         self.set_camera_orientation_visible(True) 
 
