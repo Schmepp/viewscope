@@ -1,10 +1,10 @@
 """The 3D viewport: a render window plus the views drawn into it."""
 
-from __future__ import annotations # noqa: E402
+from __future__ import annotations  # noqa: E402
 
 # Must be set before the Qt widget module is imported, so VTK binds to the
 # same Qt binding we are using rather than guessing.
-import vtkmodules.qt # noqa: E402
+import vtkmodules.qt  # noqa: E402
 
 vtkmodules.qt.PyQtImpl = "PySide6"
 
@@ -13,11 +13,16 @@ from PySide6.QtCore import Signal  # noqa: E402
 from vtkmodules.qt.QVTKRenderWindowInteractor import (  # noqa: E402
     QVTKRenderWindowInteractor,
 )
-from vtkmodules.vtkInteractionWidgets import vtkCameraOrientationWidget # noqa: E402
+from vtkmodules.vtkInteractionWidgets import vtkCameraOrientationWidget  # noqa: E402
 
 from .camera import CameraController  # noqa: E402
 from .config import (  # noqa: E402
-    BACKGROUND, MODE_ALL, MODE_GEOMETRY, MODE_TARGETS, MODE_TEXTURED, YFOV_DEG,
+    BACKGROUND,
+    MODE_ALL,
+    MODE_GEOMETRY,
+    MODE_TARGETS,
+    MODE_TEXTURED,
+    YFOV_DEG,
 )
 from .loading import SceneData  # noqa: E402
 from .scene import CameraGlyphs, MeshView, TargetCloudView  # noqa: E402

@@ -133,7 +133,7 @@ class MainWindow(QMainWindow):
         self.toggle_orientation.triggered.connect(self.viewport.toggle_camera_orientation_visible)
         self.toggle_orientation.setChecked(True)
 
-        camera_actions = (self.act_prev, self.act_next, self.act_overview, 
+        camera_actions = (self.act_prev, self.act_next, self.act_overview,
                           self.toggle_orientation)
         for act in camera_actions:
             toolbar.addAction(act)
