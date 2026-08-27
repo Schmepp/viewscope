@@ -20,8 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 
-# TODO(Adam): Rename this class? Its name seems off to me.
-class CameraFlippingPanel(QWidget):
+class ViewpointsPanel(QWidget):
     """One row per planned camera; selecting a row jumps the viewport."""
 
     camera_picked = Signal(int)
@@ -35,7 +34,9 @@ class CameraFlippingPanel(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )
         self.table.itemSelectionChanged.connect(self._on_selection)
 
         self._suppress = False
@@ -48,7 +49,6 @@ class CameraFlippingPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(self.table)
         layout.addWidget(self.button)
-
 
     def populate(self, plan):
         self._suppress = True
@@ -69,9 +69,10 @@ class CameraFlippingPanel(QWidget):
                 self.table.setItem(i, col, QTableWidgetItem(text))
 
         self.table.resizeColumnsToContents()
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )
         self._suppress = False
-
 
     def _on_selection(self):
         if self._suppress:
@@ -80,7 +81,6 @@ class CameraFlippingPanel(QWidget):
         rows = self.table.selectionModel().selectedRows()
         if rows:
             self.camera_picked.emit(rows[0].row())
-
 
     def select_row(self, index):
         """Reflect a selection made elsewhere without re-emitting."""
@@ -92,7 +92,6 @@ class CameraFlippingPanel(QWidget):
             self.table.selectRow(index)
 
         self._suppress = False
-
 
     def _on_button_add_camera_clicked(self):
         # Do whatever the button should do
