@@ -13,7 +13,6 @@ import vtk
 from vtkmodules.util import numpy_support as vtknp
 
 import viewscope_core as vc
-
 from viewscope import transform
 from viewscope.config import EDGE_COLOUR, GEOMETRY_COLOUR
 

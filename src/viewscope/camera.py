@@ -7,7 +7,6 @@ from dataclasses import dataclass
 import numpy as np
 
 import viewscope_core as vc
-
 from viewscope import transform
 
 

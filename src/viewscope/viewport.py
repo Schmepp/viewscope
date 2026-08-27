@@ -2,20 +2,15 @@
 
 from __future__ import annotations
 
-# Must be set before the Qt widget module is imported, so VTK binds to the
-# same Qt binding we are using rather than guessing.
-import vtkmodules.qt
-
-vtkmodules.qt.PyQtImpl = "PySide6"
-
-import vtk  # noqa: E402
-from PySide6.QtCore import Signal  # noqa: E402
-from vtkmodules.qt.QVTKRenderWindowInteractor import (  # noqa: E402
+import vtk
+from PySide6.QtCore import Signal
+from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
 )
 
-from viewscope.camera import CameraController  # noqa: E402
-from viewscope.config import (  # noqa: E402
+import viewscope.qt  # noqa: F401
+from viewscope.camera import CameraController
+from viewscope.config import (
     BACKGROUND,
     MODE_ALL,
     MODE_GEOMETRY,
@@ -23,8 +18,8 @@ from viewscope.config import (  # noqa: E402
     MODE_TEXTURED,
     YFOV_DEG,
 )
-from viewscope.loading import SceneData  # noqa: E402
-from viewscope.scene import CameraGlyphs, MeshView, TargetCloudView  # noqa: E402
+from viewscope.loading import SceneData
+from viewscope.scene import CameraGlyphs, MeshView, TargetCloudView
 
 
 class Viewport(QVTKRenderWindowInteractor):
