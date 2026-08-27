@@ -14,8 +14,8 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import (  # noqa: E402
     QVTKRenderWindowInteractor,
 )
 
-from .camera import CameraController  # noqa: E402
-from .config import (  # noqa: E402
+from viewscope.camera import CameraController  # noqa: E402
+from viewscope.config import (  # noqa: E402
     BACKGROUND,
     MODE_ALL,
     MODE_GEOMETRY,
@@ -23,8 +23,8 @@ from .config import (  # noqa: E402
     MODE_TEXTURED,
     YFOV_DEG,
 )
-from .loading import SceneData  # noqa: E402
-from .scene import CameraGlyphs, MeshView, TargetCloudView  # noqa: E402
+from viewscope.loading import SceneData  # noqa: E402
+from viewscope.scene import CameraGlyphs, MeshView, TargetCloudView  # noqa: E402
 
 
 class CameraViewport(QVTKRenderWindowInteractor):

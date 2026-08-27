@@ -6,10 +6,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-# viewscope_core as vc
 import viewscope_core as vc
 
-from . import transform
+from viewscope import transform
 
 
 @dataclass(frozen=True)

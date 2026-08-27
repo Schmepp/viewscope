@@ -17,13 +17,13 @@ from PySide6.QtWidgets import (
     QStatusBar,
 )
 
-from .CameraViewport import CameraViewport
-from .config import APP_NAME, DATA_DIR, MODES, ORG_NAME
-from .DisplayPanel import DisplayPanel
-from .loading import SceneData, SceneLoader
-from .MetricsPanel import MetricsPanel
-from .panels.viewpoints_panel import ViewpointsPanel
-from .viewport import Viewport
+from viewscope.CameraViewport import CameraViewport
+from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME
+from viewscope.DisplayPanel import DisplayPanel
+from viewscope.loading import SceneData, SceneLoader
+from viewscope.MetricsPanel import MetricsPanel
+from viewscope.panels.viewpoints_panel import ViewpointsPanel
+from viewscope.viewport import Viewport
 
 
 class MainWindow(QMainWindow):

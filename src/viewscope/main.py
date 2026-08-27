@@ -12,8 +12,8 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from . import config
-from . import window as wd
+from viewscope import config
+from viewscope import window as wd
 
 
 def main() -> int:

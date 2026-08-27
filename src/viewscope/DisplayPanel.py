@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .config import MODE_ALL, MODES, SCALAR_FIELDS
+from viewscope.config import MODE_ALL, MODES, SCALAR_FIELDS
 
 
 class DisplayPanel(QWidget):
