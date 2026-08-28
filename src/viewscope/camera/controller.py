@@ -10,7 +10,6 @@ from viewscope.camera.structs import CameraInfo
 from viewscope.data.store import SCENE_STORE
 
 
-
 class CameraController:
     """Owns the overview snapshot and the current viewpoint index."""
 

@@ -51,7 +51,7 @@ class SceneStore(QObject):
             index=max_id,
             position=np.asarray(position, dtype=float),
             yaw=yaw,
-            pitch=pitch
+            pitch=pitch,
         )
 
         self.scene.plan = Plan(

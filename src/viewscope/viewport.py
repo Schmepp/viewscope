@@ -10,8 +10,8 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
 )
 from vtkmodules.vtkInteractionWidgets import (
-    vtkCameraOrientationWidget,
     vtkCameraOrientationRepresentation,
+    vtkCameraOrientationWidget,
 )
 
 import viewscope.qt  # noqa: F401
@@ -63,7 +63,7 @@ class Viewport(QVTKRenderWindowInteractor):
         # Representation - the widget that's drawn in render window
         representation = cast(
             vtkCameraOrientationRepresentation,
-            self.orientation_widget.GetRepresentation()
+            self.orientation_widget.GetRepresentation(),
         )
         representation.AnchorToUpperLeft()
 
@@ -178,7 +178,7 @@ class Viewport(QVTKRenderWindowInteractor):
             if view is not None:
                 view.add_to(self.renderer)
 
-    def _moved(self, info : CameraInfo | None):
+    def _moved(self, info: CameraInfo | None):
         if self.glyphs is not None:
             self.glyphs.set_active(None if info is None else info.index)
 
