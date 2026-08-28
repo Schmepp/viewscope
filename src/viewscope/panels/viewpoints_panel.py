@@ -1,5 +1,5 @@
 """
-Camera flipping panel on left hand side
+ViewpointsPanel
 
 This panel does not communicate with viewport.py directly
 See _on_camera_changed in window.py
@@ -11,6 +11,7 @@ import numpy as np
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QDialog,
     QHeaderView,
     QPushButton,
     QTableWidget,
@@ -19,11 +20,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from viewscope.dialogs.addcamera_dialog import AddCameraDialog
+
 
 class ViewpointsPanel(QWidget):
     """One row per planned camera; selecting a row jumps the viewport."""
 
     camera_picked = Signal(int)
+    # camera_add_requested = Signal(int)
 
     def __init__(self):
         super().__init__()
@@ -94,5 +98,21 @@ class ViewpointsPanel(QWidget):
         self._suppress = False
 
     def _on_button_add_camera_clicked(self):
-        # Do whatever the button should do
-        print("Adding a camera!!!!!")
+        # self.button.clicked.connect(self.camera_add_requested.emit)
+
+        dialog = AddCameraDialog(self)
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        x, y, z, yaw, pitch = dialog.values()
+        position = [x, y, z]
+
+        # TODO: Modify the actual plan here.
+        # self.plan.positions.append([x, y, z])
+        # self.plan.yaws_deg.append(yaw)
+        # self.plan.pitches_deg.append(pitch)
+
+        # self.viewpoints_panel.populate(self.plan)
+
+        print(f"Adding camera: position={position}, yaw={yaw}, pitch={pitch}.")
