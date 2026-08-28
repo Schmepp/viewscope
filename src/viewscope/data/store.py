@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import numpy as np
 from PySide6.QtCore import QObject, Signal
 
 from viewscope.data.scene import SceneData
+from viewscope_core import Plan
 
 
 class SceneStore(QObject):
@@ -13,10 +15,50 @@ class SceneStore(QObject):
     scene_loaded = Signal()
     scene_unloaded = Signal()
     scene_changed = Signal()
+    plan_changed = Signal()
 
     def __init__(self):
         super().__init__()
         self._scene: SceneData | None = None
+
+    def set_scene(self, scene: SceneData) -> None:
+        self._scene = scene
+        self.scene_loaded.emit()
+        self.scene_changed.emit()
+        self.plan_changed.emit()
+
+    def clear(self) -> None:
+        self._scene = None
+        self.scene_unloaded.emit()
+        self.scene_changed.emit()
+        self.plan_changed.emit()
+
+    def add_camera(
+        self, position: tuple[float, float, float], yaw: float, pitch: float
+    ):
+        if self.scene is None:
+            return
+
+        # NOTE(Adam): So vc.Plan is immutable (for some reason).
+        #             When adding a new camera, we have to create a completely new Plan... Nice!
+        old_plan = self.scene.plan
+
+        max_id = max(int(id[2:]) for id in old_plan.ids)
+        new_id = f"vp{max_id + 1}"
+        new_position = np.asarray(position, dtype=float)
+
+        self.scene.plan = Plan(
+            camera=old_plan.camera,
+            ids=old_plan.ids + (new_id,),
+            positions=np.concatenate(
+                (old_plan.positions, new_position[None, :]), axis=0
+            ),
+            yaws_deg=np.concatenate((old_plan.yaws_deg, np.array([yaw]))),
+            pitches_deg=np.concatenate((old_plan.pitches_deg, np.array([pitch]))),
+        )
+
+        self.scene_changed.emit()
+        self.plan_changed.emit()
 
     @property
     def scene(self) -> SceneData | None:
@@ -25,16 +67,6 @@ class SceneStore(QObject):
     @property
     def loaded(self) -> bool:
         return self._scene is not None
-
-    def set_scene(self, scene: SceneData) -> None:
-        self._scene = scene
-        self.scene_loaded.emit()
-        self.scene_changed.emit()
-
-    def clear(self) -> None:
-        self._scene = None
-        self.scene_unloaded.emit()
-        self.scene_changed.emit()
 
 
 # Single global instance of the current SceneData

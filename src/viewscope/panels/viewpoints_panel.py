@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from viewscope.data.store import SCENE_STORE
 from viewscope.dialogs.addcamera_dialog import AddCameraDialog
 
 
@@ -54,29 +55,47 @@ class ViewpointsPanel(QWidget):
         layout.addWidget(self.table)
         layout.addWidget(self.button)
 
-    def populate(self, plan):
+        # Call refresh() whenever the plan is changed (e.g, if a camera is added)
+        SCENE_STORE.plan_changed.connect(self.refresh)
+
+    def refresh(self):
+        """Refresh the viewpoints table from the current scene."""
+        if SCENE_STORE.scene is None:
+            self._suppress = True
+            try:
+                self.table.setRowCount(0)
+            finally:
+                self._suppress = False
+
+            return
+
+        plan = SCENE_STORE.scene.plan
+        print(f"Refreshing viewpoints table: {len(plan.ids)} cameras.")
+
         self._suppress = True
+        try:
+            n = len(plan.ids)
+            self.table.setRowCount(n)
 
-        n = len(plan.positions)
-        self.table.setRowCount(n)
-        for i in range(n):
-            pos = np.asarray(plan.positions[i], dtype=float)
+            for i in range(n):
+                pos = np.asarray(plan.positions[i], dtype=float)
 
-            values = [
-                str(i + 1),
-                f"{pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f}",
-                f"{float(plan.yaws_deg[i]):.1f}",
-                f"{float(plan.pitches_deg[i]):.1f}",
-            ]
+                values = [
+                    plan.ids[i],
+                    f"{pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f}",
+                    f"{float(plan.yaws_deg[i]):.1f}",
+                    f"{float(plan.pitches_deg[i]):.1f}",
+                ]
 
-            for col, text in enumerate(values):
-                self.table.setItem(i, col, QTableWidgetItem(text))
+                for col, text in enumerate(values):
+                    self.table.setItem(i, col, QTableWidgetItem(text))
 
-        self.table.resizeColumnsToContents()
-        self.table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
-        )
-        self._suppress = False
+            self.table.resizeColumnsToContents()
+            self.table.horizontalHeader().setSectionResizeMode(
+                1, QHeaderView.ResizeMode.Stretch
+            )
+        finally:
+            self._suppress = False
 
     def _on_selection(self):
         if self._suppress:
@@ -98,21 +117,15 @@ class ViewpointsPanel(QWidget):
         self._suppress = False
 
     def _on_button_add_camera_clicked(self):
-        # self.button.clicked.connect(self.camera_add_requested.emit)
+        if SCENE_STORE.scene is None:
+            return
 
         dialog = AddCameraDialog(self)
-
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
         x, y, z, yaw, pitch = dialog.values()
-        position = [x, y, z]
+        position = (x, y, z)
 
-        # TODO: Modify the actual plan here.
-        # self.plan.positions.append([x, y, z])
-        # self.plan.yaws_deg.append(yaw)
-        # self.plan.pitches_deg.append(pitch)
-
-        # self.viewpoints_panel.populate(self.plan)
-
+        SCENE_STORE.add_camera(position, yaw, pitch)
         print(f"Adding camera: position={position}, yaw={yaw}, pitch={pitch}.")

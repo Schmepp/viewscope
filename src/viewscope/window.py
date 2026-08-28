@@ -176,7 +176,6 @@ class MainWindow(QMainWindow):
         # Panels get populated here from the data
         self.viewport.set_scene(scene)
         self.camera_viewport.set_scene(scene)
-        self.viewpoints_panel.populate(scene.plan)
         self.metrics_panel.show_bundle(scene)
 
         if scene.has_scores:
