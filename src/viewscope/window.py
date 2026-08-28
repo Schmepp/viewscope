@@ -19,8 +19,10 @@ from PySide6.QtWidgets import (
 
 from viewscope.CameraViewport import CameraViewport
 from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME
+from viewscope.data.loader import SceneLoader
+from viewscope.data.scene import SceneData
+from viewscope.data.store import SCENE_STORE
 from viewscope.DisplayPanel import DisplayPanel
-from viewscope.loading import SceneData, SceneLoader
 from viewscope.MetricsPanel import MetricsPanel
 from viewscope.panels.viewpoints_panel import ViewpointsPanel
 from viewscope.viewport import Viewport
@@ -66,9 +68,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Loading...")
         self._restore_layout()
 
+        # Load the scene
         self.loader = SceneLoader(data_dir, self)
         self.loader.progress.connect(self.statusBar().showMessage)
-        self.loader.loaded.connect(self._on_loaded)
+        self.loader.loaded.connect(self._on_scene_loaded)
         self.loader.failed.connect(self._on_failed)
         self.loader.start()
 
@@ -166,19 +169,23 @@ class MainWindow(QMainWindow):
             self, "ViewScope", f"Could not load the bundle.\n\n{message}"
         )
 
-    def _on_loaded(self, data: SceneData):
-        self.viewport.set_scene(data)
-        self.camera_viewport.set_scene(data)
-        self.viewpoints_panel.populate(data.plan)
-        self.metrics_panel.show_bundle(data)
+    def _on_scene_loaded(self, scene: SceneData):
+        SCENE_STORE.set_scene(scene)
 
-        if data.has_scores:
+        # TODO: Get rid of these functions, use them directly from the SCENE_STORE
+        # Panels get populated here from the data
+        self.viewport.set_scene(scene)
+        self.camera_viewport.set_scene(scene)
+        self.viewpoints_panel.populate(scene.plan)
+        self.metrics_panel.show_bundle(scene)
+
+        if scene.has_scores:
             self._on_field_changed(self.display_panel.field.currentText())
         else:
             self.display_panel.disable_fields()
             self.metrics_panel.show_field(None)
-            if data.scores_error:
-                print(f"scores unavailable: {data.scores_error}")
+            if scene.scores_error:
+                print(f"scores unavailable: {scene.scores_error}")
 
         self.viewport.show_overview()
         self.camera_viewport.show_overview()

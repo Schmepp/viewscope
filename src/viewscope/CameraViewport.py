@@ -18,7 +18,7 @@ from viewscope.config import (
     MODE_TEXTURED,
     YFOV_DEG,
 )
-from viewscope.loading import SceneData
+from viewscope.data.scene import SceneData
 from viewscope.scene import CameraGlyphs, MeshView, TargetCloudView
 
 
