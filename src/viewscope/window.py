@@ -173,8 +173,6 @@ class MainWindow(QMainWindow):
     def _on_scene_loaded(self, scene: SceneData):
         SCENE_STORE.set_scene(scene)
 
-        # TODO: Get rid of these functions, use them directly from the SCENE_STORE
-        # Panels get populated here from the data
         self.viewport.set_scene(scene)
         self.camera_viewport.set_scene(scene)
         self.metrics_panel.show_bundle()
@@ -196,10 +194,16 @@ class MainWindow(QMainWindow):
         self.metrics_panel.show_field(self.camera_viewport.set_scalar_field(field))
 
     def _on_camera_changed(self, info: CameraInfo | None):
-        if SCENE_STORE is None:
+        if SCENE_STORE.scene is None:
             return
 
         self.metrics_panel.show_camera(info)
+        self.viewport.on_camera_changed()
+
+        # TODO(Adam): Fix this. Currently whenever we call this, the camera viewport
+        #             behaves wonky when selecting a camera.
+        #             It seems to be related to the glyphs being re-created.
+        # self.camera_viewport.on_camera_changed()
 
         if info is not None:
             self.viewpoints_panel.select_row(info.index)

@@ -10,6 +10,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import (
 
 import viewscope.qt  # noqa: F401
 from viewscope.camera.controller import CameraController
+from viewscope.camera.structs import CameraInfo
 from viewscope.config import (
     BACKGROUND,
     MODE_ALL,
@@ -19,17 +20,19 @@ from viewscope.config import (
     YFOV_DEG,
 )
 from viewscope.data.scene import SceneData
-from viewscope.scene import CameraGlyphs, MeshView, TargetCloudView
+from viewscope.data.store import SCENE_STORE
+from viewscope.scene import CameraGlyphs, FieldStats, MeshView, TargetCloudView
 
 
 class Viewport(QVTKRenderWindowInteractor):
-    """Renders a bundle and exposes display state as plain method calls.
+    """
+    Renders a bundle and exposes display state as plain method calls.
 
     Emits `camera_changed` with a CameraInfo, or None for the overview, so
     panels can follow along without reaching into the renderer.
     """
 
-    camera_changed = Signal(object)
+    camera_changed = Signal(CameraInfo)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -47,20 +50,20 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera = None
         self._mode = MODE_ALL
 
-    # -- lifecycle -----------------------------------------------------
+    # -- Lifecycle -----------------------------------------------------
 
     def start(self):
         """Call once the window is on screen."""
         self._interactor.Initialize()
 
     def shutdown(self):
-        # Release the GL context explicitly; skipping this crashes on macOS.
+        """Release the GL context explicitly; skipping this crashes on macOS."""
         self.Finalize()
 
     def render(self):
         self.GetRenderWindow().Render()
 
-    # -- scene ---------------------------------------------------------
+    # -- Scene ---------------------------------------------------------
 
     def set_scene(self, data: SceneData):
         self.mesh = MeshView(data.mesh)
@@ -71,7 +74,6 @@ class Viewport(QVTKRenderWindowInteractor):
             view.add_to(self.renderer)
 
         self.camera = CameraController(self.renderer, YFOV_DEG)
-
         self.renderer.ResetCamera()
         self.camera.save_overview()
         self.set_mode(self._mode)
@@ -80,61 +82,86 @@ class Viewport(QVTKRenderWindowInteractor):
     def has_scene(self) -> bool:
         return self.mesh is not None
 
-    # -- display state -------------------------------------------------
+    # -- Display state -------------------------------------------------
 
     def set_mode(self, mode: str):
-        self._mode = mode
+        if self._mode == mode:
+            return
+
         if not self.has_scene:
             return
 
+        self._mode = mode
         show_mesh = mode in (MODE_TEXTURED, MODE_GEOMETRY, MODE_ALL)
-        self.mesh.set_visible(show_mesh)
-        self.cloud.set_visible(mode in (MODE_TARGETS, MODE_ALL))
 
-        if mode == MODE_GEOMETRY:
-            self.mesh.show_geometry()
-        elif show_mesh:
-            self.mesh.show_textured()
+        if self.mesh is not None:
+            self.mesh.set_visible(show_mesh)
+
+            if mode == MODE_GEOMETRY:
+                self.mesh.show_geometry()
+            elif show_mesh:
+                self.mesh.show_textured()
+
+        if self.cloud is not None:
+            self.cloud.set_visible(mode in (MODE_TARGETS, MODE_ALL))
 
         self.render()
 
-    def set_scalar_field(self, field: str):
+    def set_scalar_field(self, field: str) -> FieldStats | None:
         """Returns FieldStats, or None when the bundle has no scores."""
         if not self.has_scene:
             return None
-        stats = self.cloud.set_field(field)
+
+        stats = None
+        if self.cloud is not None:
+            stats = self.cloud.set_field(field)
+
         self.render()
         return stats
 
     def set_point_size(self, size: int):
-        if self.has_scene:
+        if self.has_scene and self.cloud is not None:
             self.cloud.set_point_size(size)
             self.render()
 
     def set_glyphs_visible(self, visible: bool):
-        if self.has_scene:
+        if self.has_scene and self.glyphs is not None:
             self.glyphs.set_visible(visible)
             self.render()
 
-    # -- camera --------------------------------------------------------
+    # -- Camera --------------------------------------------------------
 
     def show_overview(self):
-        if self.has_scene:
+        if self.has_scene and self.camera is not None:
             self._moved(self.camera.show_overview())
 
     def show_camera(self, index: int):
-        if self.has_scene:
+        if self.has_scene and self.camera is not None:
             self._moved(self.camera.show(index))
 
     def next_camera(self):
-        if self.has_scene:
+        if self.has_scene and self.camera is not None:
             self._moved(self.camera.step(1))
 
     def prev_camera(self):
-        if self.has_scene:
+        if self.has_scene and self.camera is not None:
             self._moved(self.camera.step(-1))
 
-    def _moved(self, info):
-        self.glyphs.set_active(None if info is None else info.index)
+    def on_camera_changed(self):
+        """Update the camera glyphs."""
+        if SCENE_STORE.scene is None:
+            return
+
+        scene = SCENE_STORE.scene
+        self.glyphs = CameraGlyphs(scene.plan)
+
+        for view in (self.mesh, self.cloud, self.glyphs):
+            if view is not None:
+                view.add_to(self.renderer)
+
+    def _moved(self, info : CameraInfo | None):
+        if self.glyphs is not None:
+            self.glyphs.set_active(None if info is None else info.index)
+
         self.camera_changed.emit(info)
         self.render()
