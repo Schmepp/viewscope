@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import vtk
 from PySide6.QtCore import Signal
 from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
+)
+from vtkmodules.vtkInteractionWidgets import (
+    vtkCameraOrientationWidget,
+    vtkCameraOrientationRepresentation,
 )
 
 import viewscope.qt  # noqa: F401
@@ -49,6 +55,19 @@ class Viewport(QVTKRenderWindowInteractor):
         self.glyphs = None
         self.camera = None
         self._mode = MODE_ALL
+
+        # Camera Orientation Widget configuration
+        self.orientation_widget = vtkCameraOrientationWidget()
+        self.orientation_widget.SetParentRenderer(self.renderer)
+
+        # Representation - the widget that's drawn in render window
+        representation = cast(
+            vtkCameraOrientationRepresentation,
+            self.orientation_widget.GetRepresentation()
+        )
+        representation.AnchorToUpperLeft()
+
+        self.set_camera_orientation_visible(True)
 
     # -- Lifecycle -----------------------------------------------------
 
@@ -165,3 +184,15 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.camera_changed.emit(info)
         self.render()
+
+    def set_camera_orientation_visible(self, visible: bool):
+        if visible:
+            self.orientation_widget.On()
+        else:
+            self.orientation_widget.Off()
+        self.render()
+
+    def toggle_camera_orientation_visible(self):
+        current_visibility = self.orientation_widget.GetEnabled()
+        self.set_camera_orientation_visible(not current_visibility)
+        # print(str(current_visibility) + " is widget visibility")

@@ -129,10 +129,20 @@ class MainWindow(QMainWindow):
 
         self.act_overview = QAction("Overview", self)
         self.act_overview.setShortcut(QKeySequence("O"))
-
         self.act_overview.triggered.connect(self.viewport.show_overview)
 
-        camera_actions = (self.act_prev, self.act_next, self.act_overview)
+        self.toggle_orientation = QAction("Toggle Orientation", self, checkable=True)
+        self.toggle_orientation.triggered.connect(
+            self.viewport.toggle_camera_orientation_visible
+        )
+        self.toggle_orientation.setChecked(True)
+
+        camera_actions = (
+            self.act_prev,
+            self.act_next,
+            self.act_overview,
+            self.toggle_orientation,
+        )
         for act in camera_actions:
             toolbar.addAction(act)
             self.addAction(act)  # keeps shortcuts alive when VTK has focus
