@@ -58,7 +58,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.orientation_widget.SetParentRenderer(self.renderer)
         # Representation = the widget that's drawn in render window
         representation = self.orientation_widget.GetRepresentation()
-        representation.AnchorToUpperLeft()  # Change position of drawn widget.
+        representation.AnchorToUpperLeft() # type: ignore
         self.set_camera_orientation_visible(True)
 
     # -- lifecycle -----------------------------------------------------
