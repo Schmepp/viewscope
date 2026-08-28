@@ -9,6 +9,7 @@ ImplNote: Could potentially subdivide into separate panel classes.
 
 from __future__ import annotations
 
+import trimesh
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -70,8 +71,11 @@ class MetricsPanel(QWidget):
         cameras = 0
 
         if SCENE_STORE.scene is not None:
-            vertices = len(SCENE_STORE.scene.mesh.vertices)
-            triangles = len(SCENE_STORE.scene.mesh.faces)
+            mesh = SCENE_STORE.scene.mesh
+            if isinstance(mesh, trimesh.Trimesh):
+                vertices = len(mesh.vertices)
+                triangles = len(mesh.faces)
+
             diagonal = SCENE_STORE.scene.diagonal
             targets = len(SCENE_STORE.scene.targets)
             cameras = SCENE_STORE.camera_count
