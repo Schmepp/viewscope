@@ -1,11 +1,10 @@
-"""Dockable panels.
+"""
+Dockable panels.
 
 Each panel reports user intent through signals and accepts state through
 `show_*` methods. None of them touch VTK or the scene directly.
 
-
-
-could potentially subdivide into separate panel classes.
+ImplNote: Could potentially subdivide into separate panel classes.
 """
 
 from __future__ import annotations
@@ -18,6 +17,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from viewscope.camera.structs import CameraInfo
+from viewscope.data.store import SCENE_STORE
+from viewscope.scene import FieldStats
 
 
 class MetricsPanel(QWidget):
@@ -44,9 +47,12 @@ class MetricsPanel(QWidget):
                 )
                 form.addRow(key, label)
                 self.rows[key] = label
+
             layout.addWidget(box)
 
         layout.addStretch(1)
+
+        SCENE_STORE.plan_changed.connect(self._on_plan_changed)
 
     def set(self, key, value):
         if key in self.rows:
@@ -56,29 +62,47 @@ class MetricsPanel(QWidget):
         for key in keys:
             self.set(key, "--")
 
-    def show_bundle(self, data):
-        self.set("Vertices", f"{len(data.mesh.vertices):,}")
-        self.set("Triangles", f"{len(data.mesh.faces):,}")
-        self.set("Diagonal", f"{data.diagonal:.2f}")
-        self.set("Targets", f"{len(data.targets):,}")
-        self.set("Cameras", f"{data.camera_count:,}")
+    def show_bundle(self):
+        vertices = 0
+        triangles = 0
+        diagonal = 0.0
+        targets = 0
+        cameras = 0
 
-    def show_field(self, stats):
+        if SCENE_STORE.scene is not None:
+            vertices = len(SCENE_STORE.scene.mesh.vertices)
+            triangles = len(SCENE_STORE.scene.mesh.faces)
+            diagonal = SCENE_STORE.scene.diagonal
+            targets = len(SCENE_STORE.scene.targets)
+            cameras = SCENE_STORE.camera_count
+
+        self.set("Vertices", f"{vertices:,}")
+        self.set("Triangles", f"{triangles:,}")
+        self.set("Diagonal", f"{diagonal:.2f}")
+        self.set("Targets", f"{targets:,}")
+        self.set("Cameras", f"{cameras:,}")
+
+    def _on_plan_changed(self, info: CameraInfo):
+        self.set("Cameras", f"{SCENE_STORE.camera_count:,}")
+
+    def show_field(self, stats: FieldStats | None):
         if stats is None:
             self.set("Field", "unavailable")
             self.clear(["Min", "Mean", "Max"])
             return
+
         self.set("Field", stats.field)
         self.set("Min", f"{stats.minimum:.4f}")
         self.set("Mean", f"{stats.mean:.4f}")
         self.set("Max", f"{stats.maximum:.4f}")
 
-    def show_camera(self, info):
+    def show_camera(self, info: CameraInfo | None):
         if info is None:
             self.clear(["Camera", "Position", "Yaw", "Pitch"])
             return
+
         pos = info.position
-        self.set("Camera", f"{info.index + 1} of {info.count}")
+        self.set("Camera", f"{info.index + 1} of {SCENE_STORE.camera_count}")
         self.set("Position", f"{pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}")
         self.set("Yaw", f"{info.yaw:.2f}")
         self.set("Pitch", f"{info.pitch:.2f}")

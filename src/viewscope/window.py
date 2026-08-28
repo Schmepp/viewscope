@@ -1,4 +1,5 @@
-"""The application shell: docks, actions, and the wiring between them.
+"""
+The application shell: docks, actions, and the wiring between them.
 
 This class deliberately holds no scene state. It routes panel signals into the
 viewport and viewport signals back into the panels.
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
     QStatusBar,
 )
 
+from viewscope.camera.structs import CameraInfo
 from viewscope.CameraViewport import CameraViewport
 from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME
 from viewscope.data.loader import SceneLoader
@@ -40,10 +42,7 @@ class MainWindow(QMainWindow):
         self.display_panel = DisplayPanel()
         self.metrics_panel = MetricsPanel()
         self.viewpoints_panel = ViewpointsPanel()
-
         self.camera_viewport = CameraViewport(self)
-
-        # self.sector_panel =
 
         self.docks = {}
         self._add_dock(
@@ -110,6 +109,8 @@ class MainWindow(QMainWindow):
         self.display_panel.field_changed.connect(self._on_field_changed)
 
         self.viewpoints_panel.camera_picked.connect(self.camera_viewport.show_camera)
+
+        SCENE_STORE.plan_changed.connect(self._on_camera_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
 
     def _build_actions(self):
@@ -176,7 +177,7 @@ class MainWindow(QMainWindow):
         # Panels get populated here from the data
         self.viewport.set_scene(scene)
         self.camera_viewport.set_scene(scene)
-        self.metrics_panel.show_bundle(scene)
+        self.metrics_panel.show_bundle()
 
         if scene.has_scores:
             self._on_field_changed(self.display_panel.field.currentText())
@@ -192,16 +193,20 @@ class MainWindow(QMainWindow):
 
     def _on_field_changed(self, field):
         self.metrics_panel.show_field(self.viewport.set_scalar_field(field))
-
         self.metrics_panel.show_field(self.camera_viewport.set_scalar_field(field))
 
-    def _on_camera_changed(
-        self, info
-    ):  # info, see on_seletion in CameraFlippingPanel.py
+    def _on_camera_changed(self, info: CameraInfo | None):
+        if SCENE_STORE is None:
+            return
+
         self.metrics_panel.show_camera(info)
-        self.viewpoints_panel.select_row(None if info is None else info.index)
+
+        if info is not None:
+            self.viewpoints_panel.select_row(info.index)
+
+        camera_count = SCENE_STORE.camera_count
         self.statusBar().showMessage(
-            "Overview" if info is None else f"Camera {info.index + 1} of {info.count}"
+            "Overview" if info is None else f"Camera {info.index + 1} of {camera_count}"
         )
 
     # -- layout persistence --------------------------------------------

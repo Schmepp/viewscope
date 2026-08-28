@@ -9,7 +9,8 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import (
 )
 
 import viewscope.qt  # noqa: F401
-from viewscope.camera import CameraController
+from viewscope.camera.structs import CameraInfo
+from viewscope.camera.controller import CameraController
 from viewscope.config import (
     BACKGROUND,
     MODE_ALL,
@@ -23,13 +24,14 @@ from viewscope.scene import CameraGlyphs, MeshView, TargetCloudView
 
 
 class CameraViewport(QVTKRenderWindowInteractor):
-    """Renders a bundle and exposes display state as plain method calls.
+    """
+    Renders a bundle and exposes display state as plain method calls.
 
     Emits `camera_changed` with a CameraInfo, or None for the overview, so
     panels can follow along without reaching into the renderer.
     """
 
-    camera_changed = Signal(object)
+    camera_changed = Signal(CameraInfo)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -70,9 +72,7 @@ class CameraViewport(QVTKRenderWindowInteractor):
         for view in (self.mesh, self.cloud, self.glyphs):
             view.add_to(self.renderer)
 
-        self.camera = CameraController(
-            self.renderer, data.plan, data.diagonal, YFOV_DEG
-        )
+        self.camera = CameraController(self.renderer, YFOV_DEG)
 
         self.renderer.ResetCamera()
         self.camera.save_overview()
@@ -136,7 +136,7 @@ class CameraViewport(QVTKRenderWindowInteractor):
         if self.has_scene:
             self._moved(self.camera.step(-1))
 
-    def _moved(self, info):
+    def _moved(self, info: CameraInfo | None):
         self.glyphs.set_active(None if info is None else info.index)
         self.camera_changed.emit(info)
         self.render()

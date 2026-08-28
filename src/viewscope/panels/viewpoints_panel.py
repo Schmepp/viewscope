@@ -105,7 +105,7 @@ class ViewpointsPanel(QWidget):
         if rows:
             self.camera_picked.emit(rows[0].row())
 
-    def select_row(self, index):
+    def select_row(self, index: int | None):
         """Reflect a selection made elsewhere without re-emitting."""
         self._suppress = True
 

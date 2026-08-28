@@ -31,10 +31,6 @@ class SceneData:
         return self.scores is not None
 
     @property
-    def camera_count(self) -> int:
-        return len(self.plan.positions)
-
-    @property
     def diagonal(self) -> float:
         bounds = self.mesh.bounds
         return float(np.linalg.norm(bounds[1] - bounds[0]))

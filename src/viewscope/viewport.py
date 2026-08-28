@@ -9,7 +9,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import (
 )
 
 import viewscope.qt  # noqa: F401
-from viewscope.camera import CameraController
+from viewscope.camera.controller import CameraController
 from viewscope.config import (
     BACKGROUND,
     MODE_ALL,
@@ -70,9 +70,7 @@ class Viewport(QVTKRenderWindowInteractor):
         for view in (self.mesh, self.cloud, self.glyphs):
             view.add_to(self.renderer)
 
-        self.camera = CameraController(
-            self.renderer, data.plan, data.diagonal, YFOV_DEG
-        )
+        self.camera = CameraController(self.renderer, YFOV_DEG)
 
         self.renderer.ResetCamera()
         self.camera.save_overview()
