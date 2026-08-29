@@ -15,18 +15,14 @@ from vtkmodules.util import numpy_support as vtknp
 def points(array):
     """Wrap an (n, 3) array as vtkPoints."""
     pts = vtk.vtkPoints()
-    pts.SetData(
-        vtknp.numpy_to_vtk(np.ascontiguousarray(array, dtype=np.float64), deep=True)
-    )
+    pts.SetData(vtknp.numpy_to_vtk(np.ascontiguousarray(array, dtype=np.float64), deep=True))
     return pts
 
 
 def cells(indices, n_per_cell):
     """Wrap an (n, k) index array as a vtkCellArray."""
     idx = np.ascontiguousarray(indices, dtype=np.int64)
-    padded = np.column_stack(
-        [np.full(len(idx), n_per_cell, dtype=np.int64), idx]
-    ).ravel()
+    padded = np.column_stack([np.full(len(idx), n_per_cell, dtype=np.int64), idx]).ravel()
     array = vtk.vtkCellArray()
     array.SetCells(len(idx), vtknp.numpy_to_vtkIdTypeArray(padded, deep=True))
     return array

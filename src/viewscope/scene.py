@@ -132,9 +132,7 @@ class TargetCloudView:
         if self.scalar_bar is not None:
             self.scalar_bar.SetTitle(field)
 
-        return FieldStats(
-            field, float(values.min()), float(values.mean()), float(values.max())
-        )
+        return FieldStats(field, float(values.min()), float(values.mean()), float(values.max()))
 
 
 class CameraGlyphs:

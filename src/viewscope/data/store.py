@@ -34,9 +34,7 @@ class SceneStore(QObject):
         self.scene_changed.emit()
         self.plan_changed.emit(None)
 
-    def add_camera(
-        self, position: tuple[float, float, float], yaw: float, pitch: float
-    ):
+    def add_camera(self, position: tuple[float, float, float], yaw: float, pitch: float):
         if self.scene is None:
             return
 
@@ -57,9 +55,7 @@ class SceneStore(QObject):
         self.scene.plan = Plan(
             camera=old_plan.camera,
             ids=old_plan.ids + (new_id,),
-            positions=np.concatenate(
-                (old_plan.positions, info.position[None, :]), axis=0
-            ),
+            positions=np.concatenate((old_plan.positions, info.position[None, :]), axis=0),
             yaws_deg=np.concatenate((old_plan.yaws_deg, np.array([yaw]))),
             pitches_deg=np.concatenate((old_plan.pitches_deg, np.array([pitch]))),
         )

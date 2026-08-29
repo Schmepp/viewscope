@@ -39,9 +39,7 @@ class ViewpointsPanel(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
-        )
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.itemSelectionChanged.connect(self._on_selection)
 
         self._suppress = False
@@ -91,9 +89,7 @@ class ViewpointsPanel(QWidget):
                     self.table.setItem(i, col, QTableWidgetItem(text))
 
             self.table.resizeColumnsToContents()
-            self.table.horizontalHeader().setSectionResizeMode(
-                1, QHeaderView.ResizeMode.Stretch
-            )
+            self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         finally:
             self._suppress = False
 

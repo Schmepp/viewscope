@@ -43,9 +43,7 @@ class MetricsPanel(QWidget):
             form = QFormLayout(box)
             for key in keys:
                 label = QLabel("--")
-                label.setTextInteractionFlags(
-                    Qt.TextInteractionFlag.TextSelectableByMouse
-                )
+                label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
                 form.addRow(key, label)
                 self.rows[key] = label
 

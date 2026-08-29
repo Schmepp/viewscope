@@ -66,9 +66,7 @@ class CameraController:
         diagonal = SCENE_STORE.scene.diagonal
 
         pose = vc.camera_pose(plan.positions[i], plan.yaws_deg[i], plan.pitches_deg[i])
-        transform.apply_pose(
-            self.renderer.GetActiveCamera(), pose, self.yfov_deg, diagonal
-        )
+        transform.apply_pose(self.renderer.GetActiveCamera(), pose, self.yfov_deg, diagonal)
 
         return CameraInfo(
             index=i,

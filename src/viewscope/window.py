@@ -45,20 +45,10 @@ class MainWindow(QMainWindow):
         self.camera_viewport = CameraViewport(self)
 
         self.docks = {}
-        self._add_dock(
-            "Viewpoints",
-            self.viewpoints_panel,
-            Qt.DockWidgetArea.LeftDockWidgetArea,
-        )
-        self._add_dock(
-            "Display", self.display_panel, Qt.DockWidgetArea.RightDockWidgetArea
-        )
-        self._add_dock(
-            "Camera View", self.camera_viewport, Qt.DockWidgetArea.RightDockWidgetArea
-        )
-        self._add_dock(
-            "Metrics", self.metrics_panel, Qt.DockWidgetArea.RightDockWidgetArea
-        )
+        self._add_dock("Viewpoints", self.viewpoints_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
+        self._add_dock("Display", self.display_panel, Qt.DockWidgetArea.RightDockWidgetArea)
+        self._add_dock("Camera View", self.camera_viewport, Qt.DockWidgetArea.RightDockWidgetArea)
+        self._add_dock("Metrics", self.metrics_panel, Qt.DockWidgetArea.RightDockWidgetArea)
 
         self._connect()
         self._build_actions()
@@ -100,12 +90,8 @@ class MainWindow(QMainWindow):
         # self.viewport.camera_changed.connect(self._on_camera_changed)
 
         self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
-        self.display_panel.point_size_changed.connect(
-            self.camera_viewport.set_point_size
-        )
-        self.display_panel.glyphs_toggled.connect(
-            self.camera_viewport.set_glyphs_visible
-        )
+        self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
+        self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
 
         self.viewpoints_panel.camera_picked.connect(self.camera_viewport.show_camera)
@@ -132,9 +118,7 @@ class MainWindow(QMainWindow):
         self.act_overview.triggered.connect(self.viewport.show_overview)
 
         self.toggle_orientation = QAction("Toggle Orientation", self, checkable=True)
-        self.toggle_orientation.triggered.connect(
-            self.viewport.toggle_camera_orientation_visible
-        )
+        self.toggle_orientation.triggered.connect(self.viewport.toggle_camera_orientation_visible)
         self.toggle_orientation.setChecked(True)
 
         camera_actions = (
@@ -176,9 +160,7 @@ class MainWindow(QMainWindow):
 
     def _on_failed(self, message):
         self.statusBar().showMessage("Load failed")
-        QMessageBox.critical(
-            self, "ViewScope", f"Could not load the bundle.\n\n{message}"
-        )
+        QMessageBox.critical(self, "ViewScope", f"Could not load the bundle.\n\n{message}")
 
     def _on_scene_loaded(self, scene: SceneData):
         SCENE_STORE.set_scene(scene)
