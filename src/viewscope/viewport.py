@@ -205,20 +205,29 @@ class Viewport(QVTKRenderWindowInteractor):
     # -- Mouse --------------------------------------------------------
 
     def mousePressEvent(self, ev: QMouseEvent):
-        # Lock mouse on Right Click, Left Click & Middle Click
+        """Lock mouse on Right Click, Left Click & Middle Click."""
         if ev.button() in (Qt.MouseButton.RightButton, Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton) and not self._mouse_locked:
             self._mouse_lock_enter(ev)
 
         super().mousePressEvent(ev)
 
     def mouseReleaseEvent(self, ev: QMouseEvent):
+        """Unlock the mouse when all tracked mouse buttons have been released."""
         super().mouseReleaseEvent(ev)
 
-        # Unlock when all tracked mouse buttons have been released
         if self._mouse_locked and not (ev.buttons() & (Qt.MouseButton.LeftButton | Qt.MouseButton.RightButton | Qt.MouseButton.MiddleButton)):
             self._mouse_lock_exit()
 
     def mouseMoveEvent(self, ev: QMouseEvent):
+        """
+        Handle mouse movements during viewport manipulation when the mouse is locked.
+
+        When the mouse is locked during active interaction (e.g., panning or rotating),
+        this method intercepts the OS move event to accumulate virtual positional deltas
+        and forwards synthetic events to VTK's interactor style. The physical OS cursor
+        is reset back to its initial anchor position to allow infinite range-of-motion
+        without running off-screen.
+        """
         if self._ignore_next_mouse_move:
             self._ignore_next_mouse_move = False
             return
@@ -241,7 +250,7 @@ class Viewport(QVTKRenderWindowInteractor):
                     ev.modifiers(),
                 )
 
-                # Reset physical OS cursor back to anchor point
+                # Reset physical cursor back to anchor point
                 self._ignore_next_mouse_move = True
                 QCursor.setPos(self._mouse_lock_global_pos)
 
