@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import cast
 
 import vtk
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtGui import QCursor, QMouseEvent
 from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
 )
@@ -55,6 +56,11 @@ class Viewport(QVTKRenderWindowInteractor):
         self.glyphs = None
         self.camera = None
         self._mode = MODE_ALL
+        self._mouse_locked = False
+        self._ignore_next_mouse_move = False
+        self._mouse_lock_position = QPoint()
+        self._mouse_lock_global_pos = QPoint()
+        self._mouse_virtual_local_pos = QPoint()
 
         # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
@@ -195,4 +201,87 @@ class Viewport(QVTKRenderWindowInteractor):
     def toggle_camera_orientation_visible(self):
         current_visibility = self.orientation_widget.GetEnabled()
         self.set_camera_orientation_visible(not current_visibility)
-        # print(str(current_visibility) + " is widget visibility")
+
+    # -- Mouse --------------------------------------------------------
+
+    def mousePressEvent(self, ev: QMouseEvent):
+        """Lock mouse on Right Click, Left Click & Middle Click."""
+        if (
+            ev.button()
+            in (Qt.MouseButton.RightButton, Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton)
+            and not self._mouse_locked
+        ):
+            self._mouse_lock_enter(ev)
+
+        super().mousePressEvent(ev)
+
+    def mouseReleaseEvent(self, ev: QMouseEvent):
+        """Unlock the mouse when all tracked mouse buttons have been released."""
+        super().mouseReleaseEvent(ev)
+
+        if self._mouse_locked and not (
+            ev.buttons()
+            & (Qt.MouseButton.LeftButton | Qt.MouseButton.RightButton | Qt.MouseButton.MiddleButton)
+        ):
+            self._mouse_lock_exit()
+
+    def mouseMoveEvent(self, ev: QMouseEvent):
+        """
+        Handle mouse movements during viewport manipulation when the mouse is locked.
+
+        When the mouse is locked during active interaction (e.g., panning or rotating),
+        this method intercepts the OS move event to accumulate virtual positional deltas
+        and forwards synthetic events to VTK's interactor style. The physical OS cursor
+        is reset back to its initial anchor position to allow infinite range-of-motion
+        without running off-screen.
+        """
+        if self._ignore_next_mouse_move:
+            self._ignore_next_mouse_move = False
+            return
+
+        if self._mouse_locked:
+            current_global = ev.globalPosition().toPoint()
+            delta = current_global - self._mouse_lock_global_pos
+
+            if not delta.isNull():
+                # Accumulate relative delta onto virtual local position
+                self._mouse_virtual_local_pos += delta
+
+                # Synthesize event with accumulated position so VTK trackball moves smoothly
+                fake_ev = QMouseEvent(
+                    ev.type(),
+                    self._mouse_virtual_local_pos.toPointF(),
+                    ev.globalPosition(),
+                    ev.button(),
+                    ev.buttons(),
+                    ev.modifiers(),
+                )
+
+                # Reset physical cursor back to anchor point
+                self._ignore_next_mouse_move = True
+                QCursor.setPos(self._mouse_lock_global_pos)
+
+                # Forward accumulated delta event to VTK interactor
+                super().mouseMoveEvent(fake_ev)
+                return
+
+        super().mouseMoveEvent(ev)
+
+    def _mouse_lock_enter(self, ev: QMouseEvent):
+        self._mouse_locked = True
+        self._mouse_lock_position = ev.position().toPoint()
+        self._mouse_lock_global_pos = ev.globalPosition().toPoint()
+
+        # Virtual position starts at real initial position and grows infinitely
+        self._mouse_virtual_local_pos = QPoint(self._mouse_lock_position)
+        self._ignore_next_mouse_move = False
+
+        self.HideCursor()
+
+    def _mouse_lock_exit(self):
+        self._mouse_locked = False
+        self._ignore_next_mouse_move = False
+
+        # Restore cursor visibility and position
+        self.ShowCursor()
+        QCursor.setPos(self._mouse_lock_global_pos)
