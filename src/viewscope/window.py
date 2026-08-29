@@ -191,6 +191,7 @@ class MainWindow(QMainWindow):
 
         self.metrics_panel.show_camera(info)
         self.viewport.on_camera_changed()
+        self.viewport.set_selected_camera_position(info)
 
         # TODO(Adam): Fix this. Currently whenever we call this, the camera viewport
         #             behaves wonky when selecting a camera.
@@ -204,6 +205,8 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             "Overview" if info is None else f"Camera {info.index + 1} of {camera_count}"
         )
+
+
 
     # -- layout persistence --------------------------------------------
 
