@@ -206,7 +206,11 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def mousePressEvent(self, ev: QMouseEvent):
         """Lock mouse on Right Click, Left Click & Middle Click."""
-        if ev.button() in (Qt.MouseButton.RightButton, Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton) and not self._mouse_locked:
+        if (
+            ev.button()
+            in (Qt.MouseButton.RightButton, Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton)
+            and not self._mouse_locked
+        ):
             self._mouse_lock_enter(ev)
 
         super().mousePressEvent(ev)
@@ -215,7 +219,10 @@ class Viewport(QVTKRenderWindowInteractor):
         """Unlock the mouse when all tracked mouse buttons have been released."""
         super().mouseReleaseEvent(ev)
 
-        if self._mouse_locked and not (ev.buttons() & (Qt.MouseButton.LeftButton | Qt.MouseButton.RightButton | Qt.MouseButton.MiddleButton)):
+        if self._mouse_locked and not (
+            ev.buttons()
+            & (Qt.MouseButton.LeftButton | Qt.MouseButton.RightButton | Qt.MouseButton.MiddleButton)
+        ):
             self._mouse_lock_exit()
 
     def mouseMoveEvent(self, ev: QMouseEvent):
