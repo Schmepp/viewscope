@@ -194,7 +194,7 @@ class Viewport(QVTKRenderWindowInteractor):
         # print("camera changed occured, runn8ng from _on_camera_changwd")
         # self.selected_camera_pos = (0.0,0.0,0.0)
         #print(self.selected_camera_pos)
-        
+        self.selected_outline.remove(self.renderer)
         if self.selected_camera_pos!= (0,0,0):
             self.selected_outline.build(self.renderer, self.selected_camera_pos)
 
