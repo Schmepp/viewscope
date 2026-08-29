@@ -55,6 +55,7 @@ class CameraViewport(QVTKRenderWindowInteractor):
     def start(self):
         """Call once the window is on screen."""
         self._interactor.Initialize()
+        self._interactor.Disable()  # Disable the interactor entirely
 
     def shutdown(self):
         """Release the GL context explicitly; skipping this crashes on macOS."""
