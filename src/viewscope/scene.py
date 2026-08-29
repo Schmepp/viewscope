@@ -150,6 +150,7 @@ class CameraGlyphs:
 
         self._visible = True
         self._active = None
+        self._outline = CameraOutline
 
     @staticmethod
     def _build(polydata):
@@ -159,6 +160,8 @@ class CameraGlyphs:
         actor.SetMapper(mapper)
         actor.GetProperty().SetLineWidth(2.0)
         return actor
+
+    # duplicate or modify _build, to take in boolean that decides whether to draw outline or not
 
     def add_to(self, renderer):
         for actor in self.actors:
@@ -173,7 +176,50 @@ class CameraGlyphs:
         self._active = index
         self._refresh()
 
+
+
     def _refresh(self):
         for i, actor in enumerate(self.actors):
             # Never draw the frustum you are inside; it fills the view.
             actor.SetVisibility(self._visible and i != self._active)
+            
+
+    # def build_outline(self, renderer):
+    #     pass
+    #     outline = vtk.vtkOutlineFilter()
+
+
+    #     renderer.AddActor(outline)
+
+class CameraOutline:
+    """Outline for the selected camera"""
+
+    def __init__(self):
+        pass
+        self.outline_actor = None
+
+    def build(self, renderer, position):
+        # Add position as a paramater?? (The selected camera's position)
+        pass
+        tempActor = vtk.vtkCubeSource()
+        tempActor.SetCenter(position[0], position[1], position[2]) # set posotion
+        tempActor.SetXLength(2), tempActor.SetYLength(2), tempActor.SetZLength(2)
+
+        outlineFilter = vtk.vtkOutlineFilter()
+        outlineFilter.SetInputConnection(tempActor.GetOutputPort())
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(outlineFilter.GetOutputPort())
+
+        self.outline_actor = vtk.vtkActor()
+        self.outline_actor.SetMapper(mapper)
+        colors = vtk.vtkNamedColors() # Need to create instance first
+        self.outline_actor.GetProperty().SetColor(colors.GetColor3d("Gold"))
+        self.outline_actor.GetProperty().SetLineWidth(3.0)
+
+        renderer.AddActor(self.outline_actor)
+
+    def remove(self, renderer):
+        if self.outline_actor is not None:
+            renderer.RemoveActor(self.outline_actor)
+            self.outline_actor = None
