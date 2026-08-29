@@ -171,3 +171,5 @@ class CameraViewport(QVTKRenderWindowInteractor):
 
         self.camera_changed.emit(info)
         self.render()
+
+        print( str( info.position)+ " is selected camera position.")
