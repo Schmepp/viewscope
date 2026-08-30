@@ -195,7 +195,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.render()
 
     def set_selected_camera_position(self, info: CameraInfo | None):
-        if info != None:
+        if info is not None:
             self.selected_camera_pos = (
                 float(info.position[0]),
                 float(info.position[1]),
