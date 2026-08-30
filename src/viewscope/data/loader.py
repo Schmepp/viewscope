@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 from PySide6.QtCore import QThread, Signal
 
 import viewscope_core as vc
@@ -47,4 +48,28 @@ class SceneLoader(QThread):
             # Scores are optional: the viewer still shows geometry without them.
             scores_error = str(exc)
 
-        return SceneData(mesh, targets, normals, plan, scores, scores_error)
+        self.progress.emit("Loading visibility...")
+        visibility = self._read_visibility(len(targets))
+
+        return SceneData(mesh, targets, normals, plan, scores, scores_error, visibility)
+
+    def _read_visibility(self, target_count: int):
+        """The shipped camera-by-target visibility matrix, or None.
+
+        Optional, like the scores: without it the viewer recomputes visibility
+        through the library on demand.
+        """
+        path = self.data_dir / "visibility.npz"
+        if not path.exists():
+            return None
+
+        try:
+            with np.load(path, allow_pickle=False) as bundle:
+                visible = bundle["visible"]
+            if visible.dtype != np.bool_ or visible.ndim != 2 or visible.shape[1] != target_count:
+                raise ValueError("expected a boolean matrix of cameras by targets")
+        except Exception as exc:
+            print(f"visibility unavailable: {exc}")
+            return None
+
+        return visible

@@ -46,7 +46,7 @@ class SceneStore(QObject):
         new_id = f"vp{max_id + 1}"
 
         info = CameraInfo(
-            index=max_id,
+            index=len(old_plan.ids),  # the row the new camera is appended at
             position=np.asarray(position, dtype=float),
             yaw=yaw,
             pitch=pitch,

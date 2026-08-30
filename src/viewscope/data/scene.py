@@ -25,6 +25,7 @@ class SceneData:
     plan: vc.Plan
     scores: object | None = None
     scores_error: str | None = None
+    visibility: np.ndarray | None = None
 
     @property
     def has_scores(self) -> bool:

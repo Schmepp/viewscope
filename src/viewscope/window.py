@@ -25,6 +25,7 @@ from viewscope.data.loader import SceneLoader
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
 from viewscope.DisplayPanel import DisplayPanel
+from viewscope.highlight_targets import TargetVisibility
 from viewscope.MetricsPanel import MetricsPanel
 from viewscope.panels.viewpoints_panel import ViewpointsPanel
 from viewscope.viewport import Viewport
@@ -38,6 +39,10 @@ class MainWindow(QMainWindow):
 
         self.viewport = Viewport(self)
         self.setCentralWidget(self.viewport)  # set the cental widget vtk
+
+        self.visibility = None  # TargetVisibility, once a scene is loaded
+        self.selected_camera = None
+        self.occlusion_on = False
 
         self.display_panel = DisplayPanel()
         self.metrics_panel = MetricsPanel()
@@ -93,6 +98,7 @@ class MainWindow(QMainWindow):
         self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
         self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
+        self.display_panel.occlusion_toggled.connect(self._on_occlusion_toggled)
 
         self.viewpoints_panel.camera_picked.connect(
             self.camera_viewport.show_camera
@@ -166,6 +172,7 @@ class MainWindow(QMainWindow):
 
     def _on_scene_loaded(self, scene: SceneData):
         SCENE_STORE.set_scene(scene)
+        self.visibility = TargetVisibility(scene)
 
         self.viewport.set_scene(scene)
         self.camera_viewport.set_scene(scene)
@@ -200,6 +207,8 @@ class MainWindow(QMainWindow):
         #             It seems to be related to the glyphs being re-created.
         # self.camera_viewport.on_camera_changed()
 
+        self.selected_camera = info
+
         if info is not None:
             self.viewpoints_panel.select_row(info.index)
 
@@ -207,6 +216,34 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             "Overview" if info is None else f"Camera {info.index + 1} of {camera_count}"
         )
+
+        self._apply_occlusion()
+
+    # -- occlusion -----------------------------------------------------
+
+    def _on_occlusion_toggled(self, enabled: bool):
+        self.occlusion_on = enabled
+        self._apply_occlusion()
+
+    def _apply_occlusion(self):
+        """Push the selected camera's visibility mask into both viewports."""
+        mask = None
+
+        if self.occlusion_on:
+            if self.selected_camera is None:
+                self.statusBar().showMessage("Pick a viewpoint to see what it can view", 4000)
+            elif self.visibility is not None:
+                try:
+                    mask = self.visibility.mask_for(self.selected_camera.index)
+                except Exception as exc:
+                    self.statusBar().showMessage(f"Visibility failed: {exc}", 5000)
+
+        self.viewport.set_occlusion_mask(mask)
+        self.camera_viewport.set_occlusion_mask(mask)
+
+        if mask is not None:
+            seen = int(mask.sum())
+            self.statusBar().showMessage(f"{seen} of {mask.size} targets visible", 5000)
 
     # -- layout persistence --------------------------------------------
 
@@ -226,6 +263,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self._save_layout()
+        if self.visibility is not None:
+            self.visibility.close()
         if self.loader.isRunning():
             self.loader.wait(2000)
         self.viewport.shutdown()

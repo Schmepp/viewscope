@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QGroupBox,
+    QPushButton,
     QSlider,
     QVBoxLayout,
     QWidget,
@@ -26,6 +27,7 @@ class DisplayPanel(QWidget):
     field_changed = Signal(str)
     point_size_changed = Signal(int)
     glyphs_toggled = Signal(bool)
+    occlusion_toggled = Signal(bool)
 
     def __init__(self):
         super().__init__()
@@ -55,6 +57,14 @@ class DisplayPanel(QWidget):
         self.glyphs.setChecked(True)
         self.glyphs.toggled.connect(self.glyphs_toggled)
         form.addRow(self.glyphs)
+
+        # Press to paint the targets the selected camera can see; press again
+        # to go back to the scalar field colouring.
+        self.occlusion = QPushButton("View occlusion")
+        self.occlusion.setCheckable(True)
+        self.occlusion.setToolTip("Colour targets the selected camera can see red, the rest grey")
+        self.occlusion.toggled.connect(self.occlusion_toggled)
+        form.addRow(self.occlusion)
 
         layout.addWidget(box)
         layout.addStretch(1)

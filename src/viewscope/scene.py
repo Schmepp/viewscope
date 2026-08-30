@@ -14,7 +14,7 @@ from vtkmodules.util import numpy_support as vtknp
 
 import viewscope_core as vc
 from viewscope import transform
-from viewscope.config import EDGE_COLOUR, GEOMETRY_COLOUR
+from viewscope.config import EDGE_COLOUR, GEOMETRY_COLOUR, OCCLUDED_COLOUR, VISIBLE_COLOUR
 
 
 @dataclass(frozen=True)
@@ -82,9 +82,13 @@ class TargetCloudView:
         self.actor = vtk.vtkActor()
         self.actor.SetMapper(mapper)
         self.actor.GetProperty().SetPointSize(point_size)
+        mapper.SetColorModeToMapScalars()
 
         self.lut = None
         self.scalar_bar = None
+        self._field = None
+        self._occluding = False
+        self._occlusion_lut = self._build_occlusion_lut()
         if scores is not None:
             self.lut = vtk.vtkLookupTable()
             self.lut.SetHueRange(0.667, 0.0)  # blue low, red high
@@ -110,7 +114,7 @@ class TargetCloudView:
     def set_visible(self, visible: bool):
         self.actor.SetVisibility(visible)
         if self.scalar_bar is not None:
-            self.scalar_bar.SetVisibility(visible)
+            self.scalar_bar.SetVisibility(visible and not self._occluding)
 
     def set_point_size(self, size: float):
         self.actor.GetProperty().SetPointSize(float(size))
@@ -120,19 +124,70 @@ class TargetCloudView:
         if self.scores is None:
             return None
 
+        self._field = field
         values = np.ascontiguousarray(getattr(self.scores, field), dtype=np.float32)
-        array = vtknp.numpy_to_vtk(values, deep=True)
-        array.SetName(field)
-        self.polydata.GetPointData().SetScalars(array)
-
-        mapper = self.actor.GetMapper()
-        mapper.SetScalarRange(float(values.min()), float(values.max()))
-        mapper.ScalarVisibilityOn()
 
         if self.scalar_bar is not None:
             self.scalar_bar.SetTitle(field)
 
+        # Occlusion colouring owns the scalars while it is on; remember the
+        # field so switching back picks up the one the panel is showing.
+        if not self.occluding:
+            array = vtknp.numpy_to_vtk(values, deep=True)
+            array.SetName(field)
+            self.polydata.GetPointData().SetScalars(array)
+
+            mapper = self.actor.GetMapper()
+            mapper.SetScalarRange(float(values.min()), float(values.max()))
+            mapper.ScalarVisibilityOn()
+
         return FieldStats(field, float(values.min()), float(values.mean()), float(values.max()))
+
+    @property
+    def occluding(self) -> bool:
+        return self._occluding
+
+    def set_occlusion(self, mask):
+        """Colour points red where the selected camera can see them, grey elsewhere.
+
+        Pass None to go back to the scalar field colouring.
+        """
+        self._occluding = mask is not None
+        mapper = self.actor.GetMapper()
+
+        if mask is None:
+            if self.scalar_bar is not None:
+                self.scalar_bar.SetVisibility(self.actor.GetVisibility())
+            if self.lut is not None:
+                mapper.SetLookupTable(self.lut)
+            if self._field is not None:
+                self.set_field(self._field)
+            else:
+                mapper.ScalarVisibilityOff()
+            return
+
+        values = np.ascontiguousarray(mask, dtype=np.float32)
+        array = vtknp.numpy_to_vtk(values, deep=True)
+        array.SetName("visible")
+        self.polydata.GetPointData().SetScalars(array)
+
+        mapper.SetLookupTable(self._occlusion_lut)
+        mapper.SetScalarRange(0.0, 1.0)
+        mapper.ScalarVisibilityOn()
+
+        # The scalar bar explains the field, which is not what is on screen.
+        if self.scalar_bar is not None:
+            self.scalar_bar.SetVisibility(False)
+
+    @staticmethod
+    def _build_occlusion_lut():
+        lut = vtk.vtkLookupTable()
+        lut.SetNumberOfTableValues(2)
+        lut.SetTableRange(0.0, 1.0)
+        lut.SetTableValue(0, *OCCLUDED_COLOUR, 1.0)
+        lut.SetTableValue(1, *VISIBLE_COLOUR, 1.0)
+        lut.Build()
+        return lut
 
 
 class CameraGlyphs:

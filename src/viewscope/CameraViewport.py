@@ -130,6 +130,12 @@ class CameraViewport(QVTKRenderWindowInteractor):
             self.glyphs.set_visible(visible)
             self.render()
 
+    def set_occlusion_mask(self, mask):
+        """Paint the targets one camera can see; None restores the field colours."""
+        if self.has_scene and self.cloud is not None:
+            self.cloud.set_occlusion(mask)
+            self.render()
+
     # -- Camera --------------------------------------------------------
 
     def show_overview(self):

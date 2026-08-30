@@ -27,3 +27,7 @@ APP_NAME = "viewer"
 BACKGROUND = (0.03, 0.03, 0.05)
 GEOMETRY_COLOUR = (0.62, 0.64, 0.70)
 EDGE_COLOUR = (0.15, 0.16, 0.20)
+
+# Occlusion highlighting: what the selected camera can and cannot see.
+VISIBLE_COLOUR = (0.90, 0.11, 0.14)
+OCCLUDED_COLOUR = (0.42, 0.43, 0.47)
