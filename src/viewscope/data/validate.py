@@ -19,7 +19,7 @@ def validateFileNames(path = "data") -> None:
     required_files = {"scene.obj", "targets.ply", "plan.json", "scores.npz", "visibility.npz", "flyable.npz"}
     target_directory = os.listdir(path)
     for file in target_directory:
-        if (file not in required_files) and (file is not "Mesh"):
+        if (file not in required_files) and (file != "Mesh"):
             print("Unexpected file found: " + str(file))
         # else:
         #     print("Correct file found: " + str(file))
