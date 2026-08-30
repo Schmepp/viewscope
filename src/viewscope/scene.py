@@ -161,8 +161,6 @@ class CameraGlyphs:
         actor.GetProperty().SetLineWidth(2.0)
         return actor
 
-    # duplicate or modify _build, to take in boolean that decides whether to draw outline or not
-
     def add_to(self, renderer):
         for actor in self.actors:
             renderer.AddActor(actor)
@@ -183,13 +181,13 @@ class CameraGlyphs:
             actor.SetVisibility(self._visible and i != self._active)
             
 class CameraOutline:
-    """Outline for a selected camera, by supplying it's position. """
+    """The outline for a selected camera. Working with its position and not the camera itself."""
 
     def __init__(self):
         self.outline_actor = None
 
     def build(self, renderer, position):
-        """Spawn the outline at the position of the selected camera. this doesn't
+        """Spawn the outline at the position of the selected camera. This doesn't
           modify the camera glyph at all. """
         tempActor = vtk.vtkCubeSource()
         tempActor.SetCenter(position[0], position[1], position[2]) # set posotion
