@@ -60,6 +60,10 @@ class MainWindow(QMainWindow):
 
         self.setStatusBar(QStatusBar())
         self.statusBar().showMessage("Loading...")
+
+        # Snapshot the docks and toolbar as __init__ arranged them, before a
+        # saved session overwrites them. This is what "Reset Layout" restores.
+        self._default_state = self.saveState()
         self._restore_layout()
 
         # Load the scene
@@ -142,6 +146,11 @@ class MainWindow(QMainWindow):
         view_menu = self.menuBar().addMenu("&View")
         for dock in self.docks.values():
             view_menu.addAction(dock.toggleViewAction())
+
+        view_menu.addSeparator()
+        self.act_reset_layout = QAction("Reset Layout", self)
+        self.act_reset_layout.triggered.connect(self.reset_layout)
+        view_menu.addAction(self.act_reset_layout)
 
         camera_menu = self.menuBar().addMenu("&Camera")
         for act in camera_actions:
@@ -246,6 +255,11 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"{seen} of {mask.size} targets visible", 5000)
 
     # -- layout persistence --------------------------------------------
+
+    def reset_layout(self):
+        """Put every dock and the toolbar back where the application starts them."""
+        self.restoreState(self._default_state)
+        self.statusBar().showMessage("Layout reset", 3000)
 
     def _restore_layout(self):
         settings = QSettings(ORG_NAME, APP_NAME)
