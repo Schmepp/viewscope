@@ -188,32 +188,17 @@ class Viewport(QVTKRenderWindowInteractor):
                 view.add_to(self.renderer)
 
         # Highlight camera glyph here
-        # self.camera_changed.connect()
-        # print( str(self.renderer.GetActiveCamera().position) + " is position") # get the active camera position # WRONG
-        # self.renderer.GetActiveCamera().position
-        # print("camera changed occured, runn8ng from _on_camera_changwd")
-        # self.selected_camera_pos = (0.0,0.0,0.0)
-        #print(self.selected_camera_pos)
         self.selected_outline.remove(self.renderer)
         if self.selected_camera_pos!= (0,0,0):
             self.selected_outline.build(self.renderer, self.selected_camera_pos)
 
         self.render()
-        
-        
 
     def set_selected_camera_position(self, info: CameraInfo | None):
-        pass
         if info != None:
             self.selected_camera_pos = (
                 float(info.position[0]), float(info.position[1]), float(info.position[2])
-             )
-        
-
-    def highlight_camera(self):
-        pass
-
-        self.render()
+             )        
 
     def _moved(self, info: CameraInfo | None):
         if self.glyphs is not None:
@@ -223,7 +208,6 @@ class Viewport(QVTKRenderWindowInteractor):
         self.render()
 
         # build outline here
-        # print("X: "+ str(info.position[0]) + "Y: "+ str(info.position[1]) + "Z: "+ str(info.position[2]))
 
     def set_camera_orientation_visible(self, visible: bool):
         if visible:

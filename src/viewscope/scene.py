@@ -177,33 +177,23 @@ class CameraGlyphs:
         self._refresh()
 
 
-
     def _refresh(self):
         for i, actor in enumerate(self.actors):
             # Never draw the frustum you are inside; it fills the view.
             actor.SetVisibility(self._visible and i != self._active)
             
-
-    # def build_outline(self, renderer):
-    #     pass
-    #     outline = vtk.vtkOutlineFilter()
-
-
-    #     renderer.AddActor(outline)
-
 class CameraOutline:
-    """Outline for the selected camera"""
+    """Outline for a selected camera, by supplying it's position. """
 
     def __init__(self):
-        pass
         self.outline_actor = None
 
     def build(self, renderer, position):
-        # Add position as a paramater?? (The selected camera's position)
-        pass
+        """Spawn the outline at the position of the selected camera. this doesn't
+          modify the camera glyph at all. """
         tempActor = vtk.vtkCubeSource()
         tempActor.SetCenter(position[0], position[1], position[2]) # set posotion
-        tempActor.SetXLength(2), tempActor.SetYLength(2), tempActor.SetZLength(2)
+        tempActor.SetXLength(2), tempActor.SetYLength(2), tempActor.SetZLength(2) # sets the shape size
 
         outlineFilter = vtk.vtkOutlineFilter()
         outlineFilter.SetInputConnection(tempActor.GetOutputPort())
@@ -213,9 +203,9 @@ class CameraOutline:
 
         self.outline_actor = vtk.vtkActor()
         self.outline_actor.SetMapper(mapper)
-        colors = vtk.vtkNamedColors() # Need to create instance first
+        colors = vtk.vtkNamedColors() # Need to create instance first, before getting color
         self.outline_actor.GetProperty().SetColor(colors.GetColor3d("Gold"))
-        self.outline_actor.GetProperty().SetLineWidth(3.0)
+        self.outline_actor.GetProperty().SetLineWidth(4.0)
 
         renderer.AddActor(self.outline_actor)
 
