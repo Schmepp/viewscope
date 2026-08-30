@@ -28,7 +28,7 @@ from viewscope.config import (
 )
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
-from viewscope.scene import CameraGlyphs, FieldStats, MeshView, TargetCloudView, CameraOutline
+from viewscope.scene import CameraGlyphs, CameraOutline, FieldStats, MeshView, TargetCloudView
 
 
 class Viewport(QVTKRenderWindowInteractor):
@@ -63,7 +63,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self._mouse_virtual_local_pos = QPoint()
 
         self.selected_outline = CameraOutline()
-        self.selected_camera_pos = (0,0,0)
+        self.selected_camera_pos = (0, 0, 0)
 
         # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
@@ -189,7 +189,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
         # Highlight camera glyph here
         self.selected_outline.remove(self.renderer)
-        if self.selected_camera_pos!= (0,0,0):
+        if self.selected_camera_pos != (0, 0, 0):
             self.selected_outline.build(self.renderer, self.selected_camera_pos)
 
         self.render()
@@ -197,8 +197,10 @@ class Viewport(QVTKRenderWindowInteractor):
     def set_selected_camera_position(self, info: CameraInfo | None):
         if info != None:
             self.selected_camera_pos = (
-                float(info.position[0]), float(info.position[1]), float(info.position[2])
-             )        
+                float(info.position[0]),
+                float(info.position[1]),
+                float(info.position[2]),
+            )
 
     def _moved(self, info: CameraInfo | None):
         if self.glyphs is not None:

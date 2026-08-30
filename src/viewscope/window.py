@@ -94,7 +94,9 @@ class MainWindow(QMainWindow):
         self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
 
-        self.viewpoints_panel.camera_picked.connect(self.camera_viewport.show_camera) # This updates the camera in FPV viewport
+        self.viewpoints_panel.camera_picked.connect(
+            self.camera_viewport.show_camera
+        )  # This updates the camera in FPV viewport
 
         SCENE_STORE.plan_changed.connect(self._on_camera_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
@@ -190,7 +192,7 @@ class MainWindow(QMainWindow):
             return
 
         self.metrics_panel.show_camera(info)
-        self.viewport.set_selected_camera_position(info) # store position before building outline
+        self.viewport.set_selected_camera_position(info)  # store position before building outline
         self.viewport.on_camera_changed()
 
         # TODO(Adam): Fix this. Currently whenever we call this, the camera viewport
@@ -205,8 +207,6 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             "Overview" if info is None else f"Camera {info.index + 1} of {camera_count}"
         )
-
-
 
     # -- layout persistence --------------------------------------------
 
