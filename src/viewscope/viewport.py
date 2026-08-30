@@ -207,8 +207,6 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera_changed.emit(info)
         self.render()
 
-        # build outline here
-
     def set_camera_orientation_visible(self, visible: bool):
         if visible:
             self.orientation_widget.On()
