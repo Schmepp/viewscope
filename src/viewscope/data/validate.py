@@ -36,10 +36,11 @@ def validate_required_files(path="data"):
     target_directory = set(os.listdir(path))
 
     missing_files = required_files - target_directory  # the set of missing files
-    print(",".join(missing_files) + " is missing")
+
     if missing_files:
         error_message = f"Error: Missing these required files: {','.join(missing_files)}."
         return False, error_message
+    return True, "Sucess"
 
 
 def validate_plan(plan_path):
