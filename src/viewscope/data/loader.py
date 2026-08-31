@@ -10,7 +10,6 @@ from PySide6.QtCore import QThread, Signal
 import viewscope_core as vc
 from viewscope.data.scene import SceneData
 
-# from viewscope.dialogs.errorfile_dialog import ErrorDialog
 from .validate import (
     validate_plan,
     validate_required_files,

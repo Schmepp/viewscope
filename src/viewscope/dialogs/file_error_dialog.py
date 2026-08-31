@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 
 from PySide6.QtCore import QCoreApplication, Qt, QTimer
 from PySide6.QtWidgets import (
@@ -52,7 +54,14 @@ class FileErrorDialog(QDialog):
         """Open the folder location of the data directory, to help users navigate their files,
         and see which files are missing or incorrect."""
         folder_path = config.DATA_DIR
-        os.startfile(folder_path)
+
+        # Cross-platform folder opening
+        if sys.platform=="win32":
+            os.startfile(folder_path)
+        elif sys.platform == 'darwin':  # macOS
+            subprocess.run(['open', folder_path])
+        else:  # Linux, Unix, etc.
+            subprocess.run(['xdg-open', folder_path])
 
     def on_exit(self):
         """Perform a clean application shutdown, using QTCore"""
