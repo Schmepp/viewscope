@@ -49,9 +49,8 @@ class SceneLoader(QThread):
                 """Tip: Open the Data folder and move or delete files that are not one of these:
                 \tscene.obj, targets.ply, plan.json, scores.npz, visibility.npz, flyable.npz.
                 \nClose the application, and re-launch afterwards.
-                """
+                """,
             )
-
 
         plan_validated, self.error_message = validate_plan(  # Validate plan.json next
             str(self.data_dir / "plan.json")
