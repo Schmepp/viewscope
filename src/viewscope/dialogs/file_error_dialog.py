@@ -1,24 +1,31 @@
-from PySide6.QtWidgets import (QApplication, QMainWindow, QPushButton, 
-                               QVBoxLayout, QWidget, QLabel, QFileDialog,
-                               QDialog, QHBoxLayout, QMessageBox)
-from PySide6.QtCore import Qt, Signal, QTimer, QCoreApplication
-from viewscope import config
-import sys
 import os
-from pathlib import Path
+
+from PySide6.QtCore import QCoreApplication, Qt, QTimer
+from PySide6.QtWidgets import (
+    QDialog,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
+
+from viewscope import config
+
 
 class FileErrorDialog(QDialog):
     """The Dialog that shows up when there's an error while validating a file.
     For now, it's only being used to validate plan.json.'"""
+
     def __init__(self, error_title, error_message, action_message, parent=None):
         super().__init__(parent)
 
         self.setWindowTitle(error_title)
         self.setMinimumWidth(500)
-        self.setWindowModality(Qt.WindowModality.ApplicationModal) # Enforce modal standard, make it stay on top.
+        self.setWindowModality(
+            Qt.WindowModality.ApplicationModal
+        )  # Enforce modal standard, make it stay on top.
 
         layout = QVBoxLayout(self)
-        
+
         # Error message
         self.message = QLabel(error_message)
         layout.addWidget(self.message)
@@ -49,7 +56,6 @@ class FileErrorDialog(QDialog):
 
     def on_exit(self):
         """Perform a clean application shutdown, using QTCore"""
-        # using sys.exit(0) presents issues with VTK Renderer. 
-        self.reject() # Close Dialog
-        QTimer.singleShot(50, QCoreApplication.quit) # Delay shutdown until after dialog is closed.
-
+        # using sys.exit(0) presents issues with VTK Renderer.
+        self.reject()  # Close Dialog
+        QTimer.singleShot(50, QCoreApplication.quit)  # Delay shutdown until after dialog is closed.

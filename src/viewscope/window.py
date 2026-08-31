@@ -24,12 +24,13 @@ from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME
 from viewscope.data.loader import SceneLoader
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
+from viewscope.dialogs.file_error_dialog import FileErrorDialog
 from viewscope.DisplayPanel import DisplayPanel
 from viewscope.highlight_targets import TargetVisibility
 from viewscope.MetricsPanel import MetricsPanel
 from viewscope.panels.viewpoints_panel import ViewpointsPanel
 from viewscope.viewport import Viewport
-from viewscope.dialogs.file_error_dialog import FileErrorDialog
+
 
 class MainWindow(QMainWindow):
     def __init__(self, data_dir: Path = DATA_DIR):
@@ -71,7 +72,9 @@ class MainWindow(QMainWindow):
         self.loader.progress.connect(self.statusBar().showMessage)
         self.loader.loaded.connect(self._on_scene_loaded)
         self.loader.failed.connect(self._on_failed)
-        self.loader.plan_validation_failed.connect(self.show_error_dialog) # Connect file validation Dialog
+        self.loader.plan_validation_failed.connect(
+            self.show_error_dialog
+        )  # Connect file validation Dialog
         self.loader.filename_validation_failed.connect(self.show_error_dialog)
         self.loader.start()
 
@@ -112,7 +115,6 @@ class MainWindow(QMainWindow):
 
         SCENE_STORE.plan_changed.connect(self._on_camera_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
-
 
     def _build_actions(self):
         toolbar = self.addToolBar("Cameras")
@@ -293,8 +295,6 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Plan validation failed")
 
         dialog = FileErrorDialog(
-            error_title=error_title,
-            error_message=error_message,
-            action_message=action_message
+            error_title=error_title, error_message=error_message, action_message=action_message
         )
         dialog.exec()  # Use exec() instead of show() for modal dialog
