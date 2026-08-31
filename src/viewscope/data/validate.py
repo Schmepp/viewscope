@@ -38,7 +38,7 @@ def validate_required_files(path="data"):
     missing_files = required_files - target_directory  # the set of missing files
 
     if missing_files:
-        error_message = f"Error: Missing these required files: {','.join(missing_files)}."
+        error_message = f"Error: Missing these required files: [ {', '.join(missing_files)} ]."
         return False, error_message
     return True, "Sucess"
 
@@ -58,11 +58,10 @@ def validate_plan(plan_path):
         else:
             error_message = (
                 f"Error: plan.json was expecting {expected_viewpoints}"
-                + "viewpoints but received {actual_viewpoints} viewpoints."
+                + f" viewpoints but received {actual_viewpoints} viewpoints."
             )
 
             return False, error_message
-        return False, error_message
 
 
 def count_view_points(plan_path) -> int:

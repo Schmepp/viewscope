@@ -44,7 +44,7 @@ class FileErrorDialog(QDialog):
         self.setLayout(layout)
 
         # Buttons
-        self.open_folder_button = QPushButton("Open File Location")
+        self.open_folder_button = QPushButton("Open the Data folder")
         self.open_folder_button.clicked.connect(self.open_folder_location)
 
         self.exit_button = QPushButton("Exit Application")

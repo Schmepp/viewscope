@@ -43,13 +43,15 @@ class SceneLoader(QThread):
             str(self.data_dir)
         )  # Validate filenames first
         if not filenames_validated:
-            error_title = "Unexpected Files found"
-            action_message = (
-                "Tip: Open the file location and move or delete files that are not one of these:\n"
-                "scene.obj, targets.ply, plan.json, scores.npz, visibility.npz, flyable.npz."
-                "\nClose the application, and re-launch afterwards."
+            self.call_error_dialog(
+                "Unexpected Files found",
+                self.error_message,
+                """Tip: Open the Data folder and move or delete files that are not one of these:
+                \tscene.obj, targets.ply, plan.json, scores.npz, visibility.npz, flyable.npz.
+                \nClose the application, and re-launch afterwards.
+                """
             )
-            self.filename_validation_failed.emit(error_title, self.error_message, action_message)
+
 
         plan_validated, self.error_message = validate_plan(  # Validate plan.json next
             str(self.data_dir / "plan.json")
@@ -58,7 +60,7 @@ class SceneLoader(QThread):
             self.call_error_dialog(
                 "Validation Error: missing viewpoints",
                 self.error_message,
-                """Tip: Open the file location and replace your files. " +\
+                """Tip: Open the Data folder and replace your files.
                 "\nClose the application, and re-launch afterwards.""",
             )
 
