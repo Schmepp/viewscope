@@ -11,7 +11,7 @@ import viewscope_core as vc
 from viewscope.data.scene import SceneData
 # from viewscope.dialogs.errorfile_dialog import ErrorDialog
 
-from .validate import validate_file_exists, validate_filenames, validate_folder_exists, validate_plan
+from .validate import validate_file_exists, validate_required_files, validate_folder_exists, validate_plan
 
 class SceneLoader(QThread):
     """Parses a bundle directory and hands back a SceneData."""
@@ -20,6 +20,7 @@ class SceneLoader(QThread):
     failed = Signal(str)
     progress = Signal(str)
     plan_validation_failed = Signal(str,str,str) # Title + Error + Action message
+    filename_validation_failed = Signal(str,str,str) # Title + Error + Action message
 
     def __init__(self, data_dir: Path, parent=None):
         super().__init__(parent)
@@ -34,13 +35,20 @@ class SceneLoader(QThread):
     def _read(self) -> SceneData:
 
         # Perform validation of Data folder
-        #validateFileExists(str(self.data_dir / "scene.obj"))
         plan_validated, error_message = validate_plan(str(self.data_dir / "plan.json"))
         if not plan_validated:
-            error_title = "plan.json missing viewpoints"
-            action_message = "Tip: Open the file location and replace your files. Close and re-launch the application afterward"
+            error_title = "Validation Error: missing viewpoints"
+            action_message = "Tip: Open the file location and replace your files. \nClose the application, and re-launch afterwards."
+
             self.plan_validation_failed.emit(error_title, error_message, action_message)
-        #validateFileNames(str(self.data_dir) )
+        
+        filenames_validated, error_message = validate_required_files(str(self.data_dir))
+        if not filenames_validated:
+            error_title = "Unexpected Files found"
+            action_message = "Tip: Open the file location and move or delete files that are not one of these:\n" \
+            "scene.obj, targets.ply, plan.json, scores.npz, visibility.npz, flyable.npz." \
+            "\nClose the application, and re-launch afterwards."
+            self.filename_validation_failed.emit(error_title, error_message, action_message)
 
         self.progress.emit("Loading scene mesh...")
         mesh = vc.load_scene(str(self.data_dir / "scene.obj"))

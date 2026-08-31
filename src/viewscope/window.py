@@ -71,8 +71,8 @@ class MainWindow(QMainWindow):
         self.loader.progress.connect(self.statusBar().showMessage)
         self.loader.loaded.connect(self._on_scene_loaded)
         self.loader.failed.connect(self._on_failed)
-        # self.loader.start()
         self.loader.plan_validation_failed.connect(self.show_error_dialog) # Connect file validation Dialog
+        self.loader.filename_validation_failed.connect(self.show_error_dialog)
         self.loader.start()
 
     def start(self):
