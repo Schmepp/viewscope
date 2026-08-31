@@ -56,12 +56,12 @@ class FileErrorDialog(QDialog):
         folder_path = config.DATA_DIR
 
         # Cross-platform folder opening
-        if sys.platform=="win32":
+        if sys.platform == "win32":
             os.startfile(folder_path)
-        elif sys.platform == 'darwin':  # macOS
-            subprocess.run(['open', folder_path])
+        elif sys.platform == "darwin":  # macOS
+            subprocess.run(["open", folder_path])
         else:  # Linux, Unix, etc.
-            subprocess.run(['xdg-open', folder_path])
+            subprocess.run(["xdg-open", folder_path])
 
     def on_exit(self):
         """Perform a clean application shutdown, using QTCore"""
