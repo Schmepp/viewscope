@@ -9,7 +9,9 @@ from PySide6.QtCore import QThread, Signal
 
 import viewscope_core as vc
 from viewscope.data.scene import SceneData
+# from viewscope.dialogs.errorfile_dialog import ErrorDialog
 
+from .validate import validate_file_exists, validate_filenames, validate_folder_exists, validate_plan
 
 class SceneLoader(QThread):
     """Parses a bundle directory and hands back a SceneData."""
@@ -17,6 +19,7 @@ class SceneLoader(QThread):
     loaded = Signal(object)
     failed = Signal(str)
     progress = Signal(str)
+    plan_validation_failed = Signal(str,str,str) # Title + Error + Action message
 
     def __init__(self, data_dir: Path, parent=None):
         super().__init__(parent)
@@ -29,6 +32,16 @@ class SceneLoader(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
     def _read(self) -> SceneData:
+
+        # Perform validation of Data folder
+        #validateFileExists(str(self.data_dir / "scene.obj"))
+        plan_validated, error_message = validate_plan(str(self.data_dir / "plan.json"))
+        if not plan_validated:
+            error_title = "plan.json missing viewpoints"
+            action_message = "Tip: Open the file location and replace your files. Close and re-launch the application afterward"
+            self.plan_validation_failed.emit(error_title, error_message, action_message)
+        #validateFileNames(str(self.data_dir) )
+
         self.progress.emit("Loading scene mesh...")
         mesh = vc.load_scene(str(self.data_dir / "scene.obj"))
 
