@@ -47,6 +47,10 @@ def validate_plan(plan_path):
     """Compare the expected viewpoints to the actual viewpoints counted within the file.
     Return's a tuple: the success(True/False) and an status message (Sucess/Error)"""
     expected_viewpoints = 185
+    # print(plan_path)
+    # if plan_path!="plan.json":
+    #     return False, error_message
+
     if validate_file_exists(plan_path):
         actual_viewpoints = count_view_points(plan_path)
         if actual_viewpoints == expected_viewpoints:
@@ -58,6 +62,7 @@ def validate_plan(plan_path):
             )
 
             return False, error_message
+        return False, error_message
 
 
 def count_view_points(plan_path) -> int:

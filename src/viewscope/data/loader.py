@@ -28,6 +28,7 @@ class SceneLoader(QThread):
     def __init__(self, data_dir: Path, parent=None):
         super().__init__(parent)
         self.data_dir = Path(data_dir)
+        self.error_message = None
 
     def run(self):
         try:
@@ -37,18 +38,10 @@ class SceneLoader(QThread):
 
     def _read(self) -> SceneData:
 
-        # Perform validation of Data folder
-        plan_validated, error_message = validate_plan(str(self.data_dir / "plan.json"))
-        if not plan_validated:
-            error_title = "Validation Error: missing viewpoints"
-            action_message = (
-                "Tip: Open the file location and replace your files. "
-                "\nClose the application, and re-launch afterwards."
-            )
-
-            self.plan_validation_failed.emit(error_title, error_message, action_message)
-
-        filenames_validated, error_message = validate_required_files(str(self.data_dir))
+        # -- Perform validation of Data folder
+        filenames_validated, self.error_message = validate_required_files(
+            str(self.data_dir)
+        )  # Validate filenames first
         if not filenames_validated:
             error_title = "Unexpected Files found"
             action_message = (
@@ -56,13 +49,38 @@ class SceneLoader(QThread):
                 "scene.obj, targets.ply, plan.json, scores.npz, visibility.npz, flyable.npz."
                 "\nClose the application, and re-launch afterwards."
             )
-            self.filename_validation_failed.emit(error_title, error_message, action_message)
+            self.filename_validation_failed.emit(error_title, self.error_message, action_message)
+
+        plan_validated, self.error_message = validate_plan(  # Validate plan.json next
+            str(self.data_dir / "plan.json")
+        )
+        if not plan_validated:
+            self.call_error_dialog(
+                "Validation Error: missing viewpoints",
+                self.error_message,
+                """Tip: Open the file location and replace your files. " +\
+                "\nClose the application, and re-launch afterwards.""",
+            )
 
         self.progress.emit("Loading scene mesh...")
-        mesh = vc.load_scene(str(self.data_dir / "scene.obj"))
+        try:
+            mesh = vc.load_scene(str(self.data_dir / "scene.obj"))
+        except Exception:
+            self.call_error_dialog(
+                "Invalid file",
+                "Expected: scene.obj, but receieved an invalid file instead.",
+                "Locate a copy of scene.obj and place it inside the data folder.",
+            )
 
         self.progress.emit("Loading targets...")
-        targets, normals = vc.load_targets(str(self.data_dir / "targets.ply"))
+        try:
+            targets, normals = vc.load_targets(str(self.data_dir / "targets.ply"))
+        except Exception:
+            self.call_error_dialog(
+                "Invalid file",
+                "Expected: target.ply, but received an invalid file instead.",
+                "Locate a copy of targets.ply and place it inside the data folder.",
+            )
 
         self.progress.emit("Loading plan...")
         plan = vc.load_plan(str(self.data_dir / "plan.json"))
@@ -102,3 +120,8 @@ class SceneLoader(QThread):
             return None
 
         return visible
+
+    def call_error_dialog(self, error_title, error_message, action_message):
+        """Emit a file_validation_error signal to viewport.py.
+        This contains: error title, error message, and an action message."""
+        self.filename_validation_failed.emit(error_title, error_message, action_message)
