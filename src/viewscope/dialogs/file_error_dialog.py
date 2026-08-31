@@ -20,8 +20,13 @@ class FileErrorDialog(QDialog):
     def __init__(self, error_title, error_message, action_message, parent=None):
         super().__init__(parent)
 
+        self.setWindowFlags(  # Removed the close button from Modal
+            Qt.WindowType.Dialog | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.WindowTitleHint
+        )
+
         self.setWindowTitle(error_title)
         self.setMinimumWidth(500)
+        self.setMinimumHeight(200)
         self.setWindowModality(
             Qt.WindowModality.ApplicationModal
         )  # Enforce modal standard, make it stay on top.
