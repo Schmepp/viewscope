@@ -64,5 +64,7 @@ omit = [
 show_missing = true
 skip_empty = true
 
-# Fails pytest if the total coverage falls below this percentage
-fail_under = 70
+# Fails pytest if the total coverage falls below this percentage.
+# NOTE: reaching this needs the OpenGL tests to actually run. Under
+# QT_QPA_PLATFORM=offscreen they are skipped and coverage lands near 66%.
+fail_under = 80

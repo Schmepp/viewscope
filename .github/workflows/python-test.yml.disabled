@@ -62,9 +62,13 @@ jobs:
 
         # NOTE: Our graphical application requires a virtual framebuffer to run in headless mode.
         # We use xvfb-run to start a virtual X server for the tests.
+        # NOTE: QT_QPA_PLATFORM is deliberately NOT set to offscreen here.
+        # That plugin has no GL surface, so the tests marked `gl` (the ones
+        # that build the real VTK render window) would skip, and coverage
+        # would fall below the fail_under gate. xvfb-run gives Qt a real X
+        # server to talk to instead, and mesa provides the GL.
       - name: Run PyTest
         env:
           PYRENDER_PLATFORM: osmesa
-          QT_QPA_PLATFORM: offscreen
         run: |
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" uv run pytest
