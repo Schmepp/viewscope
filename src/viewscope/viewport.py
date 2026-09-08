@@ -187,6 +187,8 @@ class Viewport(QVTKRenderWindowInteractor):
             return
 
         scene = SCENE_STORE.scene
+        # This line below is causing issues with camera glyphs not showing/hiding properly.
+        # It seems to be creating a new instance of CameraGlyphs every time the camera changes.
         self.glyphs = CameraGlyphs(scene.plan)
 
         for view in (self.mesh, self.cloud, self.glyphs):
