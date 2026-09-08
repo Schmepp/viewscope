@@ -53,7 +53,7 @@ class DisplayPanel(QWidget):
         self.point_size.valueChanged.connect(self.point_size_changed)
         form.addRow("Point size", self.point_size)
 
-        self.glyphs = QCheckBox("Show camera frusta")
+        self.glyphs = QCheckBox("Show camera frustum")
         self.glyphs.setChecked(True)
         self.glyphs.toggled.connect(self.glyphs_toggled)
         form.addRow(self.glyphs)
