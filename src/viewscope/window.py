@@ -103,7 +103,7 @@ class MainWindow(QMainWindow):
         # self.viewpoints_panel.camera_picked.connect(self.viewport.show_camera)
         # self.viewport.camera_changed.connect(self._on_camera_changed)
 
-        #self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
+        # self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
         self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
@@ -253,7 +253,7 @@ class MainWindow(QMainWindow):
                     self.statusBar().showMessage(f"Visibility failed: {exc}", 5000)
 
         self.viewport.set_occlusion_mask(mask)
-        #self.camera_viewport.set_occlusion_mask(mask) # Camera Viewport only renders coloured model.
+        # self.camera_viewport.set_occlusion_mask(mask) # Camera Viewport only renders coloured model.
 
         if mask is not None:
             seen = int(mask.sum())

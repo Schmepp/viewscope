@@ -48,7 +48,7 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.cloud = None
         self.glyphs = None
         self.camera = None
-        self._mode = MODE_TEXTURED # set to textured mode by default
+        self._mode = MODE_TEXTURED  # set to textured mode by default
 
     # -- Lifecycle -----------------------------------------------------
 
@@ -68,10 +68,10 @@ class CameraViewport(QVTKRenderWindowInteractor):
 
     def set_scene(self, data: SceneData):
         self.mesh = MeshView(data.mesh)
-        self.cloud = None # TargetCloudView(data.targets, data.scores)
+        self.cloud = None  # TargetCloudView(data.targets, data.scores)
         self.glyphs = CameraGlyphs(data.plan)
 
-        self.mesh.add_to(self.renderer) # Only rendering the Mesh
+        self.mesh.add_to(self.renderer)  # Only rendering the Mesh
 
         self.camera = CameraController(self.renderer, YFOV_DEG)
         self.renderer.ResetCamera()
