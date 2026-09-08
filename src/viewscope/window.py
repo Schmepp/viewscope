@@ -253,7 +253,7 @@ class MainWindow(QMainWindow):
                     self.statusBar().showMessage(f"Visibility failed: {exc}", 5000)
 
         self.viewport.set_occlusion_mask(mask)
-        # self.camera_viewport.set_occlusion_mask(mask) # Camera Viewport only renders coloured model.
+        # self.camera_viewport.set_occlusion_mask(mask) # Only renders coloured model.
 
         if mask is not None:
             seen = int(mask.sum())
