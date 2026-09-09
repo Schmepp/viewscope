@@ -284,7 +284,19 @@ class FloorGrid:
         pass
         self.structurd_grid = self.create_structured_grid(20)
 
-        
+        geometry_filter = vtk.vtkStructuredGridGeometryFilter()
+        geometry_filter.SetInputData(self.structurd_grid)
+
+        # Mapper and Actor
+        grid_mapper = vtk.vtkDataSetMapper()
+        grid_mapper.SetInputConnection(geometry_filter.GetOutputPort())
+
+        self.grid_actor = vtk.vtkActor()
+        self.grid_actor.SetMapper(grid_mapper)
+        self.grid_actor.GetProperty().EdgeVisibilityOn()
+        self.grid_actor.GetProperty().SetEdgeColor(0.0, 0.0, 1.0)  # Blue color for edges
+
+        renderer.AddActor(self.grid_actor)
         
     def create_structured_grid(self, grid_size=8):
         '''Create a structured grid of points with a specified grid size.
