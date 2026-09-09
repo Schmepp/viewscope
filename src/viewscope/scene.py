@@ -270,3 +270,36 @@ class CameraOutline:
         if self.outline_actor is not None:
             renderer.RemoveActor(self.outline_actor)
             self.outline_actor = None
+
+
+class FloorGrid:
+    pass
+    # def 
+    def __init__(self):
+        self.grid_actor = None
+        self.structurd_grid = None
+        # self.grid_size = 8
+
+    def build(self, renderer):
+        pass
+        self.structurd_grid = self.create_structured_grid(20)
+
+        
+        
+    def create_structured_grid(self, grid_size=8):
+        '''Create a structured grid of points with a specified grid size.
+        This is a 2.5D grid, as the Z-layer isn't used'''
+        points = vtk.vtkPoints()
+        counter = 0
+        pt_idx = 0
+        # Create grid of points
+        for j in range(0, grid_size):
+            for i in range(0, grid_size):
+                points.InsertNextPoint(i, j, 0)
+                counter += 1
+
+        structured_grid = vtk.vtkStructuredGrid()
+        structured_grid.SetDimensions(grid_size, grid_size, 1)
+        structured_grid.SetPoints(points)
+
+        return structured_grid
