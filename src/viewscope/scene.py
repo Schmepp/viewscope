@@ -309,17 +309,10 @@ class FloorGrid:
         renderer.AddActor(self.grid_actor)
 
         # Adding the reference axes
-        axes = vtk.vtkAxes()
-
-        axes_mapper = vtk.vtkDataSetMapper()
-        axes_mapper.SetInputConnection(axes.GetOutputPort())
-
-        self.axes_actor = vtk.vtkActor()
-        self.axes_actor.SetMapper(axes_mapper)
-        self.axes_actor.SetPosition(spawn_position)  # Position axes in the scene
-        # self.axes_actor.SetTotalLength(50, 50, 50)  # Set the length
-        # self.axes_actor.SetScale(5, 5, 5)  # Set the scale
-        self.axes_actor.GetProperty().SetLineWidth(2.0)  # Set the line width
+        self.axes_actor = vtk.vtkAxesActor()  # This is a specialized actor. No need for mapper.
+        # self.axes_actor.SetOrigin(center_position)  # Set the origin of the axes
+        self.axes_actor.SetPosition(center_position)  # Position axes in the scene
+        self.axes_actor.SetTotalLength(50, 50, 50)  # Set the length
 
         renderer.AddActor(self.axes_actor)
 
