@@ -182,17 +182,19 @@ class Viewport(QVTKRenderWindowInteractor):
             self._moved(self.camera.step(-1))
 
     # SUS: Hmmmm
+    # TODO(Adam): The camera glyph recreation code that was here must go into
+    #             a separate function for when the plan is changed.
     def on_camera_changed(self):
         """Update the camera glyphs."""
         if SCENE_STORE.scene is None:
             return
 
-        scene = SCENE_STORE.scene
-        self.glyphs = CameraGlyphs(scene.plan)
+        # scene = SCENE_STORE.scene
+        # self.glyphs = CameraGlyphs(scene.plan)
 
-        for view in (self.mesh, self.cloud, self.glyphs):
-            if view is not None:
-                view.add_to(self.renderer)
+        # for view in (self.mesh, self.cloud, self.glyphs):
+        #     if view is not None:
+        #         view.add_to(self.renderer)
 
         # Highlight camera glyph here
         self.selected_outline.remove(self.renderer)

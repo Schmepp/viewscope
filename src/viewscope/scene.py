@@ -246,11 +246,9 @@ class CameraOutline:
         modify the camera glyph at all."""
         tempActor = vtk.vtkCubeSource()
         tempActor.SetCenter(position[0], position[1], position[2])  # set posotion
-        (
-            tempActor.SetXLength(2),
-            tempActor.SetYLength(2),
-            tempActor.SetZLength(2),
-        )  # sets the shape size
+        tempActor.SetXLength(2)
+        tempActor.SetYLength(2)
+        tempActor.SetZLength(2)
 
         outlineFilter = vtk.vtkOutlineFilter()
         outlineFilter.SetInputConnection(tempActor.GetOutputPort())

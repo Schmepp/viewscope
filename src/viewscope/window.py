@@ -208,25 +208,15 @@ class MainWindow(QMainWindow):
         self.metrics_panel.show_field(self.viewport.set_scalar_field(field))
         self.metrics_panel.show_field(self.camera_viewport.set_scalar_field(field))
 
-    # SUS: Something wrong here bro.
-    # The problem is def here
     def _on_camera_changed(self, info: CameraInfo | None):
         if SCENE_STORE.scene is None:
             return
 
         self.metrics_panel.show_camera(info)
-        self.viewport.set_selected_camera_position(info)  # store position before building outline
-
-        # TODO(Adam): The problem is RIGHT HERE.
-        # self.viewport.on_camera_changed()
-
-        # TODO(Adam): Fix this. Currently whenever we call this, the camera viewport
-        #             behaves wonky when selecting a camera.
-        #             It seems to be related to the glyphs being re-created.
-        # self.camera_viewport.on_camera_changed()
+        self.viewport.set_selected_camera_position(info)
+        self.viewport.on_camera_changed()
 
         self.selected_camera = info
-
         if info is not None:
             self.viewpoints_panel.select_row(info.index)
 
