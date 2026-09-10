@@ -281,7 +281,7 @@ class FloorGrid:
         self.structurd_grid = None
         self.build(renderer, grid_size, spawn_position)
 
-    def build(self, renderer, grid_size:int, spawn_position:tuple):
+    def build(self, renderer, grid_size: int, spawn_position: tuple):
         self.structurd_grid = self.create_structured_grid(grid_size)
 
         geometry_filter = vtk.vtkStructuredGridGeometryFilter()
@@ -294,18 +294,17 @@ class FloorGrid:
         self.grid_actor = vtk.vtkActor()
         self.grid_actor.SetMapper(grid_mapper)
 
-        # Not configuring the Edge properties, because we want wireframe view
-        # self.grid_actor.GetProperty().EdgeVisibilityOn()
-        # self.grid_actor.GetProperty().SetEdgeColor(0.0, 0.0, 1) # Blue edges
-
         self.grid_actor.GetProperty().SetOpacity(0.25)
         # self.grid_actor.GetProperty().SetColor(0.0, 0.0, 1) # Blue color
         self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Create grid-like appearance
 
-        center = spawn_position # Get center position of grid
-        half_value = grid_size / 2 # Get the half value, to adjust its position
-        spawn_position = (center[0] - half_value,
-                           center[1] - half_value, center[2]) # Adjust, to center grid
+        center_position = spawn_position
+        half_size = grid_size / 2
+        spawn_position = (
+            center_position[0] - half_size,
+            center_position[1] - half_size,
+            center_position[2],
+        )  # Shift grid by half of grid size, to center it.
         self.grid_actor.SetPosition(spawn_position)  # Position the grid in the scene
 
         renderer.AddActor(self.grid_actor)

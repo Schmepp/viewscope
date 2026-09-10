@@ -85,11 +85,9 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.set_camera_orientation_visible(True)
 
-        # FloorGrid configuration # (180, 100, -15) 
+        # FloorGrid configuration
         self.grid_origin_point = (185, 110, -15)  # Origin point for grid
-        self.floor_grid = FloorGrid(self.renderer,
-                                    50,
-                                    self.grid_origin_point)  #
+        self.floor_grid = FloorGrid(self.renderer, 50, self.grid_origin_point)  #
 
     # -- Lifecycle -----------------------------------------------------
 
