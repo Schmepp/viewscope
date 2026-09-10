@@ -156,6 +156,8 @@ class CameraViewport(QVTKRenderWindowInteractor):
 
     # TODO(Adam): Fix this function.
     #             See window.py:_on_camera_changed() for details.
+
+    # SUS: Watch this
     def on_camera_changed(self):
         """Update the camera glyphs."""
         if SCENE_STORE.scene is None:

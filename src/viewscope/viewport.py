@@ -181,6 +181,7 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.has_scene and self.camera is not None:
             self._moved(self.camera.step(-1))
 
+    # SUS: Hmmmm
     def on_camera_changed(self):
         """Update the camera glyphs."""
         if SCENE_STORE.scene is None:
