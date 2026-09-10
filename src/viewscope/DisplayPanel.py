@@ -28,6 +28,7 @@ class DisplayPanel(QWidget):
     point_size_changed = Signal(int)
     glyphs_toggled = Signal(bool)
     occlusion_toggled = Signal(bool)
+    grid_toggled = Signal(bool)
 
     def __init__(self):
         super().__init__()
@@ -57,6 +58,11 @@ class DisplayPanel(QWidget):
         self.glyphs.setChecked(True)
         self.glyphs.toggled.connect(self.glyphs_toggled)
         form.addRow(self.glyphs)
+
+        self.grid = QCheckBox("Show grid")
+        self.grid.setChecked(True)
+        self.grid.toggled.connect(self.grid_toggled)
+        form.addRow(self.grid)
 
         # Press to paint the targets the selected camera can see; press again
         # to go back to the scalar field colouring.

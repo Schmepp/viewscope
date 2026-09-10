@@ -284,16 +284,14 @@ class FloorGrid:
     def build(self, renderer, grid_size: int, spawn_position: tuple):
         self.structurd_grid = self.create_structured_grid(grid_size)
 
-        geometry_filter = vtk.vtkStructuredGridGeometryFilter()
-        geometry_filter.SetInputData(self.structurd_grid)
-
         # Mapper and Actor
         grid_mapper = vtk.vtkDataSetMapper()
-        grid_mapper.SetInputConnection(geometry_filter.GetOutputPort())
+        grid_mapper.SetInputData(self.structurd_grid)
 
         self.grid_actor = vtk.vtkActor()
         self.grid_actor.SetMapper(grid_mapper)
 
+        # Grid actor Customization
         self.grid_actor.GetProperty().SetOpacity(0.25)
         # self.grid_actor.GetProperty().SetColor(0.0, 0.0, 1) # Blue color
         self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Create grid-like appearance
@@ -328,6 +326,3 @@ class FloorGrid:
 
     def set_visible(self, visible: bool):
         self.grid_actor.SetVisibility(visible)
-
-    # def add_to(self, renderer):
-    #     renderer.AddActor(self.grid_actor)

@@ -86,8 +86,8 @@ class Viewport(QVTKRenderWindowInteractor):
         self.set_camera_orientation_visible(True)
 
         # FloorGrid configuration
-        self.grid_origin_point = (185, 110, -15)  # Origin point for grid
-        self.floor_grid = FloorGrid(self.renderer, 50, self.grid_origin_point)  #
+        self.grid_origin_point = (185, 110, -15)  # Origin point for grid spawn
+        self.floor_grid = FloorGrid(self.renderer, 75, self.grid_origin_point)  #
 
     # -- Lifecycle -----------------------------------------------------
 
@@ -172,6 +172,12 @@ class Viewport(QVTKRenderWindowInteractor):
         """Paint the targets one camera can see; None restores the field colours."""
         if self.has_scene and self.cloud is not None:
             self.cloud.set_occlusion(mask)
+            self.render()
+
+    def set_grid_visible(self, visible: bool):
+        """Show or hide the floor grid."""
+        if self.has_scene and self.floor_grid is not None:
+            self.floor_grid.set_visible(visible)
             self.render()
 
     # -- Camera --------------------------------------------------------
