@@ -304,17 +304,17 @@ class FloorGrid:
             center_position[1] - half_size,
             center_position[2],
         )  # Shift grid by half of grid size, to center it.
-        self.grid_actor.SetPosition(new_spawn_position)  # Position the grid in the scene
+        self.grid_actor.SetPosition(*new_spawn_position)  # Position the grid in the scene
 
         renderer.AddActor(self.grid_actor)
 
-        # Adding the reference axes
-        self.axes_actor = vtk.vtkAxesActor()  # This is a specialized actor. No need for mapper.
-        # self.axes_actor.SetOrigin(center_position)  # Set the origin of the axes
-        self.axes_actor.SetPosition(center_position)  # Position axes in the scene
-        self.axes_actor.SetTotalLength(50, 50, 50)  # Set the length
+        # Not spawning the axes actor for now. It zooms out too much, makes scene awkward. #
+        # self.axes_actor = vtk.vtkAxesActor() # This is a specialized actor. No need for mapper.
+        # #self.axes_actor.SetOrigin(center_position)  # Set the origin of the axes
+        # self.axes_actor.SetPosition(center_position)  # Position axes in the scene
+        # self.axes_actor.SetTotalLength(50, 50, 50)  # Set the length
 
-        renderer.AddActor(self.axes_actor)
+        # renderer.AddActor(self.axes_actor)
 
     def create_structured_grid(self, grid_size=8):
         """Create a structured grid of points with a specified grid size.
@@ -334,5 +334,6 @@ class FloorGrid:
         return structured_grid
 
     def set_visible(self, visible: bool):
-        self.grid_actor.SetVisibility(visible)
-        self.axes_actor.SetVisibility(visible)
+        if self.grid_actor is not None:
+            self.grid_actor.SetVisibility(visible)
+        # self.axes_actor.SetVisibility(visible)
