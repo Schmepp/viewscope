@@ -97,23 +97,19 @@ class MainWindow(QMainWindow):
     def _connect(self):
         self.display_panel.mode_changed.connect(self.viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.viewport.set_point_size)
-        # self.display_panel.glyphs_toggled.connect(self.viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
-
-        # self.viewpoints_panel.camera_picked.connect(self.viewport.show_camera)
-        # self.viewport.camera_changed.connect(self._on_camera_changed)
-
         self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
         self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
         self.display_panel.occlusion_toggled.connect(self._on_occlusion_toggled)
 
-        self.viewpoints_panel.camera_picked.connect(
-            self.camera_viewport.show_camera
-        )  # This updates the camera in FPV viewport
+        # This updates the camera in FPV viewport
+        # TODO(Adam): In future, I would prefer if camera_picked
+        #             returned a CameraInfo and was wired into self._on_camera_changed.
+        self.viewpoints_panel.camera_picked.connect(self.camera_viewport.show_camera)
 
-        SCENE_STORE.plan_changed.connect(self._on_camera_changed)
+        SCENE_STORE.plan_changed.connect(self._on_plan_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
 
     def _build_actions(self):
@@ -226,6 +222,21 @@ class MainWindow(QMainWindow):
         )
 
         self._apply_occlusion()
+
+    def _on_plan_changed(self, info: CameraInfo | None):
+        if SCENE_STORE.scene is None:
+            return
+
+        self.viewport.on_plan_changed()
+
+        self.selected_camera = info
+        if info is not None:
+            self.viewpoints_panel.select_row(info.index)
+
+        camera_count = SCENE_STORE.camera_count
+        self.statusBar().showMessage(
+            "Overview" if info is None else f"Camera {info.index + 1} of {camera_count}"
+        )
 
     # -- occlusion -----------------------------------------------------
 
