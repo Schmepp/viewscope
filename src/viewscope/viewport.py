@@ -71,7 +71,6 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
-        self.grid_origin_point = (180, 100, -15)  # Origin point for grid
 
         # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
@@ -86,16 +85,11 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.set_camera_orientation_visible(True)
 
-        self.floor_grid = FloorGrid()
-        self.floor_grid.build(
-            self.renderer,
-            50,
-            (
-                self.grid_origin_point[0] - 17,
-                self.grid_origin_point[1] - 15,
-                self.grid_origin_point[2],
-            ),
-        )
+        # FloorGrid configuration # (180, 100, -15) 
+        self.grid_origin_point = (185, 110, -15)  # Origin point for grid
+        self.floor_grid = FloorGrid(self.renderer,
+                                    50,
+                                    self.grid_origin_point)  #
 
     # -- Lifecycle -----------------------------------------------------
 

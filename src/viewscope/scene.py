@@ -276,11 +276,12 @@ class FloorGrid:
     """A grid in the floor that provides a reference for navigation within the scene.
     This is a 2.5D grid because the z-layer isn't used."""
 
-    def __init__(self):
+    def __init__(self, renderer, grid_size=20, spawn_position=(0, 0, 0)):
         self.grid_actor = None
         self.structurd_grid = None
+        self.build(renderer, grid_size, spawn_position)
 
-    def build(self, renderer, grid_size=20, spawn_position=(0, 0, 0)):
+    def build(self, renderer, grid_size:int, spawn_position:tuple):
         self.structurd_grid = self.create_structured_grid(grid_size)
 
         geometry_filter = vtk.vtkStructuredGridGeometryFilter()
@@ -301,6 +302,10 @@ class FloorGrid:
         # self.grid_actor.GetProperty().SetColor(0.0, 0.0, 1) # Blue color
         self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Create grid-like appearance
 
+        center = spawn_position # Get center position of grid
+        half_value = grid_size / 2 # Get the half value, to adjust its position
+        spawn_position = (center[0] - half_value,
+                           center[1] - half_value, center[2]) # Adjust, to center grid
         self.grid_actor.SetPosition(spawn_position)  # Position the grid in the scene
 
         renderer.AddActor(self.grid_actor)
