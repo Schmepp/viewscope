@@ -278,6 +278,7 @@ class FloorGrid:
 
     def __init__(self, renderer, grid_size=20, spawn_position=(0, 0, 0)):
         self.grid_actor = None
+        self.axes_actor = None
         self.structurd_grid = None
         self.build(renderer, grid_size, spawn_position)
 
@@ -298,14 +299,29 @@ class FloorGrid:
 
         center_position = spawn_position
         half_size = grid_size / 2
-        spawn_position = (
+        new_spawn_position = (
             center_position[0] - half_size,
             center_position[1] - half_size,
             center_position[2],
         )  # Shift grid by half of grid size, to center it.
-        self.grid_actor.SetPosition(spawn_position)  # Position the grid in the scene
+        self.grid_actor.SetPosition(new_spawn_position)  # Position the grid in the scene
 
         renderer.AddActor(self.grid_actor)
+
+        # Adding the reference axes
+        axes = vtk.vtkAxes()
+
+        axes_mapper = vtk.vtkDataSetMapper()
+        axes_mapper.SetInputConnection(axes.GetOutputPort())
+
+        self.axes_actor = vtk.vtkActor()
+        self.axes_actor.SetMapper(axes_mapper)
+        self.axes_actor.SetPosition(spawn_position)  # Position axes in the scene
+        # self.axes_actor.SetTotalLength(50, 50, 50)  # Set the length
+        # self.axes_actor.SetScale(5, 5, 5)  # Set the scale
+        self.axes_actor.GetProperty().SetLineWidth(2.0)  # Set the line width
+
+        renderer.AddActor(self.axes_actor)
 
     def create_structured_grid(self, grid_size=8):
         """Create a structured grid of points with a specified grid size.
@@ -326,3 +342,4 @@ class FloorGrid:
 
     def set_visible(self, visible: bool):
         self.grid_actor.SetVisibility(visible)
+        self.axes_actor.SetVisibility(visible)
