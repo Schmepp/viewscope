@@ -183,25 +183,25 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def on_camera_changed(self):
         """Update the highlighted camera."""
-        self.selected_outline.remove(self.renderer)
+        self.selected_outline.remove_from(self.renderer)
         if self.selected_camera_pos != (0, 0, 0):
             self.selected_outline.build(self.renderer, self.selected_camera_pos)
 
         self.render()
 
     def on_plan_changed(self):
-        """Redraw the camera glyphs."""
+        """Rebuild the camera glyphs for the current plan."""
         if SCENE_STORE.scene is None:
             return
 
-        # TODO(Adam): The big issue here is this still memory leaks!
-        scene = SCENE_STORE.scene
-        self.glyphs = CameraGlyphs(scene.plan)
+        # NOTE(Adam): The only renderer objects that need to be fully rebuilt
+        #             when the plan changes are the camera glyphs. The mesh and
+        #             cloud are unaffected by the plan.
+        if self.glyphs is not None:
+            self.glyphs.remove_from(self.renderer)
 
-        # TODO(Adam): Implement a remove from function in the Views stuff?
-        for view in (self.mesh, self.cloud, self.glyphs):
-            if view is not None:
-                view.add_to(self.renderer)
+        self.glyphs = CameraGlyphs(SCENE_STORE.scene.plan)
+        self.glyphs.add_to(self.renderer)
 
         self.render()
 
