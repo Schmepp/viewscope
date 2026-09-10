@@ -275,11 +275,12 @@ class CameraOutline:
 class FloorGrid:
     """A grid in the floor that provides a reference for navigation within the scene.
     This is a 2.5D grid because the z-layer isn't used."""
+
     def __init__(self):
         self.grid_actor = None
         self.structurd_grid = None
 
-    def build(self, renderer,grid_size=20, spawn_position=(0,0,0)):
+    def build(self, renderer, grid_size=20, spawn_position=(0, 0, 0)):
         self.structurd_grid = self.create_structured_grid(grid_size)
 
         geometry_filter = vtk.vtkStructuredGridGeometryFilter()
@@ -293,23 +294,22 @@ class FloorGrid:
         self.grid_actor.SetMapper(grid_mapper)
 
         # Not configuring the Edge properties, because we want wireframe view
-        #self.grid_actor.GetProperty().EdgeVisibilityOn()
-        #self.grid_actor.GetProperty().SetEdgeColor(0.0, 0.0, 1) # Blue edges
+        # self.grid_actor.GetProperty().EdgeVisibilityOn()
+        # self.grid_actor.GetProperty().SetEdgeColor(0.0, 0.0, 1) # Blue edges
 
         self.grid_actor.GetProperty().SetOpacity(0.25)
-        #self.grid_actor.GetProperty().SetColor(0.0, 0.0, 1) # Blue color
-        self.grid_actor.GetProperty().SetRepresentationToWireframe() # Creates a grid-like appearance
+        # self.grid_actor.GetProperty().SetColor(0.0, 0.0, 1) # Blue color
+        self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Create grid-like appearance
 
         self.grid_actor.SetPosition(spawn_position)  # Position the grid in the scene
 
         renderer.AddActor(self.grid_actor)
-        
+
     def create_structured_grid(self, grid_size=8):
-        '''Create a structured grid of points with a specified grid size.
-        This is a 2.5D grid, as the Z-layer isn't used'''
+        """Create a structured grid of points with a specified grid size.
+        This is a 2.5D grid, as the Z-layer isn't used"""
         points = vtk.vtkPoints()
         counter = 0
-        pt_idx = 0
         # Create grid of points
         for j in range(0, grid_size):
             for i in range(0, grid_size):
@@ -324,6 +324,6 @@ class FloorGrid:
 
     def set_visible(self, visible: bool):
         self.grid_actor.SetVisibility(visible)
-    
+
     # def add_to(self, renderer):
     #     renderer.AddActor(self.grid_actor)
