@@ -338,28 +338,35 @@ class FloorGrid:
         # - Render two separate lines: x and y axes.
         offset_factor = 50  # Length of the axes lines
 
-        x_axis = vtk.vtkLineSource()
-        x_axis.SetPoint1(center_position[0] - offset_factor, center_position[1], center_position[2])
-        x_axis.SetPoint2(center_position[0] + offset_factor, center_position[1], center_position[2])
-        x_mapper = vtk.vtkPolyDataMapper()
-        x_mapper.SetInputConnection(x_axis.GetOutputPort())
-        x_actor = vtk.vtkActor()
-        x_actor.SetMapper(x_mapper)
-        x_actor.GetProperty().SetColor(1.0, 0.0, 0.0)  # Red color for X-axis
-        x_actor.GetProperty().SetLineWidth(2.0)  # Set line width for X-axis
-
-        y_axis = vtk.vtkLineSource()
-        y_axis.SetPoint1(center_position[0], center_position[1] - offset_factor, center_position[2])
-        y_axis.SetPoint2(center_position[0], center_position[1] + offset_factor, center_position[2])
-        y_mapper = vtk.vtkPolyDataMapper()
-        y_mapper.SetInputConnection(y_axis.GetOutputPort())
-        y_actor = vtk.vtkActor()
-        y_actor.SetMapper(y_mapper)
-        y_actor.GetProperty().SetColor(0.0, 1.0, 0.0)  # Green color for Y-axis
-        y_actor.GetProperty().SetLineWidth(2.0)  # Set line width for Y-axis
+        x_actor = self.create_axes_line(
+            renderer,
+            (center_position[0] - offset_factor, center_position[1], center_position[2]),
+            (center_position[0] + offset_factor, center_position[1], center_position[2]),
+            (1.0, 0.0, 0.0),
+        )  # Red
+        y_actor = self.create_axes_line(
+            renderer,
+            (center_position[0], center_position[1] - offset_factor, center_position[2]),
+            (center_position[0], center_position[1] + offset_factor, center_position[2]),
+            (0.0, 1.0, 0.0),
+        )  # Green
 
         renderer.AddActor(x_actor)
         renderer.AddActor(y_actor)
+
+    def create_axes_line(self, renderer, start_point, end_point, color):
+        """Creates a line actor between two points with custom color."""
+        axis_line = vtk.vtkLineSource()
+        axis_line.SetPoint1(start_point)
+        axis_line.SetPoint2(end_point)
+        axis_mapper = vtk.vtkPolyDataMapper()
+        axis_mapper.SetInputConnection(axis_line.GetOutputPort())
+        axis_actor = vtk.vtkActor()
+        axis_actor.SetMapper(axis_mapper)
+        axis_actor.GetProperty().SetColor(color)
+        axis_actor.GetProperty().SetLineWidth(2.0)
+
+        return axis_actor
 
     def create_structured_grid(self, grid_size=8):
         """Create a structured grid of points with a specified grid size.
