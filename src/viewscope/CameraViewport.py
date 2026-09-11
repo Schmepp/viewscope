@@ -20,7 +20,6 @@ from viewscope.config import (
     YFOV_DEG,
 )
 from viewscope.data.scene import SceneData
-from viewscope.data.store import SCENE_STORE
 from viewscope.scene import CameraGlyphs, MeshView, TargetCloudView
 
 
@@ -153,24 +152,6 @@ class CameraViewport(QVTKRenderWindowInteractor):
     def prev_camera(self):
         if self.has_scene and self.camera is not None:
             self._moved(self.camera.step(-1))
-
-    # TODO(Adam): Fix this function.
-    #             See window.py:_on_camera_changed() for details.
-    def on_camera_changed(self):
-        """Update the camera glyphs."""
-        if SCENE_STORE.scene is None:
-            return
-
-        scene = SCENE_STORE.scene
-        self.glyphs = CameraGlyphs(scene.plan)
-
-        for view in (self.mesh, self.cloud, self.glyphs):
-            if view is not None:
-                view.add_to(self.renderer)
-
-        self.camera = CameraController(self.renderer, YFOV_DEG)
-        self.renderer.ResetCamera()
-        self.camera.save_overview()
 
     def _moved(self, info: CameraInfo | None):
         if self.glyphs is not None:

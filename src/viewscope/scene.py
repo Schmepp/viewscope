@@ -1,4 +1,5 @@
-"""One class per thing drawn in the viewport.
+"""
+One class per thing drawn in the viewport.
 
 Each view owns its actors and the state needed to restyle them. None of them
 know about Qt, panels or each other -- the viewport wires them together.
@@ -9,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import trimesh
 import vtk
 from vtkmodules.util import numpy_support as vtknp
 
@@ -30,7 +32,7 @@ class FieldStats:
 class MeshView:
     """The scene mesh, shown either textured or as plain geometry."""
 
-    def __init__(self, mesh):
+    def __init__(self, mesh: trimesh.Geometry):
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(transform.trimesh_to_polydata(mesh))
 
@@ -41,8 +43,11 @@ class MeshView:
         if self.texture is not None:
             self.actor.SetTexture(self.texture)
 
-    def add_to(self, renderer):
+    def add_to(self, renderer: vtk.vtkRenderer):
         renderer.AddActor(self.actor)
+
+    def remove_from(self, renderer: vtk.vtkRenderer):
+        renderer.RemoveActor(self.actor)
 
     def set_visible(self, visible: bool):
         self.actor.SetVisibility(visible)
@@ -72,7 +77,7 @@ class MeshView:
 class TargetCloudView:
     """Score-coloured target points, plus the scalar bar that explains them."""
 
-    def __init__(self, targets, scores=None, point_size: float = 2.0):
+    def __init__(self, targets: np.ndarray, scores: object | None = None, point_size: float = 2.0):
         self.scores = scores
         self.polydata = transform.cloud_polydata(targets)
 
@@ -106,10 +111,15 @@ class TargetCloudView:
     def has_scores(self) -> bool:
         return self.scores is not None
 
-    def add_to(self, renderer):
+    def add_to(self, renderer: vtk.vtkRenderer):
         renderer.AddActor(self.actor)
         if self.scalar_bar is not None:
             renderer.AddActor2D(self.scalar_bar)
+
+    def remove_from(self, renderer: vtk.vtkRenderer):
+        renderer.RemoveActor(self.actor)
+        if self.scalar_bar is not None:
+            renderer.RemoveActor2D(self.scalar_bar)
 
     def set_visible(self, visible: bool):
         self.actor.SetVisibility(visible)
@@ -147,8 +157,9 @@ class TargetCloudView:
     def occluding(self) -> bool:
         return self._occluding
 
-    def set_occlusion(self, mask):
-        """Colour points red where the selected camera can see them, grey elsewhere.
+    def set_occlusion(self, mask: np.ndarray | None):
+        """
+        Colour points red where the selected camera can see them, grey elsewhere.
 
         Pass None to go back to the scalar field colouring.
         """
@@ -193,7 +204,7 @@ class TargetCloudView:
 class CameraGlyphs:
     """One frustum per planned viewpoint."""
 
-    def __init__(self, plan):
+    def __init__(self, plan: vc.Plan):
         self.actors = []
         for i in range(len(plan.positions)):
             vertices, faces, colours, edges = vc.camera_glyph(
@@ -207,27 +218,34 @@ class CameraGlyphs:
         self._active = None
         self._outline = CameraOutline
 
-    @staticmethod
-    def _build(polydata):
-        mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(polydata)
-        actor = vtk.vtkActor()
-        actor.SetMapper(mapper)
-        actor.GetProperty().SetLineWidth(2.0)
-        return actor
-
-    def add_to(self, renderer):
+    def add_to(self, renderer: vtk.vtkRenderer):
         for actor in self.actors:
             renderer.AddActor(actor)
+
+    def remove_from(self, renderer: vtk.vtkRenderer):
+        for actor in self.actors:
+            renderer.RemoveActor(actor)
+
+        self.actors.clear()
 
     def set_visible(self, visible: bool):
         self._visible = visible
         self._refresh()
 
-    def set_active(self, index):
+    def set_active(self, index: int | None):
         """Track which frustum the viewer is sitting inside."""
         self._active = index
         self._refresh()
+
+    @staticmethod
+    def _build(polydata: vtk.vtkPolyData):
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(polydata)
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetLineWidth(2.0)
+
+        return actor
 
     def _refresh(self):
         for i, actor in enumerate(self.actors):
@@ -241,16 +259,16 @@ class CameraOutline:
     def __init__(self):
         self.outline_actor = None
 
-    def build(self, renderer, position):
-        """Spawn the outline at the position of the selected camera. This doesn't
-        modify the camera glyph at all."""
+    def build(self, renderer: vtk.vtkRenderer, position: tuple[float, float, float]):
+        """
+        Spawn the outline at the position of the selected camera. This doesn't
+        modify the camera glyph at all.
+        """
         tempActor = vtk.vtkCubeSource()
         tempActor.SetCenter(position[0], position[1], position[2])  # set posotion
-        (
-            tempActor.SetXLength(2),
-            tempActor.SetYLength(2),
-            tempActor.SetZLength(2),
-        )  # sets the shape size
+        tempActor.SetXLength(2)
+        tempActor.SetYLength(2)
+        tempActor.SetZLength(2)
 
         outlineFilter = vtk.vtkOutlineFilter()
         outlineFilter.SetInputConnection(tempActor.GetOutputPort())
@@ -266,7 +284,7 @@ class CameraOutline:
 
         renderer.AddActor(self.outline_actor)
 
-    def remove(self, renderer):
+    def remove_from(self, renderer: vtk.vtkRenderer):
         if self.outline_actor is not None:
             renderer.RemoveActor(self.outline_actor)
             self.outline_actor = None
