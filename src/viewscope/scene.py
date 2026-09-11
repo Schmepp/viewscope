@@ -326,13 +326,40 @@ class FloorGrid:
 
         renderer.AddActor(self.grid_actor)
 
-        # Not spawning the axes actor for now. It zooms out too much, makes scene awkward. #
+        # - Not spawning the axes actor for now. It zooms out too much, makes scene awkward. #
         # self.axes_actor = vtk.vtkAxesActor() # This is a specialized actor. No need for mapper.
-        # #self.axes_actor.SetOrigin(center_position)  # Set the origin of the axes
-        # self.axes_actor.SetPosition(center_position)  # Position axes in the scene
+        # self.axes_actor.SetOrigin(center_position)  # Set the origin of the axes
+        # self.axes_actor.SetPosition(100,100,0)  # Position axes in the scene
         # self.axes_actor.SetTotalLength(50, 50, 50)  # Set the length
-
+        # self.axes_actor.SetScale(50, 50, 50)  # Scale the axes
+        # self.axes_actor.SetPosition(center_position)  # Position axes in the scene
         # renderer.AddActor(self.axes_actor)
+
+        # - Render two separate lines: x and y axes.
+        offset_factor = 50  # Length of the axes lines
+
+        x_axis = vtk.vtkLineSource()
+        x_axis.SetPoint1(center_position[0] - offset_factor, center_position[1], center_position[2])
+        x_axis.SetPoint2(center_position[0] + offset_factor, center_position[1], center_position[2])
+        x_mapper = vtk.vtkPolyDataMapper()
+        x_mapper.SetInputConnection(x_axis.GetOutputPort())
+        x_actor = vtk.vtkActor()
+        x_actor.SetMapper(x_mapper)
+        x_actor.GetProperty().SetColor(1.0, 0.0, 0.0)  # Red color for X-axis
+        x_actor.GetProperty().SetLineWidth(2.0)  # Set line width for X-axis
+
+        y_axis = vtk.vtkLineSource()
+        y_axis.SetPoint1(center_position[0], center_position[1] - offset_factor, center_position[2])
+        y_axis.SetPoint2(center_position[0], center_position[1] + offset_factor, center_position[2])
+        y_mapper = vtk.vtkPolyDataMapper()
+        y_mapper.SetInputConnection(y_axis.GetOutputPort())
+        y_actor = vtk.vtkActor()
+        y_actor.SetMapper(y_mapper)
+        y_actor.GetProperty().SetColor(0.0, 1.0, 0.0)  # Green color for Y-axis
+        y_actor.GetProperty().SetLineWidth(2.0)  # Set line width for Y-axis
+
+        renderer.AddActor(x_actor)
+        renderer.AddActor(y_actor)
 
     def create_structured_grid(self, grid_size=8):
         """Create a structured grid of points with a specified grid size.
