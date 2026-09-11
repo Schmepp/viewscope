@@ -28,7 +28,6 @@ class ViewpointsPanel(QWidget):
     """One row per planned camera; selecting a row jumps the viewport."""
 
     camera_picked = Signal(int)
-    # camera_add_requested = Signal(int)
 
     def __init__(self):
         super().__init__()
