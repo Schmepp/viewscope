@@ -57,6 +57,9 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self._interactor = self.GetRenderWindow().GetInteractor()
         self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+        # Adding events for mouse wheel zooming
+        self._interactor.AddObserver("MouseWheelForwardEvent",  self._on_mouse_zoom) 
+        self._interactor.AddObserver("MouseWheelBackwardEvent", self._on_mouse_zoom)
 
         self.mesh = None
         self.cloud = None
@@ -68,6 +71,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self._mouse_lock_position = QPoint()
         self._mouse_lock_global_pos = QPoint()
         self._mouse_virtual_local_pos = QPoint()
+        self._zoom_distance = 0.0 # The zoom distance from cam to focal point.
 
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
@@ -331,3 +335,15 @@ class Viewport(QVTKRenderWindowInteractor):
         # Restore cursor visibility and position
         self.ShowCursor()
         QCursor.setPos(self._mouse_lock_global_pos)
+
+    def _on_mouse_zoom(self, obj, event):
+        # obj is the interactor style that triggered event, event is the event name (string)
+        """Zoom the camera in/out based on mouse wheel movement."""
+        if self.camera is not None:
+            active_camera = self.renderer.GetActiveCamera()
+
+            distance = active_camera.GetDistance() # From camera to focal point.
+            self._zoom_distance = distance
+            # Used Deepseek for finding the .GetDistance()
+
+            # print("Zoom:", distance)
