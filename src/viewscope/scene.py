@@ -257,7 +257,7 @@ class CameraOutline:
     """The outline for a selected camera. Working with its position and not the camera itself."""
 
     def __init__(self):
-        self.outline_actor = None
+        self.outline_actor : vtk.vtkActor = None
 
     def build(self, renderer: vtk.vtkRenderer, position: tuple[float, float, float]):
         """
@@ -295,24 +295,23 @@ class FloorGrid:
     This is a 2.5D grid because the z-layer isn't used."""
 
     def __init__(self, renderer, grid_size=20, spawn_position=(0, 0, 0)):
-        self.grid_actor = None
-        self.axes_actor = None
-        self.structurd_grid = None
+        self.grid_actor : vtk.vtkActor = None
+        self.axes_actors : list[vtk.vtkActor] = None
+        self.structurd_grid : vtk.vtkStructuredGrid = None
         self.build(renderer, grid_size, spawn_position)
 
     def build(self, renderer, grid_size: int, spawn_position: tuple):
         self.structurd_grid = self.create_structured_grid(grid_size)
 
-        # Mapper and Actor
+        #- Mapper and Actor
         grid_mapper = vtk.vtkDataSetMapper()
         grid_mapper.SetInputData(self.structurd_grid)
 
         self.grid_actor = vtk.vtkActor()
         self.grid_actor.SetMapper(grid_mapper)
 
-        # Grid actor Customization
+        #- Grid actor Customization
         self.grid_actor.GetProperty().SetOpacity(0.25)
-        # self.grid_actor.GetProperty().SetColor(0.0, 0.0, 1) # Blue color
         self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Create grid-like appearance
 
         center_position = spawn_position
@@ -323,17 +322,7 @@ class FloorGrid:
             center_position[2],
         )  # Shift grid by half of grid size, to center it.
         self.grid_actor.SetPosition(*new_spawn_position)  # Position the grid in the scene
-
         renderer.AddActor(self.grid_actor)
-
-        # - Not spawning the axes actor for now. It zooms out too much, makes scene awkward. #
-        # self.axes_actor = vtk.vtkAxesActor() # This is a specialized actor. No need for mapper.
-        # self.axes_actor.SetOrigin(center_position)  # Set the origin of the axes
-        # self.axes_actor.SetPosition(100,100,0)  # Position axes in the scene
-        # self.axes_actor.SetTotalLength(50, 50, 50)  # Set the length
-        # self.axes_actor.SetScale(50, 50, 50)  # Scale the axes
-        # self.axes_actor.SetPosition(center_position)  # Position axes in the scene
-        # renderer.AddActor(self.axes_actor)
 
         # - Render two separate lines: x and y axes.
         offset_factor = 50  # Length of the axes lines
@@ -353,6 +342,7 @@ class FloorGrid:
 
         renderer.AddActor(x_actor)
         renderer.AddActor(y_actor)
+        self.axes_actors = [x_actor, y_actor] 
 
     def create_axes_line(self, renderer, start_point, end_point, color):
         """Creates a line actor between two points with custom color."""
@@ -386,6 +376,7 @@ class FloorGrid:
         return structured_grid
 
     def set_visible(self, visible: bool):
-        if self.grid_actor is not None:
+        if (self.grid_actor is not None) and (self.axes_actors is not None):
             self.grid_actor.SetVisibility(visible)
-        # self.axes_actor.SetVisibility(visible)
+            self.axes_actors[0].SetVisibility(visible)
+            self.axes_actors[1].SetVisibility(visible)
