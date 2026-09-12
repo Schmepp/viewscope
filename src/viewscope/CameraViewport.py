@@ -1,4 +1,4 @@
-"""The 3D viewport: for camera povs"""
+"""The 3D viewport: for camera povs. The final, exported images will be rendered from this view."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from viewscope.config import (
     YFOV_DEG,
 )
 from viewscope.data.scene import SceneData
-from viewscope.scene import CameraGlyphs, MeshView, TargetCloudView
+from viewscope.scene import CameraGlyphs, MeshView
 
 
 class CameraViewport(QVTKRenderWindowInteractor):
@@ -47,7 +47,7 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.cloud = None
         self.glyphs = None
         self.camera = None
-        self._mode = MODE_ALL
+        self._mode = MODE_TEXTURED  # set to textured mode by default
 
     # -- Lifecycle -----------------------------------------------------
 
@@ -67,11 +67,10 @@ class CameraViewport(QVTKRenderWindowInteractor):
 
     def set_scene(self, data: SceneData):
         self.mesh = MeshView(data.mesh)
-        self.cloud = TargetCloudView(data.targets, data.scores)
+        self.cloud = None
         self.glyphs = CameraGlyphs(data.plan)
 
-        for view in (self.mesh, self.cloud, self.glyphs):
-            view.add_to(self.renderer)
+        self.mesh.add_to(self.renderer)  # Only render the Mesh
 
         self.camera = CameraController(self.renderer, YFOV_DEG)
         self.renderer.ResetCamera()
@@ -127,12 +126,6 @@ class CameraViewport(QVTKRenderWindowInteractor):
     def set_glyphs_visible(self, visible: bool):
         if self.has_scene and self.glyphs is not None:
             self.glyphs.set_visible(visible)
-            self.render()
-
-    def set_occlusion_mask(self, mask):
-        """Paint the targets one camera can see; None restores the field colours."""
-        if self.has_scene and self.cloud is not None:
-            self.cloud.set_occlusion(mask)
             self.render()
 
     # -- Camera --------------------------------------------------------

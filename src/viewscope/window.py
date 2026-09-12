@@ -98,12 +98,11 @@ class MainWindow(QMainWindow):
         self.display_panel.mode_changed.connect(self.viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.viewport.set_point_size)
         self.display_panel.field_changed.connect(self._on_field_changed)
-        self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
-        self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
         self.display_panel.occlusion_toggled.connect(self._on_occlusion_toggled)
         self.display_panel.grid_toggled.connect(self.viewport.set_grid_visible)
+        self.display_panel.glyphs_toggled.connect(self.viewport.set_glyphs_visible)
 
         # This updates the camera in FPV viewport
         # TODO(Adam): In future, I would prefer if camera_picked
@@ -259,7 +258,6 @@ class MainWindow(QMainWindow):
                     self.statusBar().showMessage(f"Visibility failed: {exc}", 5000)
 
         self.viewport.set_occlusion_mask(mask)
-        self.camera_viewport.set_occlusion_mask(mask)
 
         if mask is not None:
             seen = int(mask.sum())
