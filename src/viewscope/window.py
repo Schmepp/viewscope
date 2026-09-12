@@ -98,7 +98,7 @@ class MainWindow(QMainWindow):
         self.display_panel.mode_changed.connect(self.viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.viewport.set_point_size)
         self.display_panel.field_changed.connect(self._on_field_changed)
-        self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
+        # self.display_panel.mode_changed.connect(self.camera_viewport.set_mode)
         self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
         # self.display_panel.glyphs_toggled.connect(self.camera_viewport.set_glyphs_visible)
         self.display_panel.field_changed.connect(self._on_field_changed)
