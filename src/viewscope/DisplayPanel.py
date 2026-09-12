@@ -54,9 +54,9 @@ class DisplayPanel(QWidget):
         form.addRow("Point size", self.point_size)
 
         self.glyphs = QCheckBox("Show camera frustum")
-        # self.glyphs.setChecked(True)
-        # self.glyphs.toggled.connect(self.glyphs_toggled)
-        # form.addRow(self.glyphs)
+        self.glyphs.setChecked(True)
+        self.glyphs.toggled.connect(self.glyphs_toggled)
+        form.addRow(self.glyphs)
 
         # Press to paint the targets the selected camera can see; press again
         # to go back to the scalar field colouring.

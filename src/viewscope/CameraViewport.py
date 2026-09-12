@@ -67,10 +67,10 @@ class CameraViewport(QVTKRenderWindowInteractor):
 
     def set_scene(self, data: SceneData):
         self.mesh = MeshView(data.mesh)
-        self.cloud = None  # TargetCloudView(data.targets, data.scores)
+        self.cloud = None
         self.glyphs = CameraGlyphs(data.plan)
 
-        self.mesh.add_to(self.renderer)  # Only rendering the Mesh
+        self.mesh.add_to(self.renderer)  # Only render the Mesh
 
         self.camera = CameraController(self.renderer, YFOV_DEG)
         self.renderer.ResetCamera()
@@ -127,12 +127,6 @@ class CameraViewport(QVTKRenderWindowInteractor):
         if self.has_scene and self.glyphs is not None:
             self.glyphs.set_visible(visible)
             self.render()
-
-    # def set_occlusion_mask(self, mask):
-    #     """Paint the targets one camera can see; None restores the field colours."""
-    #     if self.has_scene and self.cloud is not None:
-    #         self.cloud.set_occlusion(mask)
-    #         self.render()
 
     # -- Camera --------------------------------------------------------
 
