@@ -257,7 +257,7 @@ class CameraOutline:
     """The outline for a selected camera. Working with its position and not the camera itself."""
 
     def __init__(self):
-        self.outline_actor: vtk.vtkActor = None
+        self.outline_actor = None
 
     def build(self, renderer: vtk.vtkRenderer, position: tuple[float, float, float]):
         """
@@ -295,9 +295,9 @@ class FloorGrid:
     This is a 2.5D grid because the z-layer isn't used."""
 
     def __init__(self, renderer, grid_size=20, spawn_position=(0, 0, 0), scale: float = 1.0):
-        self.grid_actor: vtk.vtkActor = None
-        self.axes_actors: list[vtk.vtkActor] = None
-        self.structured_grid: vtk.vtkStructuredGrid = None
+        self.grid_actor = None
+        self.axes_actors= None
+        self.structured_grid= None
         self.build(renderer, grid_size, spawn_position, scale)
 
     def build(self, renderer, grid_size: int, spawn_position: tuple, scale: float):
