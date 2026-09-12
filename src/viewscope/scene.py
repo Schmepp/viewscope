@@ -294,13 +294,15 @@ class FloorGrid:
     """A grid in the floor that provides a reference for navigation within the scene.
     This is a 2.5D grid because the z-layer isn't used."""
 
-    def __init__(self, renderer, grid_size=20, spawn_position=(0, 0, 0)):
+    def __init__(self, renderer, grid_size=20, spawn_position=(0, 0, 0), scale: float = 1.0):
         self.grid_actor : vtk.vtkActor = None
         self.axes_actors : list[vtk.vtkActor] = None
         self.structurd_grid : vtk.vtkStructuredGrid = None
-        self.build(renderer, grid_size, spawn_position)
+        self.build(renderer, grid_size, spawn_position, scale)
 
-    def build(self, renderer, grid_size: int, spawn_position: tuple):
+    def build(self, renderer, grid_size: int, spawn_position: tuple, scale : float):
+        """This creates the actors to be added to the renderer. 
+        The grid is a structured grid of points and the axes are lines."""
         self.structurd_grid = self.create_structured_grid(grid_size)
 
         #- Mapper and Actor
@@ -311,6 +313,7 @@ class FloorGrid:
         self.grid_actor.SetMapper(grid_mapper)
 
         #- Grid actor Customization
+        self.grid_actor.SetScale(scale, scale, scale)
         self.grid_actor.GetProperty().SetOpacity(0.25)
         self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Create grid-like appearance
 
@@ -380,3 +383,11 @@ class FloorGrid:
             self.grid_actor.SetVisibility(visible)
             self.axes_actors[0].SetVisibility(visible)
             self.axes_actors[1].SetVisibility(visible)
+
+    def remove_from(self, renderer: vtk.vtkRenderer):
+        if self.grid_actor is not None and self.axes_actors is not None:
+            renderer.RemoveActor(self.grid_actor)
+            self.grid_actor = None
+            for actor in self.axes_actors:
+                renderer.RemoveActor(actor)
+            self.axes_actors = None
