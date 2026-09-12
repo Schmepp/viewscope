@@ -257,7 +257,7 @@ class CameraOutline:
     """The outline for a selected camera. Working with its position and not the camera itself."""
 
     def __init__(self):
-        self.outline_actor : vtk.vtkActor = None
+        self.outline_actor: vtk.vtkActor = None
 
     def build(self, renderer: vtk.vtkRenderer, position: tuple[float, float, float]):
         """
@@ -295,36 +295,30 @@ class FloorGrid:
     This is a 2.5D grid because the z-layer isn't used."""
 
     def __init__(self, renderer, grid_size=20, spawn_position=(0, 0, 0), scale: float = 1.0):
-        self.grid_actor : vtk.vtkActor = None
-        self.axes_actors : list[vtk.vtkActor] = None
-        self.structurd_grid : vtk.vtkStructuredGrid = None
+        self.grid_actor: vtk.vtkActor = None
+        self.axes_actors: list[vtk.vtkActor] = None
+        self.structured_grid: vtk.vtkStructuredGrid = None
         self.build(renderer, grid_size, spawn_position, scale)
 
-    def build(self, renderer, grid_size: int, spawn_position: tuple, scale : float):
-        """This creates the actors to be added to the renderer. 
+    def build(self, renderer, grid_size: int, spawn_position: tuple, scale: float):
+        """This creates the actors to be added to the renderer.
         The grid is a structured grid of points and the axes are lines."""
-        self.structurd_grid = self.create_structured_grid(grid_size)
+        self.structured_grid = self.create_structured_grid(grid_size)
 
-        #- Mapper and Actor
+        # - Mapper and Actor
         grid_mapper = vtk.vtkDataSetMapper()
-        grid_mapper.SetInputData(self.structurd_grid)
+        grid_mapper.SetInputData(self.structured_grid)
 
         self.grid_actor = vtk.vtkActor()
         self.grid_actor.SetMapper(grid_mapper)
 
-        #- Grid actor Customization
+        # - Grid actor Customization
         self.grid_actor.SetScale(scale, scale, scale)
         self.grid_actor.GetProperty().SetOpacity(0.25)
         self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Create grid-like appearance
 
         center_position = spawn_position
-        half_size = grid_size / 2
-        new_spawn_position = (
-            center_position[0] - half_size,
-            center_position[1] - half_size,
-            center_position[2],
-        )  # Shift grid by half of grid size, to center it.
-        self.grid_actor.SetPosition(*new_spawn_position)  # Position the grid in the scene
+        self.grid_actor.SetPosition(*spawn_position)  # Position the grid in the scene
         renderer.AddActor(self.grid_actor)
 
         # - Render two separate lines: x and y axes.
@@ -345,7 +339,7 @@ class FloorGrid:
 
         renderer.AddActor(x_actor)
         renderer.AddActor(y_actor)
-        self.axes_actors = [x_actor, y_actor] 
+        self.axes_actors = [x_actor, y_actor]
 
     def create_axes_line(self, renderer, start_point, end_point, color):
         """Creates a line actor between two points with custom color."""
@@ -362,15 +356,15 @@ class FloorGrid:
         return axis_actor
 
     def create_structured_grid(self, grid_size=8):
-        """Create a structured grid of points with a specified grid size.
-        This is a 2.5D grid, as the Z-layer isn't used"""
+        """Create a structured square grid of points with a specified grid size.
+        This is a 2.5D grid, as the Z-layer isn't used.
+        The grid points are centered around the origin."""
         points = vtk.vtkPoints()
-        counter = 0
+        half_size = (grid_size - 1) / 2.0  # center of the point lattice, suggested by DeepSeek
         # Create grid of points
         for j in range(0, grid_size):
             for i in range(0, grid_size):
-                points.InsertNextPoint(i, j, 0)
-                counter += 1
+                points.InsertNextPoint(i - half_size, j - half_size, 0)
 
         structured_grid = vtk.vtkStructuredGrid()
         structured_grid.SetDimensions(grid_size, grid_size, 1)

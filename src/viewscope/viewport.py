@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import floor, log10  # Used for the scale factor of the floor grid.
 from typing import cast
 
 import vtk
@@ -37,9 +38,6 @@ from viewscope.scene import (
     TargetCloudView,
 )
 
-from math import log10, floor # Used for the scale factor of the floor grid.
-
-
 
 class Viewport(QVTKRenderWindowInteractor):
     """
@@ -61,7 +59,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self._interactor = self.GetRenderWindow().GetInteractor()
         self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
         # Adding events for mouse wheel zooming
-        self._interactor.AddObserver("MouseWheelForwardEvent",  self._on_mouse_zoom) 
+        self._interactor.AddObserver("MouseWheelForwardEvent", self._on_mouse_zoom)
         self._interactor.AddObserver("MouseWheelBackwardEvent", self._on_mouse_zoom)
 
         self.mesh = None
@@ -76,8 +74,8 @@ class Viewport(QVTKRenderWindowInteractor):
         self._mouse_virtual_local_pos = QPoint()
 
         self.initial_camera_distance = self.renderer.GetActiveCamera().GetDistance()
-        self.zoom_distance = 0.0 # The zoom distance from cam to focal point.
-        self.grid_scale = 1.0 # The scale factor for the grid, based on zoom distance.
+        self.zoom_distance = 0.0  # The zoom distance from cam to focal point.
+        self.grid_scale = 1.0  # The scale factor for the grid, based on zoom distance.
 
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
@@ -349,21 +347,19 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.camera is not None:
             active_camera = self.renderer.GetActiveCamera()
 
-            distance = active_camera.GetDistance() # From camera to focal point.
+            distance = active_camera.GetDistance()  # From camera to focal point.
             self.zoom_distance = distance
 
-            if self.initial_camera_distance is None: # track initial cam distance
+            if self.initial_camera_distance is None:  # track initial cam distance
                 self.initial_camera_distance = distance
-            
 
-            #zoom_level = distance / self.initial_camera_distance  # Calculate zoom level based on initial distance
             raw_scale = distance / self.initial_camera_distance
             exponent = floor(log10(raw_scale))
-            zoom_level = 2 ** exponent  # Scale factor based on distance
+            zoom_level = 1.5**exponent  # Scale factor based on distance
             # Used Deepseek for the calculation of the scale factor. (I changed bases though)
 
             self.grid_scale = zoom_level  # Update grid scale based on zoom level
-            print("Zoom:", distance, "Level:", zoom_level)
+            # print("Zoom:", distance, "Level:", zoom_level)
 
             ## Rebuild grid
             self.floor_grid.remove_from(self.renderer)  # Remove the old grid
