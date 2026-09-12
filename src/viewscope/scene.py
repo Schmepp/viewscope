@@ -296,8 +296,8 @@ class FloorGrid:
 
     def __init__(self, renderer, grid_size=20, spawn_position=(0, 0, 0), scale: float = 1.0):
         self.grid_actor = None
-        self.axes_actors= None
-        self.structured_grid= None
+        self.axes_actors = None
+        self.structured_grid = None
         self.build(renderer, grid_size, spawn_position, scale)
 
     def build(self, renderer, grid_size: int, spawn_position: tuple, scale: float):
