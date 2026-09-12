@@ -37,6 +37,9 @@ from viewscope.scene import (
     TargetCloudView,
 )
 
+from math import log10, floor # Used for the scale factor of the floor grid.
+
+
 
 class Viewport(QVTKRenderWindowInteractor):
     """
@@ -71,7 +74,10 @@ class Viewport(QVTKRenderWindowInteractor):
         self._mouse_lock_position = QPoint()
         self._mouse_lock_global_pos = QPoint()
         self._mouse_virtual_local_pos = QPoint()
-        self._zoom_distance = 0.0 # The zoom distance from cam to focal point.
+
+        self.initial_camera_distance = self.renderer.GetActiveCamera().GetDistance()
+        self.zoom_distance = 0.0 # The zoom distance from cam to focal point.
+        self.grid_scale = 1.0 # The scale factor for the grid, based on zoom distance.
 
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
@@ -91,7 +97,8 @@ class Viewport(QVTKRenderWindowInteractor):
 
         # FloorGrid configuration
         self.grid_origin_point = (185, 110, -15)  # Origin point for grid spawn
-        self.floor_grid = FloorGrid(self.renderer, 75, self.grid_origin_point)  #
+        self.floor_grid = FloorGrid(self.renderer, 75, self.grid_origin_point, self.grid_scale)
+        # Add scale here
 
     # -- Lifecycle -----------------------------------------------------
 
@@ -343,7 +350,21 @@ class Viewport(QVTKRenderWindowInteractor):
             active_camera = self.renderer.GetActiveCamera()
 
             distance = active_camera.GetDistance() # From camera to focal point.
-            self._zoom_distance = distance
-            # Used Deepseek for finding the .GetDistance()
+            self.zoom_distance = distance
 
-            # print("Zoom:", distance)
+            if self.initial_camera_distance is None: # track initial cam distance
+                self.initial_camera_distance = distance
+            
+
+            #zoom_level = distance / self.initial_camera_distance  # Calculate zoom level based on initial distance
+            raw_scale = distance / self.initial_camera_distance
+            exponent = floor(log10(raw_scale))
+            zoom_level = 2 ** exponent  # Scale factor based on distance
+            # Used Deepseek for the calculation of the scale factor. (I changed bases though)
+
+            self.grid_scale = zoom_level  # Update grid scale based on zoom level
+            print("Zoom:", distance, "Level:", zoom_level)
+
+            ## Rebuild grid
+            self.floor_grid.remove_from(self.renderer)  # Remove the old grid
+            self.floor_grid = FloorGrid(self.renderer, 100, self.grid_origin_point, self.grid_scale)
