@@ -314,10 +314,9 @@ class FloorGrid:
 
         # - Grid actor Customization
         self.grid_actor.SetScale(scale, scale, scale)
-        self.grid_actor.GetProperty().SetOpacity(0.25)
-        self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Create grid-like appearance
+        self.grid_actor.GetProperty().SetOpacity(0.1)
+        self.grid_actor.GetProperty().SetRepresentationToWireframe()  # Set to grid-like appearance
 
-        center_position = spawn_position
         self.grid_actor.SetPosition(*spawn_position)  # Position the grid in the scene
         renderer.AddActor(self.grid_actor)
 
@@ -325,23 +324,24 @@ class FloorGrid:
         offset_factor = 50  # Length of the axes lines
 
         x_actor = self.create_axes_line(
-            renderer,
-            (center_position[0] - offset_factor, center_position[1], center_position[2]),
-            (center_position[0] + offset_factor, center_position[1], center_position[2]),
+            (-offset_factor, 0, 0),  # Building line at its local origin.
+            (offset_factor, 0, 0),
             (1.0, 0.0, 0.0),
-        )  # Red
+        )  # Red line
         y_actor = self.create_axes_line(
-            renderer,
-            (center_position[0], center_position[1] - offset_factor, center_position[2]),
-            (center_position[0], center_position[1] + offset_factor, center_position[2]),
+            (0, -offset_factor, 0),
+            (0, offset_factor, 0),
             (0.0, 1.0, 0.0),
-        )  # Green
+        )  # Green line
+        self.axes_actors = [x_actor, y_actor]
+        for axis in self.axes_actors:
+            axis.SetScale(scale, scale, scale)
+            axis.SetPosition(*spawn_position)  # Place at spawn position last.
 
         renderer.AddActor(x_actor)
         renderer.AddActor(y_actor)
-        self.axes_actors = [x_actor, y_actor]
 
-    def create_axes_line(self, renderer, start_point, end_point, color):
+    def create_axes_line(self, start_point, end_point, color):
         """Creates a line actor between two points with custom color."""
         axis_line = vtk.vtkLineSource()
         axis_line.SetPoint1(start_point)
@@ -352,6 +352,7 @@ class FloorGrid:
         axis_actor.SetMapper(axis_mapper)
         axis_actor.GetProperty().SetColor(color)
         axis_actor.GetProperty().SetLineWidth(2.0)
+        axis_actor.GetProperty().SetOpacity(0.75)
 
         return axis_actor
 
@@ -360,7 +361,7 @@ class FloorGrid:
         This is a 2.5D grid, as the Z-layer isn't used.
         The grid points are centered around the origin."""
         points = vtk.vtkPoints()
-        half_size = (grid_size - 1) / 2.0  # center of the point lattice, suggested by DeepSeek
+        half_size = (grid_size - 1) / 2.0  # center of the point lattice (suggested by DeepSeek)
         # Create grid of points
         for j in range(0, grid_size):
             for i in range(0, grid_size):

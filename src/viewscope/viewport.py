@@ -58,11 +58,10 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self._interactor = self.GetRenderWindow().GetInteractor()
         self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
-        # Adding events for mouse wheel zooming
-        # self._interactor.AddObserver("ModifiedEvent", self._on_mouse_zoom)
+        # Adding observer only on active camera, for zoom-scale calculation.
         local_camera = self.renderer.GetActiveCamera()
-        local_camera.AddObserver("ModifiedEvent", self._on_mouse_zoom)
-        
+        local_camera.AddObserver(vtk.vtkCommand.ModifiedEvent, self._on_camera_modified)
+
         self.mesh = None
         self.cloud = None
         self.glyphs = None
@@ -77,7 +76,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.initial_camera_distance = self.renderer.GetActiveCamera().GetDistance()
         self.zoom_distance = 1.0  # The zoom distance from cam to focal point.
         self.grid_scale = 1.0  # The scale factor for the grid, based on zoom distance.
-        self.grid_visible = True # Keeping track locally to hide grid properly.
+        self.grid_visible = True  # Tracking visibility locally to hide grid properly.
 
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
@@ -127,7 +126,6 @@ class Viewport(QVTKRenderWindowInteractor):
         self.renderer.ResetCamera()
         self.camera.save_overview()
         self.set_mode(self._mode)
-
 
     @property
     def has_scene(self) -> bool:
@@ -187,10 +185,17 @@ class Viewport(QVTKRenderWindowInteractor):
             self.render()
 
     def set_grid_visible(self, visible: bool):
-        """Show or hide the floor grid."""
+        """Show/Hide the floor grid."""
+        self.grid_visible = visible
         if self.has_scene and self.floor_grid is not None:
-            self.grid_visible = visible
-            self.floor_grid.set_visible(visible) # This is obsolete, with grid being rebuilt.
+            if self.grid_visible:
+                self.floor_grid.remove_from(self.renderer)
+                self.floor_grid = FloorGrid(
+                    self.renderer, 100, self.grid_origin_point, self.grid_scale
+                )
+            else:
+                self.floor_grid.set_visible(visible)
+            # self.floor_grid.set_visible(visible)
             self.render()
 
     # -- Camera --------------------------------------------------------
@@ -345,31 +350,31 @@ class Viewport(QVTKRenderWindowInteractor):
         self.ShowCursor()
         QCursor.setPos(self._mouse_lock_global_pos)
 
-    def _on_mouse_zoom(self, obj, event):
-        """Calculate zoom level and grid scale based on cameras distance to focal point."""
-        if self.camera is not None:
-            active_camera = self.renderer.GetActiveCamera()
+    def _on_camera_modified(self, obj, event) -> None:
+        """Event handler for calculate zoom level + grid scale, and applying it to grid actor.
+        The zoom level is based on cameras distance to focal point.
+        Grid Scale changes whenever the distance variable changes by a factor of 10."""
+        active_camera = self.renderer.GetActiveCamera()
+        distance = active_camera.GetDistance()  # From camera to focal point.
 
-            distance = active_camera.GetDistance()  # From camera to focal point.
-            self.zoom_distance = distance
+        if distance == self.zoom_distance:
+            return  # Exit handler if no "zooming" was performed.
+        self.zoom_distance = distance
 
-            
-            #- Change continously
-            # raw_scale = distance / self.initial_camera_distance
-            # zoom_level = 0.005 * raw_scale
+        # - Change scale in steps of powers-of-10
+        raw_scale = distance / self.initial_camera_distance
+        exponent = floor(log10(raw_scale))
+        zoom_scale = 1.5**exponent  # Scale factor based on distance
+        # Used Deepseek for the calculation of the scale factor. (I changed bases though)
 
-            #- Change scale in powers-of-10
-            raw_scale = distance / self.initial_camera_distance
-            exponent = floor(log10(raw_scale))
-            zoom_level = 1.5**exponent  # Scale factor based on distance
-            # Used Deepseek for the calculation of the scale factor. (I changed bases though)
+        if zoom_scale == self.grid_scale:
+            return  # Exit handler if in same scale bucket/step.
+        self.grid_scale = zoom_scale  # Update grid scale based on zoom scale
 
-            self.grid_scale = zoom_level  # Update grid scale based on zoom level
-            # print("Zoom:", distance, "Level:", zoom_level)
-
-            ## Rebuild grid
-            # self.floor_grid.remove_from(self.renderer)  # Remove the old grid
-            # self.floor_grid = FloorGrid(self.renderer, 100, self.grid_origin_point, self.grid_scale)
-            if self.grid_visible:
-                self.floor_grid.remove_from(self.renderer)  # Remove the old grid
-                self.floor_grid = FloorGrid(self.renderer, 100, self.grid_origin_point, self.grid_scale)
+        ## Rebuild grid in scene
+        if self.floor_grid is not None:
+            self.floor_grid.remove_from(self.renderer)  # Remove old grid
+            if self.grid_visible:  # Only build if the checkbox is checked in DisplayPanel
+                self.floor_grid = FloorGrid(
+                    self.renderer, 100, self.grid_origin_point, self.grid_scale
+                )
