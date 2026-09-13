@@ -59,9 +59,10 @@ class Viewport(QVTKRenderWindowInteractor):
         self._interactor = self.GetRenderWindow().GetInteractor()
         self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
         # Adding events for mouse wheel zooming
-        self._interactor.AddObserver("MouseWheelForwardEvent", self._on_mouse_zoom)
-        self._interactor.AddObserver("MouseWheelBackwardEvent", self._on_mouse_zoom)
-
+        # self._interactor.AddObserver("ModifiedEvent", self._on_mouse_zoom)
+        local_camera = self.renderer.GetActiveCamera()
+        local_camera.AddObserver("ModifiedEvent", self._on_mouse_zoom)
+        
         self.mesh = None
         self.cloud = None
         self.glyphs = None
@@ -74,8 +75,9 @@ class Viewport(QVTKRenderWindowInteractor):
         self._mouse_virtual_local_pos = QPoint()
 
         self.initial_camera_distance = self.renderer.GetActiveCamera().GetDistance()
-        self.zoom_distance = 0.0  # The zoom distance from cam to focal point.
+        self.zoom_distance = 1.0  # The zoom distance from cam to focal point.
         self.grid_scale = 1.0  # The scale factor for the grid, based on zoom distance.
+        self.grid_visible = True # Keeping track locally to hide grid properly.
 
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
@@ -125,6 +127,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.renderer.ResetCamera()
         self.camera.save_overview()
         self.set_mode(self._mode)
+
 
     @property
     def has_scene(self) -> bool:
@@ -186,7 +189,8 @@ class Viewport(QVTKRenderWindowInteractor):
     def set_grid_visible(self, visible: bool):
         """Show or hide the floor grid."""
         if self.has_scene and self.floor_grid is not None:
-            self.floor_grid.set_visible(visible)
+            self.grid_visible = visible
+            self.floor_grid.set_visible(visible) # This is obsolete, with grid being rebuilt.
             self.render()
 
     # -- Camera --------------------------------------------------------
@@ -342,17 +346,19 @@ class Viewport(QVTKRenderWindowInteractor):
         QCursor.setPos(self._mouse_lock_global_pos)
 
     def _on_mouse_zoom(self, obj, event):
-        # obj is the interactor style that triggered event, event is the event name (string)
-        """Zoom the camera in/out based on mouse wheel movement."""
+        """Calculate zoom level and grid scale based on cameras distance to focal point."""
         if self.camera is not None:
             active_camera = self.renderer.GetActiveCamera()
 
             distance = active_camera.GetDistance()  # From camera to focal point.
             self.zoom_distance = distance
 
-            if self.initial_camera_distance is None:  # track initial cam distance
-                self.initial_camera_distance = distance
+            
+            #- Change continously
+            # raw_scale = distance / self.initial_camera_distance
+            # zoom_level = 0.005 * raw_scale
 
+            #- Change scale in powers-of-10
             raw_scale = distance / self.initial_camera_distance
             exponent = floor(log10(raw_scale))
             zoom_level = 1.5**exponent  # Scale factor based on distance
@@ -362,5 +368,8 @@ class Viewport(QVTKRenderWindowInteractor):
             # print("Zoom:", distance, "Level:", zoom_level)
 
             ## Rebuild grid
-            self.floor_grid.remove_from(self.renderer)  # Remove the old grid
-            self.floor_grid = FloorGrid(self.renderer, 100, self.grid_origin_point, self.grid_scale)
+            # self.floor_grid.remove_from(self.renderer)  # Remove the old grid
+            # self.floor_grid = FloorGrid(self.renderer, 100, self.grid_origin_point, self.grid_scale)
+            if self.grid_visible:
+                self.floor_grid.remove_from(self.renderer)  # Remove the old grid
+                self.floor_grid = FloorGrid(self.renderer, 100, self.grid_origin_point, self.grid_scale)
