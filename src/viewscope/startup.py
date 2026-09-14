@@ -8,13 +8,20 @@ viewer only appears once its scene is on screen.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont
+import json
+from pathlib import Path
+
+from PySide6.QtCore import QSettings, Qt, QTimer, Signal
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QProgressBar,
+    QPushButton,
+    QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -22,8 +29,11 @@ from PySide6.QtWidgets import (
 
 from viewscope import config
 from viewscope import window as wd
-from viewscope.config import Project
+from viewscope.config import APP_NAME, ORG_NAME, Project
 from viewscope.data.loader import STAGE_COUNT
+from viewscope.data.validate import validate_required_files
+
+CARD_SPACING = 10
 
 STYLESHEET = f"""
 #startupPage {{
@@ -83,6 +93,25 @@ STYLESHEET = f"""
     color: {config.ACCENT};
     font-size: 17px;
 }}
+#addCard {{
+    background: transparent;
+    border: 1px dashed {config.CARD_BORDER_HOVER};
+    border-radius: 10px;
+    color: {config.MUTED};
+    font-size: 13px;
+    min-height: 46px;
+    text-align: left;
+    padding-left: 21px;
+}}
+#addCard:hover {{
+    background: {config.CARD};
+    border-color: {config.ACCENT};
+    color: {config.ACCENT};
+}}
+#cardScroll, #cardHost {{
+    background: transparent;
+    border: none;
+}}
 #status {{
     color: {config.MUTED};
     font-size: 12px;
@@ -114,15 +143,18 @@ class ProjectCard(QFrame):
     """One project in the list. Clicking it, or pressing Return on it, opens it."""
 
     clicked = Signal(object)  # Project
+    HEIGHT = 78
 
     def __init__(self, project: Project, parent=None):
         super().__init__(parent)
         self.project = project
         self.setObjectName("projectCard")
+        self.setFixedHeight(self.HEIGHT)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setProperty("busy", False)
+        self._eliding = False
 
         row = QHBoxLayout(self)
         row.setContentsMargins(18, 16, 20, 16)
@@ -138,10 +170,12 @@ class ProjectCard(QFrame):
         text.setSpacing(3)
         name = QLabel(project.name)
         name.setObjectName("cardName")
-        subtitle = QLabel(project.subtitle)
-        subtitle.setObjectName("cardSubtitle")
+        self.subtitle = QLabel(project.subtitle)
+        self.subtitle.setObjectName("cardSubtitle")
+        # Ignored, so that a long subtitle asks the card for no extra width.
+        self.subtitle.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         text.addWidget(name)
-        text.addWidget(subtitle)
+        text.addWidget(self.subtitle)
         row.addLayout(text, 1)
 
         self.chevron = QLabel("→")
@@ -149,6 +183,25 @@ class ProjectCard(QFrame):
         row.addWidget(self.chevron, 0, Qt.AlignmentFlag.AlignVCenter)
 
     # -- interaction ---------------------------------------------------
+
+    def resizeEvent(self, event):
+        """Keep a long subtitle, such as the path of an added bundle, inside the card."""
+        super().resizeEvent(event)
+        if self._eliding:
+            return  # setting the text lays the card out again, which lands back here
+
+        metrics = QFontMetrics(self.subtitle.font())
+        elided = metrics.elidedText(
+            self.project.subtitle, Qt.TextElideMode.ElideMiddle, self.subtitle.width()
+        )
+        if elided == self.subtitle.text():
+            return
+
+        self._eliding = True
+        try:
+            self.subtitle.setText(elided)
+        finally:
+            self._eliding = False
 
     def mouseReleaseEvent(self, event):
         inside = self.rect().contains(event.position().toPoint())
@@ -179,15 +232,28 @@ class ProjectCard(QFrame):
 class StartupWindow(QWidget):
     """Ivory landing page: the wordmark above, the project list below."""
 
-    def __init__(self, projects=config.PROJECTS, parent=None):
+    VISIBLE_CARDS = 3
+
+    def __init__(self, projects=config.PROJECTS, parent=None, settings=None):
+        """projects are the bundles we ship; anything the user added is loaded on top."""
         super().__init__(parent)
         self.setObjectName("startupPage")
         self.setWindowTitle("Swapchain")
         self.setStyleSheet(STYLESHEET)
-        self.setMinimumSize(680, 520)
-        self.resize(880, 620)
+        self.setMinimumSize(680, 620)
+        self.resize(880, 680)
 
         self.viewer = None  # the MainWindow being loaded, once a project is picked
+
+        # Building the viewer blocks this thread, so it waits for the busy state
+        # to paint. Owned by the window, so closing the page calls it off.
+        self._pending_project = None
+        self._open_timer = QTimer(self)
+        self._open_timer.setSingleShot(True)
+        self._open_timer.timeout.connect(self._start_pending_load)
+        self.settings = settings if settings is not None else QSettings(ORG_NAME, APP_NAME)
+        self.shipped = tuple(projects)
+        self.projects = []
 
         page = QVBoxLayout(self)
         page.setContentsMargins(56, 48, 56, 40)
@@ -210,17 +276,51 @@ class StartupWindow(QWidget):
 
         page.addLayout(self._section_heading("PROJECTS"))
         page.addSpacing(16)
+        page.addWidget(self._project_list())
+
+        self.add_button = QPushButton("+   Add a project...")
+        self.add_button.setObjectName("addCard")
+        self.add_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.add_button.setToolTip("Open a folder holding scene.obj, targets.ply, plan.json ...")
+        self.add_button.clicked.connect(self.choose_project)
+        page.addSpacing(10)
+        page.addWidget(self.add_button)
+
+        page.addSpacing(16)
+        page.addLayout(self._progress_row())
 
         self.cards = {}
-        for project in projects:
-            card = ProjectCard(project)
-            card.clicked.connect(self.open_project)
-            self.cards[project.name] = card
-            page.addWidget(card)
-            page.addSpacing(10)
+        for project in (*self.shipped, *self._saved_projects()):
+            self._add_card(project)
+        self._fit_project_list()
 
-        page.addSpacing(14)
-        page.addLayout(self._progress_row())
+    def _project_list(self) -> QScrollArea:
+        """The cards, in a scroller so a long list cannot push the page apart."""
+        self.card_host = QWidget()
+        self.card_host.setObjectName("cardHost")
+        self.card_column = QVBoxLayout(self.card_host)
+        self.card_column.setContentsMargins(0, 0, 0, 0)
+        self.card_column.setSpacing(CARD_SPACING)
+        self.card_column.addStretch(1)  # cards sit at the top, at their own height
+
+        self.scroll = QScrollArea()
+        self.scroll.setObjectName("cardScroll")
+        self.scroll.setWidget(self.card_host)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.viewport().setAutoFillBackground(False)
+        self.card_host.setAutoFillBackground(False)
+        return self.scroll
+
+    def _fit_project_list(self):
+        """Hold the list at its content height, up to VISIBLE_CARDS, then scroll.
+
+        A fixed height, because a stretchy one gets squeezed by the space the
+        wordmark above it wants, and squeezed cards overlap.
+        """
+        rows = max(1, min(len(self.cards), self.VISIBLE_CARDS))
+        self.scroll.setFixedHeight(rows * ProjectCard.HEIGHT + (rows - 1) * CARD_SPACING)
 
     def _section_heading(self, text: str) -> QHBoxLayout:
         """A small caps label trailed by a hairline across the rest of the width."""
@@ -259,24 +359,120 @@ class StartupWindow(QWidget):
         column.addWidget(self.bar)
         return column
 
+    # -- the project list ----------------------------------------------
+
+    def _add_card(self, project: Project):
+        """Put a project on the page. Bundles the user added can be taken off again."""
+        card = ProjectCard(project)
+        card.clicked.connect(self.open_project)
+        self.projects.append(project)
+        self.cards[str(project.data_dir)] = card
+        self.card_column.insertWidget(self.card_column.count() - 1, card)  # above the stretch
+
+        if project not in self.shipped:
+            card.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            card.customContextMenuRequested.connect(
+                lambda point, p=project: self._offer_removal(p, point)
+            )
+            card.setToolTip(f"{project.data_dir}\nRight click to take it off the list.")
+
+        self._fit_project_list()
+        return card
+
+    def choose_project(self):
+        """Ask for a bundle folder, and add it if it holds a bundle."""
+        folder = QFileDialog.getExistingDirectory(self, "Choose a project folder", str(Path.home()))
+        if folder:
+            self.add_folder(Path(folder))
+
+    def add_folder(self, folder: Path) -> bool:
+        """Add the bundle in this folder to the list, or explain why it cannot be."""
+        if any(Path(p.data_dir) == folder for p in self.projects):
+            self.status.setText(f"{folder.name} is already on the list.")
+            return False
+
+        try:
+            complete, message = validate_required_files(str(folder))
+        except OSError as error:
+            self.status.setText(f"Could not read {folder.name}: {error.strerror}")
+            return False
+
+        if not complete:
+            self.status.setText(message)
+            return False
+
+        self._add_card(Project(name=folder.name, subtitle=str(folder), data_dir=folder))
+        self._remember_added()
+        self.status.setText(f"Added {folder.name}. Select it to open it.")
+        return True
+
+    def remove_project(self, project: Project):
+        """Take an added project off the list. The bundle on disk is left alone."""
+        card = self.cards.pop(str(project.data_dir), None)
+        if card is None:
+            return
+        self.projects.remove(project)
+        self.card_column.removeWidget(card)
+        card.deleteLater()
+        self._fit_project_list()
+        self._remember_added()
+        self.status.setText(f"Removed {project.name} from the list.")
+
+    def _offer_removal(self, project: Project, point):
+        menu = QMenu(self)
+        menu.addAction("Remove from the list").triggered.connect(
+            lambda _checked=False, p=project: self.remove_project(p)
+        )
+        menu.exec(self.cards[str(project.data_dir)].mapToGlobal(point))
+
+    def _saved_projects(self) -> list[Project]:
+        """Projects added on an earlier run, skipping any entry that no longer reads."""
+        stored = self.settings.value("projects", "[]")
+        try:
+            entries = json.loads(stored) if isinstance(stored, str) else []
+        except json.JSONDecodeError:
+            entries = []
+
+        projects = []
+        for entry in entries if isinstance(entries, list) else []:
+            try:
+                projects.append(Project.from_dict(entry))
+            except KeyError, TypeError:
+                continue
+        return projects
+
+    def _remember_added(self):
+        """Save the added projects, so the next run starts with them."""
+        added = [p.as_dict() for p in self.projects if p not in self.shipped]
+        self.settings.setValue("projects", json.dumps(added))
+
     # -- opening a project ---------------------------------------------
 
     def open_project(self, project: Project):
         if self.viewer is not None:
             return  # already opening one
 
-        self.cards[project.name].set_busy(True)
+        self.cards[str(project.data_dir)].set_busy(True)
         self.status.setText(f"Opening {project.name}...")
         self.bar.setRange(0, STAGE_COUNT)
         self.bar.setValue(0)
         self.bar.show()
+        self.add_button.setEnabled(False)
 
-        # Building the viewer blocks this thread for a moment. Let the busy
-        # state paint first.
-        QTimer.singleShot(0, lambda: self._start_load(project))
+        self._pending_project = project
+        self._open_timer.start(0)
+
+    def _start_pending_load(self):
+        project, self._pending_project = self._pending_project, None
+        if project is not None:
+            self._start_load(project)
 
     def _start_load(self, project: Project):
-        viewer = wd.MainWindow(project.data_dir, defer_load=True)
+        viewer = wd.MainWindow(
+            project.data_dir,
+            expected_viewpoints=project.expected_viewpoints,
+            defer_load=True,
+        )
         self.viewer = viewer
 
         loader = viewer.loader
@@ -316,10 +512,14 @@ class StartupWindow(QWidget):
 
         for card in self.cards.values():
             card.set_busy(False)
+        self.add_button.setEnabled(True)
         self.bar.hide()
         self.status.setText("Could not open the project. Select it to try again.")
 
     def closeEvent(self, event):
+        self._open_timer.stop()
+        self._pending_project = None
+
         viewer = self.viewer
         if viewer is not None and not viewer.isVisible():
             # Closed mid-load: let the viewer shut its loader thread down.

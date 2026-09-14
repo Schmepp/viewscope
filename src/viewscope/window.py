@@ -33,12 +33,19 @@ from viewscope.viewport import Viewport
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, data_dir: Path = DATA_DIR, *, defer_load: bool = False):
+    def __init__(
+        self,
+        data_dir: Path = DATA_DIR,
+        *,
+        expected_viewpoints: int | None = None,
+        defer_load: bool = False,
+    ):
         """Build the shell and, unless the load is deferred, start reading the bundle.
 
-        Pass defer_load=True to leave the loader idle: the startup screen uses
-        that to connect to its signals before the first one is emitted, then
-        calls self.loader.start() itself.
+        expected_viewpoints is the plan size a shipped bundle is known to hold,
+        checked while loading. Pass defer_load=True to leave the loader idle:
+        the startup screen uses that to connect to its signals before the first
+        one is emitted, then calls self.loader.start() itself.
         """
         super().__init__()
         self.setWindowTitle("ViewScope")
@@ -74,7 +81,7 @@ class MainWindow(QMainWindow):
         self._restore_layout()
 
         # Load the scene
-        self.loader = SceneLoader(data_dir, self)
+        self.loader = SceneLoader(data_dir, self, expected_viewpoints)
         self.loader.progress.connect(self.statusBar().showMessage)
         self.loader.loaded.connect(self._on_scene_loaded)
         self.loader.failed.connect(self._on_failed)

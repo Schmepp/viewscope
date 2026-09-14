@@ -309,6 +309,7 @@ class FloorGrid:
     def build(self, renderer, grid_size: int, spawn_position: tuple, scale: float):
         """This creates the actors to be added to the renderer.
         The grid is a structured grid of points and the axes are lines."""
+        self.spawn_position = tuple(spawn_position)
         self.structured_grid = self.create_structured_grid(grid_size)
 
         # - Mapper and Actor
@@ -378,6 +379,16 @@ class FloorGrid:
         structured_grid.SetPoints(points)
 
         return structured_grid
+
+    def move_to(self, spawn_position: tuple):
+        """Re-anchor the grid, once a scene says where its ground actually is.
+
+        Bundles do not share a coordinate frame: one survey sits hundreds of
+        metres from the origin, the next straddles it."""
+        self.spawn_position = tuple(float(v) for v in spawn_position)
+        for actor in (self.grid_actor, *(self.axes_actors or [])):
+            if actor is not None:
+                actor.SetPosition(*self.spawn_position)
 
     def set_visible(self, visible: bool):
         if (self.grid_actor is not None) and (self.axes_actors is not None):

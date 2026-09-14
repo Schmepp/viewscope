@@ -30,9 +30,10 @@ class SceneLoader(QThread):
     plan_validation_failed = Signal(str, str, str)  # Title + Error + Action message
     filename_validation_failed = Signal(str, str, str)  # Title + Error + Action message
 
-    def __init__(self, data_dir: Path, parent=None):
+    def __init__(self, data_dir: Path, parent=None, expected_viewpoints: int | None = None):
         super().__init__(parent)
         self.data_dir = Path(data_dir)
+        self.expected_viewpoints = expected_viewpoints
         self.error_message = None
         self._started_stages = 0
 
@@ -65,7 +66,7 @@ class SceneLoader(QThread):
             )
 
         plan_validated, self.error_message = validate_plan(  # Validate plan.json next
-            str(self.data_dir / "plan.json")
+            str(self.data_dir / "plan.json"), self.expected_viewpoints
         )
         if not plan_validated:
             self.call_error_dialog(

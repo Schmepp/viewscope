@@ -5,14 +5,17 @@ import os
 # Must be set before Qt picks a platform plugin, so these run without a display.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from pathlib import Path  # noqa: E402
+
 import pytest  # noqa: E402
+from PySide6.QtCore import QSettings  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from viewscope.config import Project  # noqa: E402
 from viewscope.data.loader import STAGE_COUNT  # noqa: E402
 from viewscope.startup import ProjectCard, StartupWindow  # noqa: E402
 
-PROJECTS = (Project(name="Kiri Building", subtitle="A test bundle", data_dir="data/kiri"),)
+PROJECTS = (Project(name="Kiri Building", subtitle="A test bundle", data_dir=Path("data/kiri")),)
 
 
 @pytest.fixture(scope="session")
@@ -21,16 +24,22 @@ def app():
 
 
 @pytest.fixture
-def page(app):
-    window = StartupWindow(PROJECTS)
+def settings(tmp_path):
+    """A throwaway ini, so the tests never touch the real saved project list."""
+    return QSettings(str(tmp_path / "viewscope.ini"), QSettings.Format.IniFormat)
+
+
+@pytest.fixture
+def page(app, settings):
+    window = StartupWindow(PROJECTS, settings=settings)
     yield window
     window.close()
 
 
 def test_lists_every_project(page):
-    """One card per project, named after it."""
-    assert list(page.cards) == ["Kiri Building"]
-    assert page.cards["Kiri Building"].project is PROJECTS[0]
+    """One card per project, keyed by the bundle it opens."""
+    assert list(page.cards) == ["data/kiri"]
+    assert page.cards["data/kiri"].project is PROJECTS[0]
 
 
 def test_card_click_asks_for_its_project(app):
@@ -59,7 +68,7 @@ def test_opening_shows_the_bar_and_marks_the_card_busy(page):
     """The viewer itself is built on the next event loop turn, which the test never runs."""
     page.open_project(PROJECTS[0])
 
-    assert page.cards["Kiri Building"].property("busy") is True
+    assert page.cards["data/kiri"].property("busy") is True
     assert not page.bar.isHidden()
     assert page.bar.value() == 0
     assert page.bar.maximum() == STAGE_COUNT
@@ -81,6 +90,106 @@ def test_failure_puts_the_page_back(page):
     page._on_failed("no such bundle")
 
     assert page.viewer is None
-    assert page.cards["Kiri Building"].property("busy") is False
+    assert page.cards["data/kiri"].property("busy") is False
     assert page.bar.isHidden()
     assert "try again" in page.status.text()
+
+
+# -- adding a project ------------------------------------------------------
+
+
+def bundle(folder: Path) -> Path:
+    """A folder holding the six files a bundle must have."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in ("scene.obj", "targets.ply", "plan.json", *NPZ_FILES):
+        (folder / name).write_text("")
+    return folder
+
+
+NPZ_FILES = ("scores.npz", "visibility.npz", "flyable.npz")
+
+
+def test_adding_a_complete_bundle(page, tmp_path):
+    folder = bundle(tmp_path / "seahawk")
+
+    assert page.add_folder(folder) is True
+    assert str(folder) in page.cards
+    assert page.projects[-1].name == "seahawk"
+    assert "Added seahawk" in page.status.text()
+
+
+def test_adding_an_incomplete_folder_is_refused(page, tmp_path):
+    folder = tmp_path / "half"
+    folder.mkdir()
+    (folder / "scene.obj").write_text("")
+
+    assert page.add_folder(folder) is False
+    assert str(folder) not in page.cards
+    assert "plan.json" in page.status.text()
+
+
+def test_the_same_folder_is_not_added_twice(page, tmp_path):
+    folder = bundle(tmp_path / "seahawk")
+    page.add_folder(folder)
+
+    assert page.add_folder(folder) is False
+    assert len(page.cards) == 2  # the shipped one and the one added once
+
+
+def test_added_projects_come_back_next_run(app, settings, tmp_path):
+    folder = bundle(tmp_path / "seahawk")
+    first = StartupWindow(PROJECTS, settings=settings)
+    first.add_folder(folder)
+    first.close()
+
+    second = StartupWindow(PROJECTS, settings=settings)
+    try:
+        assert str(folder) in second.cards
+        assert second.projects[-1].data_dir == folder
+    finally:
+        second.close()
+
+
+def test_removing_an_added_project(page, tmp_path):
+    folder = bundle(tmp_path / "seahawk")
+    page.add_folder(folder)
+
+    page.remove_project(page.projects[-1])
+
+    assert str(folder) not in page.cards
+    assert [p.name for p in page.projects] == ["Kiri Building"]
+
+    # and it stays gone
+    revisit = StartupWindow(PROJECTS, settings=page.settings)
+    try:
+        assert str(folder) not in revisit.cards
+    finally:
+        revisit.close()
+
+
+def test_three_cards_keep_their_height_and_do_not_overlap(page, tmp_path):
+    """A card that re-lays-out its own subtitle used to loop until the stack blew."""
+    page.resize(880, 680)
+    page.show()
+    QApplication.processEvents()
+
+    for index in range(2):
+        page.add_folder(bundle(tmp_path / f"bundle{index}"))
+    QApplication.processEvents()
+
+    rows = [card.geometry() for card in page.cards.values()]
+    assert [row.height() for row in rows] == [ProjectCard.HEIGHT] * 3
+    for above, below in zip(rows, rows[1:], strict=False):  # consecutive pairs
+        assert above.bottom() < below.top()
+
+
+def test_a_long_subtitle_is_elided_into_the_card(page, tmp_path):
+    folder = bundle(tmp_path / ("deeply/" * 12 + "nested"))
+    page.resize(880, 680)
+    page.show()
+    page.add_folder(folder)
+    QApplication.processEvents()
+
+    card = page.cards[str(folder)]
+    assert card.subtitle.text() != str(folder)  # shortened to fit
+    assert "…" in card.subtitle.text()

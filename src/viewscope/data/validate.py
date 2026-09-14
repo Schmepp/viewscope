@@ -43,25 +43,31 @@ def validate_required_files(path="data"):
     return True, "Sucess"
 
 
-def validate_plan(plan_path):
+def validate_plan(plan_path, expected_viewpoints=None):
     """Compare the expected viewpoints to the actual viewpoints counted within the file.
-    Return's a tuple: the success(True/False) and an status message (Sucess/Error)"""
-    expected_viewpoints = 185
-    # print(plan_path)
-    # if plan_path!="plan.json":
-    #     return False, error_message
+    Return's a tuple: the success(True/False) and an status message (Sucess/Error)
 
-    if validate_file_exists(plan_path):
-        actual_viewpoints = count_view_points(plan_path)
-        if actual_viewpoints == expected_viewpoints:
-            return True, "Success"
-        else:
-            error_message = (
-                f"Error: plan.json was expecting {expected_viewpoints}"
-                + f" viewpoints but received {actual_viewpoints} viewpoints."
-            )
+    expected_viewpoints is the count a shipped bundle is known to hold, such as
+    185 for data/kiri. Projects the user adds bring their own plan, so passing
+    None asks only for a plan that exists and holds at least one viewpoint."""
+    if not validate_file_exists(plan_path):
+        return False, f"Error: {plan_path} does not exist."
 
-            return False, error_message
+    actual_viewpoints = count_view_points(plan_path)
+
+    if expected_viewpoints is None:
+        if actual_viewpoints < 1:
+            return False, "Error: plan.json holds no viewpoints."
+        return True, "Success"
+
+    if actual_viewpoints == expected_viewpoints:
+        return True, "Success"
+
+    error_message = (
+        f"Error: plan.json was expecting {expected_viewpoints}"
+        + f" viewpoints but received {actual_viewpoints} viewpoints."
+    )
+    return False, error_message
 
 
 def count_view_points(plan_path) -> int:

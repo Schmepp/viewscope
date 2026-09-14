@@ -57,6 +57,21 @@ class Project:
     name: str
     subtitle: str
     data_dir: Path
+    # The plan size a bundle we ship is known to hold, checked while loading.
+    # Projects the user adds bring their own plan, so they leave this None.
+    expected_viewpoints: int | None = None
+
+    def as_dict(self) -> dict:
+        """The form the startup screen saves an added project in."""
+        return {"name": self.name, "subtitle": self.subtitle, "data_dir": str(self.data_dir)}
+
+    @classmethod
+    def from_dict(cls, raw: dict) -> Project:
+        return cls(
+            name=str(raw["name"]),
+            subtitle=str(raw.get("subtitle", raw["data_dir"])),
+            data_dir=Path(raw["data_dir"]),
+        )
 
 
 PROJECTS = (
@@ -64,5 +79,12 @@ PROJECTS = (
         name="Kiri Building",
         subtitle="Kiri Vehera mesh, targets and viewpoint plan",
         data_dir=DATA_DIR,
+        expected_viewpoints=185,
+    ),
+    Project(
+        name="SeaHawk",
+        subtitle="SH-60 airframe, targets and viewpoint plan",
+        data_dir=Path("data/SeaHawk"),
+        expected_viewpoints=120,
     ),
 )
