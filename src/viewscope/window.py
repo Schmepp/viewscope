@@ -108,6 +108,8 @@ class MainWindow(QMainWindow):
         # TODO(Adam): In future, I would prefer if camera_picked
         #             returned a CameraInfo and was wired into self._on_camera_changed.
         self.viewpoints_panel.camera_picked.connect(self.camera_viewport.show_camera)
+        self.viewport.camera_picked.connect(self.camera_viewport.show_camera)
+        self.viewport.camera_picked.connect(self.viewpoints_panel.select_row)
 
         SCENE_STORE.plan_changed.connect(self._on_plan_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)

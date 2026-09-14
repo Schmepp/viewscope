@@ -213,7 +213,7 @@ class CameraGlyphs:
 
         self._visible: bool = True
         self._active: int | None = None
-        self._outline: type = CameraOutline # Why is this underscored?
+        self._outline: type = CameraOutline
 
     @property
     def actors(self) -> list[vtk.vtkActor]:

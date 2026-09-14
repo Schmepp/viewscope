@@ -47,6 +47,7 @@ class Viewport(QVTKRenderWindowInteractor):
     """
 
     camera_changed = Signal(CameraInfo)
+    camera_picked = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -57,10 +58,9 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self._interactor = self.GetRenderWindow().GetInteractor()
         self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
-        # TODO(Azaam): Enable the two lines, when resuming Grid optimization
-        # Adding observer only on active camera, for zoom-scale calculation.
-        # local_camera = self.renderer.GetActiveCamera()
-        # local_camera.AddObserver(vtk.vtkCommand.ModifiedEvent, self._on_camera_modified)
+
+        self._mouse_picker = vtk.vtkPropPicker()
+        self._mouse_picker.PickFromListOn()
 
         self.mesh = None
         self.cloud = None
@@ -72,6 +72,11 @@ class Viewport(QVTKRenderWindowInteractor):
         self._mouse_lock_position = QPoint()
         self._mouse_lock_global_pos = QPoint()
         self._mouse_virtual_local_pos = QPoint()
+
+        # TODO(Azaam): Enable the two lines, when resuming Grid optimization
+        # Adding observer only on active camera, for zoom-scale calculation.
+        # local_camera = self.renderer.GetActiveCamera()
+        # local_camera.AddObserver(vtk.vtkCommand.ModifiedEvent, self._on_camera_modified)
 
         # TODO(Azaam): Enable when resuming Grid optimization
         # self.initial_camera_distance = self.renderer.GetActiveCamera().GetDistance()
@@ -121,6 +126,9 @@ class Viewport(QVTKRenderWindowInteractor):
 
         for view in (self.mesh, self.cloud, self.glyphs):
             view.add_to(self.renderer)
+
+        for glyph_actor in self.glyphs.actors:
+            self._mouse_picker.AddPickList(glyph_actor)
 
         self.camera = CameraController(self.renderer, YFOV_DEG)
         self.renderer.ResetCamera()
@@ -234,10 +242,16 @@ class Viewport(QVTKRenderWindowInteractor):
         #             when the plan changes are the camera glyphs. The mesh and
         #             cloud are unaffected by the plan.
         if self.glyphs is not None:
+            for glyph_actor in self.glyphs.actors:
+                self._mouse_picker.DeletePickList(glyph_actor)
+
             self.glyphs.remove_from(self.renderer)
 
         self.glyphs = CameraGlyphs(SCENE_STORE.scene.plan)
         self.glyphs.add_to(self.renderer)
+
+        for glyph_actor in self.glyphs.actors:
+            self._mouse_picker.AddPickList(glyph_actor)
 
         self.render()
 
@@ -270,7 +284,12 @@ class Viewport(QVTKRenderWindowInteractor):
     # -- Mouse --------------------------------------------------------
 
     def mousePressEvent(self, ev: QMouseEvent):
-        """Lock mouse on Right Click, Left Click & Middle Click."""
+        """Lock mouse on Right Click, Left Click & Middle Click, and handle mouse-picking dispatch."""
+        # NOTE(Adam): Early-return here handles camera-click vs viewport manip on left-click
+        if (ev.button() == Qt.MouseButton.LeftButton) and self._pick_camera_glyph(ev):
+            super().mousePressEvent(ev)
+            return
+
         if (
             ev.button()
             in (Qt.MouseButton.RightButton, Qt.MouseButton.LeftButton, Qt.MouseButton.MiddleButton)
@@ -350,6 +369,35 @@ class Viewport(QVTKRenderWindowInteractor):
         # Restore cursor visibility and position
         self.ShowCursor()
         QCursor.setPos(self._mouse_lock_global_pos)
+
+    def _pick_camera_glyph(self, ev: QMouseEvent) -> bool:
+        """
+        Selects the camera from the camera glyph hovered by the mouse cursor.
+        Returns True if a camera was under the mouse and selected, False otherwise.
+        """
+        if self.glyphs is None:
+            return False
+
+        # NOTE(Adam): Qt uses the top-left origin.
+        #             VTK uses OpenGL coordinates - bottom-left origin.
+        dpr = self.devicePixelRatioF() # Handle window DPI scaling
+        x = int(ev.position().x() * dpr)
+        y = self.GetRenderWindow().GetSize()[1] - int(ev.position().y() * dpr) - 1
+        self._mouse_picker.Pick(x, y, 0, self.renderer)
+
+        actor = self._mouse_picker.GetActor()
+        if actor is None:
+            return False
+
+        camera_id = self.glyphs.camera_id_of_actor(actor)
+        if camera_id is None:
+            return False
+
+        print(f"Selected camera: {camera_id}")
+        self.camera_picked.emit(camera_id)
+
+        return True
+
 
     # TODO(Azaam): Uncomment method, when resuming Grid optimization
     # def _on_camera_modified(self, obj, event) -> None:
