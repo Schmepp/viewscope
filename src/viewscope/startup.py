@@ -9,11 +9,14 @@ viewer only appears once its scene is on screen.
 from __future__ import annotations
 
 import json
+import re
+import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, Qt, QTimer, Signal
+from PySide6.QtCore import QProcess, QSettings, Qt, QTimer, Signal
 from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
+    QDialog,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -32,6 +35,7 @@ from viewscope import window as wd
 from viewscope.config import APP_NAME, ORG_NAME, Project
 from viewscope.data.loader import STAGE_COUNT
 from viewscope.data.validate import validate_required_files
+from viewscope.dialogs.build_dialog import BuildBundleDialog
 
 CARD_SPACING = 10
 
@@ -107,6 +111,13 @@ STYLESHEET = f"""
     background: {config.CARD};
     border-color: {config.ACCENT};
     color: {config.ACCENT};
+}}
+#linkButton {{
+    background: transparent;
+    border: none;
+    color: {config.ACCENT};
+    font-size: 12px;
+    text-decoration: underline;
 }}
 #cardScroll, #cardHost {{
     background: transparent;
@@ -248,6 +259,8 @@ class StartupWindow(QWidget):
         # Building the viewer blocks this thread, so it waits for the busy state
         # to paint. Owned by the window, so closing the page calls it off.
         self._pending_project = None
+        self.builder = None  # the QProcess of a running build, if any
+        self._build = None  # what it is building
         self._open_timer = QTimer(self)
         self._open_timer.setSingleShot(True)
         self._open_timer.timeout.connect(self._start_pending_load)
@@ -283,8 +296,17 @@ class StartupWindow(QWidget):
         self.add_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.add_button.setToolTip("Open a folder holding scene.obj, targets.ply, plan.json ...")
         self.add_button.clicked.connect(self.choose_project)
+
+        self.build_button = QPushButton("+   Build a project from a model...")
+        self.build_button.setObjectName("addCard")
+        self.build_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.build_button.setToolTip("Turn an .obj into a bundle, then add it")
+        self.build_button.clicked.connect(self.choose_model)
+
         page.addSpacing(10)
         page.addWidget(self.add_button)
+        page.addSpacing(8)
+        page.addWidget(self.build_button)
 
         page.addSpacing(16)
         page.addLayout(self._progress_row())
@@ -344,7 +366,17 @@ class StartupWindow(QWidget):
 
         self.status = QLabel("Select a project to open it.")
         self.status.setObjectName("status")
-        column.addWidget(self.status)
+
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setObjectName("linkButton")
+        self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cancel_button.clicked.connect(self.cancel_build)
+        self.cancel_button.hide()
+
+        line = QHBoxLayout()
+        line.addWidget(self.status, 1)
+        line.addWidget(self.cancel_button)
+        column.addLayout(line)
 
         self.bar = QProgressBar()
         self.bar.setTextVisible(False)
@@ -385,7 +417,7 @@ class StartupWindow(QWidget):
         if folder:
             self.add_folder(Path(folder))
 
-    def add_folder(self, folder: Path) -> bool:
+    def add_folder(self, folder: Path, name: str | None = None) -> bool:
         """Add the bundle in this folder to the list, or explain why it cannot be."""
         if any(Path(p.data_dir) == folder for p in self.projects):
             self.status.setText(f"{folder.name} is already on the list.")
@@ -401,10 +433,133 @@ class StartupWindow(QWidget):
             self.status.setText(message)
             return False
 
-        self._add_card(Project(name=folder.name, subtitle=str(folder), data_dir=folder))
+        self._add_card(Project(name=name or folder.name, subtitle=str(folder), data_dir=folder))
         self._remember_added()
-        self.status.setText(f"Added {folder.name}. Select it to open it.")
+        self.status.setText(f"Added {name or folder.name}. Select it to open it.")
         return True
+
+    # -- building a bundle from a model --------------------------------
+
+    def choose_model(self):
+        """Pick an .obj and, once the settings are confirmed, build a bundle from it."""
+        if self.builder is not None:
+            self.status.setText("A build is already running.")
+            return
+
+        model, _ = QFileDialog.getOpenFileName(
+            self, "Choose a model", str(Path.home()), "Wavefront models (*.obj)"
+        )
+        if not model:
+            return
+
+        dialog = BuildBundleDialog(Path(model), self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        self.build_bundle(Path(model), dialog.settings())
+
+    def build_bundle(self, model: Path, settings: dict):
+        """Run the builder over this model, in a process of its own.
+
+        Its renderer wants an OpenGL context, and the library asks for one live
+        SceneRenderer per process, so it does not share this one.
+        """
+        out_dir = Path(settings["out_dir"])
+        try:
+            out_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            self.status.setText(f"Cannot write to {out_dir}: {error.strerror}")
+            return
+
+        self._build = {"name": settings["name"], "out_dir": out_dir, "log": []}
+
+        self.builder = QProcess(self)
+        self.builder.setProgram(sys.executable)
+        self.builder.setArguments(
+            [
+                "-u",  # unbuffered, so the stages arrive as they happen
+                "-m",
+                "viewscope.build_bundle",
+                str(model),
+                str(out_dir),
+                "--length",
+                str(settings["length"]),
+                "--up",
+                settings["up"],
+                "--targets",
+                str(settings["targets"]),
+                "--viewpoints",
+                str(settings["viewpoints"]),
+            ]
+        )
+        self.builder.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
+        self.builder.readyReadStandardOutput.connect(self._on_build_output)
+        self.builder.finished.connect(self._on_build_finished)
+        self.builder.errorOccurred.connect(self._on_build_error)
+
+        self.build_button.setEnabled(False)
+        self.add_button.setEnabled(False)
+        self.cancel_button.show()
+        self.status.setText(f"Building {settings['name']}...")
+        self.bar.setRange(0, 0)  # busy, until the first stage says how many there are
+        self.bar.show()
+
+        self.builder.start()
+
+    def cancel_build(self):
+        """Stop a running build. Whatever it wrote so far is left on disk."""
+        if self.builder is None:
+            return
+        self.builder.kill()
+        self.status.setText("Build cancelled.")
+
+    def _on_build_output(self):
+        """Follow the stage lines the builder prints, such as "[3/6] planning"."""
+        text = bytes(self.builder.readAllStandardOutput()).decode("utf-8", "replace")
+        for line in text.splitlines():
+            if not line.strip():
+                continue
+            self._build["log"].append(line)
+            stage = re.match(r"^\[(\d+)/(\d+)\]\s*(.*)$", line.strip())
+            if stage:
+                done, total, message = stage.groups()
+                self.bar.setRange(0, int(total))
+                self.bar.setValue(int(done))
+                self.status.setText(f"{self._build['name']}: {message}")
+
+    def _on_build_error(self, _error):
+        message = self.builder.errorString() if self.builder is not None else "unknown error"
+        self._finish_build(f"Could not run the builder: {message}")
+
+    def _on_build_finished(self, exit_code, _status):
+        if exit_code == 0:
+            out_dir = self._build["out_dir"]
+            name = self._build["name"]
+            self._finish_build("")
+            if self.add_folder(out_dir, name=name):
+                self.status.setText(f"Built {name}. Select it to open it.")
+            return
+
+        if self.status.text() != "Build cancelled.":
+            tail = next(
+                (line for line in reversed(self._build["log"]) if line.strip()),
+                "no output",
+            )
+            self._finish_build(f"Build failed: {tail}")
+        else:
+            self._finish_build(self.status.text())
+
+    def _finish_build(self, message: str):
+        if self.builder is not None:
+            self.builder.deleteLater()
+        self.builder = None
+        self.cancel_button.hide()
+        self.build_button.setEnabled(True)
+        self.add_button.setEnabled(True)
+        self.bar.setRange(0, STAGE_COUNT)
+        self.bar.hide()
+        if message:
+            self.status.setText(message)
 
     def remove_project(self, project: Project):
         """Take an added project off the list. The bundle on disk is left alone."""
@@ -452,6 +607,10 @@ class StartupWindow(QWidget):
         if self.viewer is not None:
             return  # already opening one
 
+        if self.builder is not None:
+            self.status.setText(f"Building {self._build['name']}; cancel it or let it finish.")
+            return
+
         self.cards[str(project.data_dir)].set_busy(True)
         self.status.setText(f"Opening {project.name}...")
         self.bar.setRange(0, STAGE_COUNT)
@@ -474,6 +633,8 @@ class StartupWindow(QWidget):
             defer_load=True,
         )
         self.viewer = viewer
+
+        viewer.back_requested.connect(self.show_projects)
 
         loader = viewer.loader
         loader.progress.connect(self.status.setText)
@@ -500,7 +661,32 @@ class StartupWindow(QWidget):
         viewer.raise_()
         viewer.activateWindow()
         viewer.start()
-        self.close()  # after the viewer is up, so the application keeps a window
+        self.hide()  # after the viewer is up, so the application keeps a window
+
+    def show_projects(self):
+        """Come back from the viewer to the project list, and let the bundle go."""
+        viewer, self.viewer = self.viewer, None
+
+        # Shown before the viewer closes, so the application is never without a
+        # window and never quits on its own.
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+        if viewer is not None:
+            viewer.close()  # saves its layout, stops its loader, releases VTK
+            viewer.deleteLater()
+
+        self._reset_page("Select a project to open it.")
+
+    def _reset_page(self, message: str):
+        """Put the page back the way it looks before anything was picked."""
+        for card in self.cards.values():
+            card.set_busy(False)
+        self.add_button.setEnabled(True)
+        self.build_button.setEnabled(self.builder is None)
+        self.bar.hide()
+        self.status.setText(message)
 
     def _on_failed(self, _message):
         # The viewer has already reported the failure in its own dialog. Put the
@@ -510,15 +696,14 @@ class StartupWindow(QWidget):
             viewer.close()
             viewer.deleteLater()
 
-        for card in self.cards.values():
-            card.set_busy(False)
-        self.add_button.setEnabled(True)
-        self.bar.hide()
-        self.status.setText("Could not open the project. Select it to try again.")
+        self._reset_page("Could not open the project. Select it to try again.")
 
     def closeEvent(self, event):
         self._open_timer.stop()
         self._pending_project = None
+        if self.builder is not None:
+            self.builder.kill()
+            self.builder.waitForFinished(2000)
 
         viewer = self.viewer
         if viewer is not None and not viewer.isVisible():

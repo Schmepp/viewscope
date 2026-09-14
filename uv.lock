@@ -688,6 +688,7 @@ dependencies = [
     { name = "pyrender" },
     { name = "pyside6" },
     { name = "rtree" },
+    { name = "scipy" },
     { name = "trimesh" },
     { name = "vtk" },
 ]
@@ -708,6 +709,7 @@ requires-dist = [
     { name = "pyrender", specifier = ">=0.1.45" },
     { name = "pyside6", specifier = "==6.9.3" },
     { name = "rtree", specifier = ">=1.4.1" },
+    { name = "scipy", specifier = ">=1.16" },
     { name = "trimesh", specifier = ">=5.0.0" },
     { name = "vtk", specifier = ">=9.6.2" },
 ]

@@ -26,12 +26,14 @@ dependencies = [
     "pyrender>=0.1.45",
     "pyside6==6.9.3",
     "rtree>=1.4.1",
+    "scipy>=1.16",
     "trimesh>=5.0.0",
     "vtk>=9.6.2",
 ]
 
 [project.scripts]
 viewscope = "viewscope.main:main"
+viewscope-build = "viewscope.build_bundle:main"
 
 [dependency-groups]
 dev = [

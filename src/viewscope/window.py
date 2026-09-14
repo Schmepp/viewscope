@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, QSettings, Qt
+from PySide6.QtCore import QByteArray, QSettings, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QDockWidget,
@@ -33,6 +33,9 @@ from viewscope.viewport import Viewport
 
 
 class MainWindow(QMainWindow):
+    #: Asked for the project list back. The startup screen is what answers it.
+    back_requested = Signal()
+
     def __init__(
         self,
         data_dir: Path = DATA_DIR,
@@ -129,6 +132,19 @@ class MainWindow(QMainWindow):
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
 
     def _build_actions(self):
+        project_bar = self.addToolBar("Project")
+        project_bar.setObjectName("toolbar_project")
+
+        self.act_back = QAction("\u2190 Projects", self)
+        self.act_back.setShortcut(QKeySequence("Ctrl+Shift+P"))
+        self.act_back.setToolTip("Close this bundle and pick another (Ctrl+Shift+P)")
+        self.act_back.triggered.connect(self.back_requested)
+        project_bar.addAction(self.act_back)
+        self.addAction(self.act_back)  # keeps the shortcut alive when VTK has focus
+
+        project_menu = self.menuBar().addMenu("&Project")
+        project_menu.addAction(self.act_back)
+
         toolbar = self.addToolBar("Cameras")
         toolbar.setObjectName("toolbar_cameras")
 

@@ -7,6 +7,24 @@ uv run viewscope
 
 ```
 
+The startup screen lists the projects. "Add a project..." takes a folder that
+already holds a bundle; "Build a project from a model..." turns an .obj into
+one. The viewer's toolbar has "<- Projects" (Ctrl+Shift+P) to come back.
+
+## Building a bundle from a model
+
+The same builder the startup screen runs, from the command line:
+
+```
+uv run viewscope-build data/SeaHawk/Seahawk.obj data/SeaHawk --length 19.76 --up y
+```
+
+It writes the six files a project needs - scene.obj, targets.ply, plan.json,
+visibility.npz, scores.npz, flyable.npz - producing every number through
+viewscope_core, the way data/kiri was made. The model is baked to vertex
+colours, turned +Z up, and scaled so its longest side measures --length metres,
+because the library scores in real metres. Run it with --help for the rest.
+
 ---
 
 ## Getting started

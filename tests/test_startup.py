@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from viewscope.config import Project  # noqa: E402
 from viewscope.data.loader import STAGE_COUNT  # noqa: E402
+from viewscope.dialogs.build_dialog import BuildBundleDialog  # noqa: E402
 from viewscope.startup import ProjectCard, StartupWindow  # noqa: E402
 
 PROJECTS = (Project(name="Kiri Building", subtitle="A test bundle", data_dir=Path("data/kiri")),)
@@ -193,3 +194,53 @@ def test_a_long_subtitle_is_elided_into_the_card(page, tmp_path):
     card = page.cards[str(folder)]
     assert card.subtitle.text() != str(folder)  # shortened to fit
     assert "…" in card.subtitle.text()
+
+
+# -- coming back, and building --------------------------------------------
+
+
+def test_back_shows_the_page_and_resets_it(page):
+    page.hide()
+    page.status.setText("Ready")
+    page.bar.show()
+    next(iter(page.cards.values())).set_busy(True)
+
+    page.show_projects()
+
+    assert page.isVisible()
+    assert page.viewer is None
+    assert page.bar.isHidden()
+    assert not next(iter(page.cards.values())).property("busy")
+    assert "Select a project" in page.status.text()
+
+
+def test_a_running_build_holds_off_opening(page):
+    page.builder = object()  # stands in for the QProcess
+    page._build = {"name": "Seahawk"}
+
+    page.open_project(PROJECTS[0])
+
+    assert page.viewer is None
+    assert not next(iter(page.cards.values())).property("busy")
+    assert "Seahawk" in page.status.text()
+    page.builder = None
+
+
+def test_build_settings_come_from_the_dialog(app, tmp_path):
+    model = tmp_path / "Seahawk.obj"
+    model.write_text("")
+    dialog = BuildBundleDialog(model)
+    dialog.name.setText("Sea Hawk")
+    dialog.length.setValue(19.76)
+    dialog.up.setCurrentText("z")
+    dialog.targets.setValue(12000)
+    dialog.viewpoints.setValue(48)
+
+    settings = dialog.settings()
+
+    assert settings["name"] == "Sea Hawk"
+    assert settings["out_dir"] == tmp_path  # beside the model, by default
+    assert settings["length"] == 19.76
+    assert settings["up"] == "z"
+    assert (settings["targets"], settings["viewpoints"]) == (12000, 48)
+    dialog.deleteLater()
