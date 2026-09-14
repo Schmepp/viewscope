@@ -205,28 +205,29 @@ class CameraGlyphs:
     """One frustum per planned viewpoint."""
 
     def __init__(self, plan: vc.Plan):
-        self.actors = []
+        self.glyphs: dict[vtk.vtkActor, int] = {}
         for i in range(len(plan.positions)):
-            vertices, faces, colours, edges = vc.camera_glyph(
-                plan.positions[i], plan.yaws_deg[i], plan.pitches_deg[i]
-            )
-            self.actors.append(
-                self._build(transform.glyph_polydata(vertices, faces, colours, edges))
-            )
+            vertices, faces, colours, edges = vc.camera_glyph(plan.positions[i], plan.yaws_deg[i], plan.pitches_deg[i])
+            actor = self._build(transform.glyph_polydata(vertices, faces, colours, edges))
+            self.glyphs[actor] = i
 
-        self._visible = True
-        self._active = None
-        self._outline = CameraOutline
+        self._visible: bool = True
+        self._active: int | None = None
+        self._outline: type = CameraOutline # Why is this underscored?
+
+    @property
+    def actors(self) -> list[vtk.vtkActor]:
+        return list(self.glyphs.keys())
 
     def add_to(self, renderer: vtk.vtkRenderer):
-        for actor in self.actors:
+        for actor in self.glyphs.keys():
             renderer.AddActor(actor)
 
     def remove_from(self, renderer: vtk.vtkRenderer):
-        for actor in self.actors:
+        for actor in self.glyphs.keys():
             renderer.RemoveActor(actor)
 
-        self.actors.clear()
+        self.glyphs.clear()
 
     def set_visible(self, visible: bool):
         self._visible = visible
@@ -236,6 +237,9 @@ class CameraGlyphs:
         """Track which frustum the viewer is sitting inside."""
         self._active = index
         self._refresh()
+
+    def camera_id_of_actor(self, actor: vtk.vtkActor) -> int | None:
+        return self.glyphs.get(actor)
 
     @staticmethod
     def _build(polydata: vtk.vtkPolyData):
@@ -248,9 +252,9 @@ class CameraGlyphs:
         return actor
 
     def _refresh(self):
-        for i, actor in enumerate(self.actors):
+        for actor, id in self.glyphs.items():
             # Never draw the frustum you are inside; it fills the view.
-            actor.SetVisibility(self._visible and i != self._active)
+            actor.SetVisibility(self._visible and id != self._active)
 
 
 class CameraOutline:
