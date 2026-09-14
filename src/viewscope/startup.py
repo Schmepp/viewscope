@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, QSettings, Qt, QTimer, Signal
@@ -139,6 +140,15 @@ QProgressBar::chunk {{
 """
 
 
+@dataclass
+class _Build:
+    """The bundle a running builder process is writing, and what it has said."""
+
+    name: str
+    out_dir: Path
+    log: list[str] = field(default_factory=list)
+
+
 def wordmark_font() -> QFont:
     """A serif face for the title, whichever of these the platform has."""
     font = QFont()
@@ -259,8 +269,8 @@ class StartupWindow(QWidget):
         # Building the viewer blocks this thread, so it waits for the busy state
         # to paint. Owned by the window, so closing the page calls it off.
         self._pending_project = None
-        self.builder = None  # the QProcess of a running build, if any
-        self._build = None  # what it is building
+        self.builder: QProcess | None = None  # the QProcess of a running build, if any
+        self._build: _Build | None = None  # what it is building
         self._open_timer = QTimer(self)
         self._open_timer.setSingleShot(True)
         self._open_timer.timeout.connect(self._start_pending_load)
@@ -325,15 +335,15 @@ class StartupWindow(QWidget):
         self.card_column.setSpacing(CARD_SPACING)
         self.card_column.addStretch(1)  # cards sit at the top, at their own height
 
-        self.scroll = QScrollArea()
-        self.scroll.setObjectName("cardScroll")
-        self.scroll.setWidget(self.card_host)
-        self.scroll.setWidgetResizable(True)
-        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.scroll.viewport().setAutoFillBackground(False)
+        self.card_scroll = QScrollArea()
+        self.card_scroll.setObjectName("cardScroll")
+        self.card_scroll.setWidget(self.card_host)
+        self.card_scroll.setWidgetResizable(True)
+        self.card_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.card_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.card_scroll.viewport().setAutoFillBackground(False)
         self.card_host.setAutoFillBackground(False)
-        return self.scroll
+        return self.card_scroll
 
     def _fit_project_list(self):
         """Hold the list at its content height, up to VISIBLE_CARDS, then scroll.
@@ -342,7 +352,7 @@ class StartupWindow(QWidget):
         wordmark above it wants, and squeezed cards overlap.
         """
         rows = max(1, min(len(self.cards), self.VISIBLE_CARDS))
-        self.scroll.setFixedHeight(rows * ProjectCard.HEIGHT + (rows - 1) * CARD_SPACING)
+        self.card_scroll.setFixedHeight(rows * ProjectCard.HEIGHT + (rows - 1) * CARD_SPACING)
 
     def _section_heading(self, text: str) -> QHBoxLayout:
         """A small caps label trailed by a hairline across the rest of the width."""
@@ -471,7 +481,7 @@ class StartupWindow(QWidget):
             self.status.setText(f"Cannot write to {out_dir}: {error.strerror}")
             return
 
-        self._build = {"name": settings["name"], "out_dir": out_dir, "log": []}
+        self._build = _Build(name=settings["name"], out_dir=out_dir)
 
         self.builder = QProcess(self)
         self.builder.setProgram(sys.executable)
@@ -515,26 +525,32 @@ class StartupWindow(QWidget):
 
     def _on_build_output(self):
         """Follow the stage lines the builder prints, such as "[3/6] planning"."""
-        text = bytes(self.builder.readAllStandardOutput()).decode("utf-8", "replace")
+        if self.builder is None or self._build is None:
+            return
+        raw = self.builder.readAllStandardOutput().data()
+        text = bytes(raw).decode("utf-8", "replace")
         for line in text.splitlines():
             if not line.strip():
                 continue
-            self._build["log"].append(line)
+            self._build.log.append(line)
             stage = re.match(r"^\[(\d+)/(\d+)\]\s*(.*)$", line.strip())
             if stage:
                 done, total, message = stage.groups()
                 self.bar.setRange(0, int(total))
                 self.bar.setValue(int(done))
-                self.status.setText(f"{self._build['name']}: {message}")
+                self.status.setText(f"{self._build.name}: {message}")
 
     def _on_build_error(self, _error):
         message = self.builder.errorString() if self.builder is not None else "unknown error"
         self._finish_build(f"Could not run the builder: {message}")
 
     def _on_build_finished(self, exit_code, _status):
+        if self._build is None:
+            return
+
         if exit_code == 0:
-            out_dir = self._build["out_dir"]
-            name = self._build["name"]
+            out_dir = self._build.out_dir
+            name = self._build.name
             self._finish_build("")
             if self.add_folder(out_dir, name=name):
                 self.status.setText(f"Built {name}. Select it to open it.")
@@ -542,7 +558,7 @@ class StartupWindow(QWidget):
 
         if self.status.text() != "Build cancelled.":
             tail = next(
-                (line for line in reversed(self._build["log"]) if line.strip()),
+                (line for line in reversed(self._build.log) if line.strip()),
                 "no output",
             )
             self._finish_build(f"Build failed: {tail}")
@@ -608,7 +624,8 @@ class StartupWindow(QWidget):
             return  # already opening one
 
         if self.builder is not None:
-            self.status.setText(f"Building {self._build['name']}; cancel it or let it finish.")
+            name = self._build.name if self._build is not None else "a project"
+            self.status.setText(f"Building {name}; cancel it or let it finish.")
             return
 
         self.cards[str(project.data_dir)].set_busy(True)

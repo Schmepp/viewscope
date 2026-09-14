@@ -27,6 +27,7 @@ from pathlib import Path
 
 import numpy as np
 import trimesh
+import trimesh.visual
 from scipy.ndimage import distance_transform_edt
 from trimesh.visual.color import uv_to_color
 
@@ -55,10 +56,8 @@ def load_coloured(obj_path: Path) -> trimesh.Trimesh:
     """
     with tempfile.TemporaryDirectory() as work:
         scene = trimesh.load(_with_local_textures(obj_path, Path(work)), process=False)
-        parts = [
-            _coloured_part(part)
-            for part in (scene.geometry.values() if hasattr(scene, "geometry") else [scene])
-        ]
+        geometries = list(scene.geometry.values()) if isinstance(scene, trimesh.Scene) else [scene]
+        parts = [_coloured_part(part) for part in geometries if isinstance(part, trimesh.Trimesh)]
 
     mesh = trimesh.util.concatenate(parts)
     if not isinstance(mesh, trimesh.Trimesh) or len(mesh.faces) == 0:
@@ -245,7 +244,7 @@ def build_scores(targets, normals, plan, visible):
     keep = np.float32(weight) > 0
     pair_target, pair_camera = pair_target[keep], pair_camera[keep]
     offset, normal = offset[keep], normal[keep]
-    weight = np.float32(weight[keep])
+    weight = weight[keep].astype(np.float32)
     f_rho, f_theta = np.float32(f_rho[keep]), np.float32(f_theta[keep])
 
     counts = np.bincount(pair_target, minlength=target_count)

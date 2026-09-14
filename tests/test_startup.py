@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 from viewscope.config import Project  # noqa: E402
 from viewscope.data.loader import STAGE_COUNT  # noqa: E402
 from viewscope.dialogs.build_dialog import BuildBundleDialog  # noqa: E402
-from viewscope.startup import ProjectCard, StartupWindow  # noqa: E402
+from viewscope.startup import ProjectCard, StartupWindow, _Build  # noqa: E402
 
 PROJECTS = (Project(name="Kiri Building", subtitle="A test bundle", data_dir=Path("data/kiri")),)
 
@@ -216,7 +216,7 @@ def test_back_shows_the_page_and_resets_it(page):
 
 def test_a_running_build_holds_off_opening(page):
     page.builder = object()  # stands in for the QProcess
-    page._build = {"name": "Seahawk"}
+    page._build = _Build(name="Seahawk", out_dir=Path("Seahawk"))
 
     page.open_project(PROJECTS[0])
 
