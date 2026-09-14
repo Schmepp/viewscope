@@ -317,9 +317,12 @@ class MainWindow(QMainWindow):
         settings.setValue("state", self.saveState())
 
     def closeEvent(self, event):
+        # Safe to run twice: closing the window and later destroying it both
+        # come through here, and the things being released do not take it twice.
         self._save_layout()
         if self.visibility is not None:
             self.visibility.close()
+            self.visibility = None
         if self.loader.isRunning():
             self.loader.wait(2000)
         self.viewport.shutdown()
