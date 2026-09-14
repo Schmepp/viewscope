@@ -41,7 +41,7 @@ CARD_SPACING = 10
 
 STYLESHEET = f"""
 #startupPage {{
-    background: {config.IVORY};
+    background: {config.PAGE};
 }}
 #title {{
     color: {config.INK};
@@ -241,7 +241,7 @@ class ProjectCard(QFrame):
 
 
 class StartupWindow(QWidget):
-    """Ivory landing page: the wordmark above, the project list below."""
+    """The landing page: the wordmark above, the project list below."""
 
     VISIBLE_CARDS = 3
 

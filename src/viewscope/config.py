@@ -37,17 +37,18 @@ OCCLUDED_COLOUR = (0.42, 0.43, 0.47)
 # -- startup screen --------------------------------------------------------
 
 # Hex strings, because these are Qt stylesheet values. The VTK colours above
-# are 0-1 floats and the two are not interchangeable.
-IVORY = "#FFFFF0"
-INK = "#1F1C15"
-MUTED = "#6F6A5B"
-HAIRLINE = "#E4DEC6"
-CARD = "#FFFDF5"
-CARD_HOVER = "#FFFFFF"
-CARD_BORDER = "#E6E0C8"
-CARD_BORDER_HOVER = "#C9BF98"
-ACCENT = "#8A6A3B"
-TRACK = "#EDE7D3"
+# are 0-1 floats and the two are not interchangeable. Pitched dark, a shade
+# above BACKGROUND, so the page and the viewport read as one application.
+PAGE = "#121116"
+INK = "#F2EFE9"
+MUTED = "#918C99"
+HAIRLINE = "#2A2831"
+CARD = "#1B1A21"
+CARD_HOVER = "#232229"
+CARD_BORDER = "#2A2831"
+CARD_BORDER_HOVER = "#4A4553"
+ACCENT = "#8FC5E8"
+TRACK = "#26242C"
 
 
 @dataclass(frozen=True)
