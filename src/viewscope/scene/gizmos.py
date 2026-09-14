@@ -3,7 +3,7 @@ from __future__ import annotations
 import vtk
 
 import viewscope_core as vc
-from viewscope import transform
+from viewscope.scene import transform
 
 
 class FloorGrid:

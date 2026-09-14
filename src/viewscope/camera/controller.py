@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 
 import viewscope_core as vc
-from viewscope import transform
 from viewscope.camera.structs import CameraInfo
 from viewscope.data.store import SCENE_STORE
+from viewscope.scene import transform
 
 
 class CameraController:

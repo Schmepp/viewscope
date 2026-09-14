@@ -1,4 +1,5 @@
-"""numpy / trimesh -> VTK conversions.
+"""
+numpy / trimesh -> VTK utility conversions.
 
 Pure functions only: no Qt, no actors, no application state. Everything here
 can be exercised without a render window, which makes it the easy part of the
@@ -16,6 +17,7 @@ def points(array):
     """Wrap an (n, 3) array as vtkPoints."""
     pts = vtk.vtkPoints()
     pts.SetData(vtknp.numpy_to_vtk(np.ascontiguousarray(array, dtype=np.float64), deep=True))
+
     return pts
 
 
@@ -25,6 +27,7 @@ def cells(indices, n_per_cell):
     padded = np.column_stack([np.full(len(idx), n_per_cell, dtype=np.int64), idx]).ravel()
     array = vtk.vtkCellArray()
     array.SetCells(len(idx), vtknp.numpy_to_vtkIdTypeArray(padded, deep=True))
+
     return array
 
 
@@ -45,6 +48,7 @@ def trimesh_to_polydata(mesh):
         tc = vtknp.numpy_to_vtk(uv, deep=True)
         tc.SetName("TCoords")
         poly.GetPointData().SetTCoords(tc)
+
     return poly
 
 
@@ -64,6 +68,7 @@ def texture_from_mesh(mesh):
     texture = vtk.vtkTexture()
     texture.SetInputData(img)
     texture.InterpolateOn()
+
     return texture
 
 
@@ -74,6 +79,7 @@ def cloud_polydata(positions):
     glyph = vtk.vtkVertexGlyphFilter()
     glyph.SetInputData(poly)
     glyph.Update()
+
     return glyph.GetOutput()
 
 
@@ -81,18 +87,23 @@ def glyph_polydata(vertices, faces, colours, edges):
     """Assemble one camera frustum glyph."""
     poly = vtk.vtkPolyData()
     poly.SetPoints(points(vertices))
+
     if faces is not None and len(faces):
         poly.SetPolys(cells(faces, 3))
+
     if edges is not None and len(edges):
         poly.SetLines(cells(edges, 2))
+
     if colours is not None and len(colours) == len(vertices):
         rgb = np.ascontiguousarray(np.asarray(colours)[:, :3], dtype=np.uint8)
         poly.GetPointData().SetScalars(vtknp.numpy_to_vtk(rgb, deep=True))
+
     return poly
 
 
 def apply_pose(camera, pose, yfov_deg, distance):
-    """Point a vtkCamera using a 4x4 camera-to-world pose.
+    """
+    Point a vtkCamera using a 4x4 camera-to-world pose.
 
     OpenGL convention: the camera looks down its own -Z with +Y up, so the
     rotation block's columns are the camera axes in world space.
