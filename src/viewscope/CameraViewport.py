@@ -20,7 +20,7 @@ from viewscope.config import (
     YFOV_DEG,
 )
 from viewscope.data.scene import SceneData
-from viewscope.scene.camera import CameraGlyphs
+from viewscope.scene.gizmos import CameraGlyphs
 from viewscope.scene.views import MeshView
 
 

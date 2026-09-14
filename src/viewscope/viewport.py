@@ -28,8 +28,7 @@ from viewscope.config import (
 )
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
-from viewscope.scene.camera import CameraGlyphs, CameraOutline
-from viewscope.scene.gizmos import FloorGrid
+from viewscope.scene.gizmos import CameraGlyphs, CameraOutline, FloorGrid
 from viewscope.scene.stats import FieldStats
 from viewscope.scene.views import MeshView, TargetCloudView
 
