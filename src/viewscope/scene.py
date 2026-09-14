@@ -207,7 +207,9 @@ class CameraGlyphs:
     def __init__(self, plan: vc.Plan):
         self.glyphs: dict[vtk.vtkActor, int] = {}
         for i in range(len(plan.positions)):
-            vertices, faces, colours, edges = vc.camera_glyph(plan.positions[i], plan.yaws_deg[i], plan.pitches_deg[i])
+            vertices, faces, colours, edges = vc.camera_glyph(
+                plan.positions[i], plan.yaws_deg[i], plan.pitches_deg[i]
+            )
             actor = self._build(transform.glyph_polydata(vertices, faces, colours, edges))
             self.glyphs[actor] = i
 
@@ -220,11 +222,11 @@ class CameraGlyphs:
         return list(self.glyphs.keys())
 
     def add_to(self, renderer: vtk.vtkRenderer):
-        for actor in self.glyphs.keys():
+        for actor in self.glyphs:
             renderer.AddActor(actor)
 
     def remove_from(self, renderer: vtk.vtkRenderer):
-        for actor in self.glyphs.keys():
+        for actor in self.glyphs:
             renderer.RemoveActor(actor)
 
         self.glyphs.clear()

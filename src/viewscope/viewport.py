@@ -272,7 +272,9 @@ class Viewport(QVTKRenderWindowInteractor):
     # -- Mouse --------------------------------------------------------
 
     def mousePressEvent(self, ev: QMouseEvent):
-        """Lock mouse on Right Click, Left Click & Middle Click, and handle mouse-picking dispatch."""
+        """
+        Lock mouse on Right Click, Left Click & Middle Click, and handle mouse-picking dispatch.
+        """
         # NOTE(Adam): Early-return here handles camera-click vs viewport manip on left-click
         if (ev.button() == Qt.MouseButton.LeftButton) and self._pick_camera_glyph(ev):
             super().mousePressEvent(ev)
@@ -368,7 +370,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
         # NOTE(Adam): Qt uses the top-left origin.
         #             VTK uses OpenGL coordinates - bottom-left origin.
-        dpr = self.devicePixelRatioF() # Handle window DPI scaling
+        dpr = self.devicePixelRatioF()  # Handle window DPI scaling
         x = int(ev.position().x() * dpr)
         y = self.GetRenderWindow().GetSize()[1] - int(ev.position().y() * dpr) - 1
         self._mouse_picker.Pick(x, y, 0, self.renderer)
@@ -385,7 +387,6 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera_picked.emit(camera_id)
 
         return True
-
 
     # TODO(Azaam): Uncomment method, when resuming Grid optimization
     # def _on_camera_modified(self, obj, event) -> None:
