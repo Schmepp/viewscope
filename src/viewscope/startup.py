@@ -272,7 +272,7 @@ class StartupWindow(QWidget):
         page.setContentsMargins(56, 48, 56, 40)
         page.setSpacing(0)
 
-        title = QLabel("Swapchain")
+        title = QLabel("SWAPCHAIN⛓")
         title.setObjectName("title")
         title.setFont(wordmark_font())
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
