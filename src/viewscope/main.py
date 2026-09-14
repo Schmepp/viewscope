@@ -13,7 +13,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from viewscope import config
-from viewscope import window as wd
+from viewscope.startup import StartupWindow
 
 
 def main() -> int:
@@ -25,11 +25,11 @@ def main() -> int:
     app.setOrganizationName(config.ORG_NAME)
     app.setApplicationName(config.APP_NAME)
 
-    window = wd.MainWindow(config.DATA_DIR)
-    window.show()
-    window.raise_()
-    window.activateWindow()
-    window.start()
+    # The startup screen opens the viewer itself, once a project is loaded.
+    startup = StartupWindow()
+    startup.show()
+    startup.raise_()
+    startup.activateWindow()
 
     return app.exec()
 

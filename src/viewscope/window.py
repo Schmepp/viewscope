@@ -33,7 +33,13 @@ from viewscope.viewport import Viewport
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, data_dir: Path = DATA_DIR):
+    def __init__(self, data_dir: Path = DATA_DIR, *, defer_load: bool = False):
+        """Build the shell and, unless the load is deferred, start reading the bundle.
+
+        Pass defer_load=True to leave the loader idle: the startup screen uses
+        that to connect to its signals before the first one is emitted, then
+        calls self.loader.start() itself.
+        """
         super().__init__()
         self.setWindowTitle("ViewScope")
         self.resize(1500, 950)
@@ -76,7 +82,8 @@ class MainWindow(QMainWindow):
             self.show_error_dialog
         )  # Connect file validation Dialog
         self.loader.filename_validation_failed.connect(self.show_error_dialog)
-        self.loader.start()
+        if not defer_load:
+            self.loader.start()
 
     def start(self):
         """Hand control to the VTK interactor, once the window is visible."""
