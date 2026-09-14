@@ -5,9 +5,9 @@ import trimesh
 import vtk
 from vtkmodules.util import numpy_support as vtknp
 
-from viewscope.scene.stats import FieldStats
 from viewscope import transform
 from viewscope.config import EDGE_COLOUR, GEOMETRY_COLOUR, OCCLUDED_COLOUR, VISIBLE_COLOUR
+from viewscope.scene.stats import FieldStats
 
 
 class MeshView:
