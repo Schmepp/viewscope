@@ -213,18 +213,6 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.has_scene and self.camera is not None:
             self._moved(self.camera.show_overview())
 
-    def show_camera(self, index: int):
-        if self.has_scene and self.camera is not None:
-            self._moved(self.camera.show(index))
-
-    def next_camera(self):
-        if self.has_scene and self.camera is not None:
-            self._moved(self.camera.step(1))
-
-    def prev_camera(self):
-        if self.has_scene and self.camera is not None:
-            self._moved(self.camera.step(-1))
-
     def on_camera_changed(self):
         """Update the highlighted camera."""
         self.selected_outline.remove_from(self.renderer)
