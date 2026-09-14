@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 
 from viewscope.camera.structs import CameraInfo
 from viewscope.data.store import SCENE_STORE
-from viewscope.scene import FieldStats
+from viewscope.scene.stats import FieldStats
 
 
 class MetricsPanel(QWidget):

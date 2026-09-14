@@ -20,7 +20,8 @@ from viewscope.config import (
     YFOV_DEG,
 )
 from viewscope.data.scene import SceneData
-from viewscope.scene import CameraGlyphs, MeshView
+from viewscope.scene.gizmos import CameraGlyphs
+from viewscope.scene.views import MeshView
 
 
 class CameraViewport(QVTKRenderWindowInteractor):

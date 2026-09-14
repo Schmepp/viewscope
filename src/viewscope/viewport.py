@@ -28,14 +28,9 @@ from viewscope.config import (
 )
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
-from viewscope.scene import (
-    CameraGlyphs,
-    CameraOutline,
-    FieldStats,
-    FloorGrid,
-    MeshView,
-    TargetCloudView,
-)
+from viewscope.scene.gizmos import CameraGlyphs, CameraOutline, FloorGrid
+from viewscope.scene.stats import FieldStats
+from viewscope.scene.views import MeshView, TargetCloudView
 
 
 class Viewport(QVTKRenderWindowInteractor):

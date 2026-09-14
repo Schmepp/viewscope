@@ -26,9 +26,9 @@ from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
 from viewscope.dialogs.file_error_dialog import FileErrorDialog
 from viewscope.DisplayPanel import DisplayPanel
-from viewscope.highlight_targets import TargetVisibility
 from viewscope.MetricsPanel import MetricsPanel
 from viewscope.panels.viewpoints_panel import ViewpointsPanel
+from viewscope.scene.visibility import TargetVisibility
 from viewscope.viewport import Viewport
 
 
