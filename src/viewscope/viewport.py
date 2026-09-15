@@ -65,7 +65,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.cloud = None
         self.glyphs = None
         self.camera = None
-        self._mode = MODE_ALL
+        self._render_mode = MODE_ALL
         self._mouse_locked = False
         self._mouse_lock_global_pos = QPoint()
         self._mouse_virtual_local_pos = QPointF()
@@ -144,7 +144,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera = SceneCameraController(self.renderer, YFOV_DEG)
         self.renderer.ResetCamera()
         self.camera.save_overview()
-        self.set_mode(self._mode)
+        self.set_render_mode(self._render_mode)
 
     @staticmethod
     def _ground_centre(data: SceneData) -> tuple:
@@ -158,14 +158,14 @@ class Viewport(QVTKRenderWindowInteractor):
 
     # -- Display state -------------------------------------------------
 
-    def set_mode(self, mode: str):
-        if self._mode == mode:
+    def set_render_mode(self, mode: str):
+        if self._render_mode == mode:
             return
 
         if not self.has_scene:
             return
 
-        self._mode = mode
+        self._render_mode = mode
         show_mesh = mode in (MODE_TEXTURED, MODE_GEOMETRY, MODE_ALL)
 
         if self.mesh is not None:
