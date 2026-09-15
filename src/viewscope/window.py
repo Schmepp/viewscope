@@ -242,7 +242,7 @@ class MainWindow(QMainWindow):
 
         self.metrics_panel.show_camera(info)
         self.viewport.set_selected_camera_position(info)
-        self.viewport.on_camera_changed()
+        self.viewport.on_camera_changed(info) # passing in Info
 
         self.selected_camera = info
         if info is not None:
