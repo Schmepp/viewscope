@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import cast
 
 import vtk
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import QPoint, QPointF, Qt, Signal
 from PySide6.QtGui import QCursor, QMouseEvent
 from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
@@ -41,6 +41,9 @@ class Viewport(QVTKRenderWindowInteractor):
     panels can follow along without reaching into the renderer.
     """
 
+    # Swallow residual noise from the cursor warp during manipulation
+    _WARP_ECHO_EPSILON: float = 2.0 # px
+
     camera_changed = Signal(CameraInfo)
     camera_picked = Signal(int)
 
@@ -63,10 +66,8 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera = None
         self._mode = MODE_ALL
         self._mouse_locked = False
-        self._ignore_next_mouse_move = False
-        self._mouse_lock_position = QPoint()
         self._mouse_lock_global_pos = QPoint()
-        self._mouse_virtual_local_pos = QPoint()
+        self._mouse_virtual_local_pos = QPointF()
 
         # TODO(Azaam): Enable the two lines, when resuming Grid optimization
         # Adding observer only on active camera, for zoom-scale calculation.
@@ -324,52 +325,47 @@ class Viewport(QVTKRenderWindowInteractor):
         is reset back to its initial anchor position to allow infinite range-of-motion
         without running off-screen.
         """
-        if self._ignore_next_mouse_move:
-            self._ignore_next_mouse_move = False
+        if not self._mouse_locked:
+            super().mouseMoveEvent(ev)
             return
 
-        if self._mouse_locked:
-            current_global = ev.globalPosition().toPoint()
-            delta = current_global - self._mouse_lock_global_pos
+        anchor = QPointF(self._mouse_lock_global_pos)
+        current_global = ev.globalPosition()
+        delta = current_global - anchor
 
-            if not delta.isNull():
-                # Accumulate relative delta onto virtual local position
-                self._mouse_virtual_local_pos += delta
+        # Swallow the warp's own echo (and any sub-pixel OS noise) without
+        # discarding a whole event; real motion merged into a compressed
+        # event still gets through, so nothing gets batched/skipped.
+        if (abs(delta.x()) <= self._WARP_ECHO_EPSILON) and (abs(delta.y()) <= self._WARP_ECHO_EPSILON):
+            return
 
-                # Synthesize event with accumulated position so VTK trackball moves smoothly
-                fake_ev = QMouseEvent(
-                    ev.type(),
-                    self._mouse_virtual_local_pos.toPointF(),
-                    ev.globalPosition(),
-                    ev.button(),
-                    ev.buttons(),
-                    ev.modifiers(),
-                )
+        # Accumulate relative delta onto virtual local position
+        self._mouse_virtual_local_pos += delta
 
-                # Reset physical cursor back to anchor point
-                self._ignore_next_mouse_move = True
-                QCursor.setPos(self._mouse_lock_global_pos)
+        # Synthesize event with accumulated position so VTK trackball moves smoothly
+        fake_ev = QMouseEvent(
+            ev.type(),
+            self._mouse_virtual_local_pos,
+            ev.globalPosition(),
+            ev.button(),
+            ev.buttons(),
+            ev.modifiers(),
+        )
 
-                # Forward accumulated delta event to VTK interactor
-                super().mouseMoveEvent(fake_ev)
-                return
-
-        super().mouseMoveEvent(ev)
+        QCursor.setPos(self._mouse_lock_global_pos)
+        super().mouseMoveEvent(fake_ev)
 
     def _mouse_lock_enter(self, ev: QMouseEvent):
         self._mouse_locked = True
-        self._mouse_lock_position = ev.position().toPoint()
         self._mouse_lock_global_pos = ev.globalPosition().toPoint()
 
-        # Virtual position starts at real initial position and grows infinitely
-        self._mouse_virtual_local_pos = QPoint(self._mouse_lock_position)
-        self._ignore_next_mouse_move = False
-
+        # Virtual position starts at real initial position and grows infinitely.
+        # This position is kept as a float to avoid rounding jitter.
+        self._mouse_virtual_local_pos = ev.position()
         self.HideCursor()
 
     def _mouse_lock_exit(self):
         self._mouse_locked = False
-        self._ignore_next_mouse_move = False
 
         # Restore cursor visibility and position
         self.ShowCursor()
