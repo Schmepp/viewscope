@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import vtk
 
+from PySide6.QtCore import Signal, Qt
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout
+
+from viewscope.scene.camera import CameraMode
+
 import viewscope_core as vc
 from viewscope.scene import transform
 
@@ -208,3 +213,89 @@ class CameraOutline:
         if self.outline_actor is not None:
             renderer.RemoveActor(self.outline_actor)
             self.outline_actor = None
+
+
+class CameraModeGizmo(QFrame):
+    """Small floating control for switching camera interaction modes."""
+
+    mode_changed = Signal(CameraMode)
+
+    def __init__(self, parent = None):
+        super().__init__(parent)
+
+        self.setObjectName("CameraModeGizmo")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        self._buttons: dict[CameraMode, QPushButton] = {}
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(2)
+
+        self._add_mode(
+            layout,
+            CameraMode.TRACKBALL,
+            "🖱",
+            "Trackball Camera",
+        )
+
+        self._add_mode(
+            layout,
+            CameraMode.LOOK_AT,
+            "✦",
+            "Look-At Camera",
+        )
+
+        self.setStyleSheet("""
+            #CameraModeGizmo {
+                background: rgba(25, 25, 28, 220);
+                border: 1px solid rgba(255, 255, 255, 35);
+                border-radius: 7px;
+            }
+
+            QPushButton {
+                background: transparent;
+                color: rgba(255, 255, 255, 180);
+                border: none;
+                border-radius: 5px;
+                padding: 5px 9px;
+                text-align: left;
+                font-size: 11px;
+            }
+
+            QPushButton:hover {
+                background: rgba(255, 255, 255, 20);
+                color: white;
+            }
+
+            QPushButton:checked {
+                background: rgba(80, 140, 255, 100);
+                color: white;
+            }
+        """)
+
+        self.set_mode(CameraMode.LOOK_AT)
+
+    def _add_mode(self, layout: QVBoxLayout, mode: CameraMode, icon: str, text: str):
+        button = QPushButton(f"{icon}  {text}", self)
+        button.setCheckable(True)
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        button.clicked.connect(lambda checked=False, m=mode: self.set_mode(m))
+
+        self._buttons[mode] = button
+        layout.addWidget(button)
+
+    def set_mode(self, mode: CameraMode):
+        if mode not in self._buttons:
+            return
+
+        for button_mode, button in self._buttons.items():
+            button.setChecked(button_mode == mode)
+
+        self.mode_changed.emit(mode)
+
+    def set_current_mode(self, mode: CameraMode):
+        """Update the visual state without emitting mode_changed."""
+        for button_mode, button in self._buttons.items():
+            button.setChecked(button_mode == mode)

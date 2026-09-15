@@ -86,7 +86,7 @@ class TargetCloudView:
             self.scalar_bar.SetNumberOfLabels(5)
             self.scalar_bar.SetWidth(0.055)
             self.scalar_bar.SetHeight(0.32)
-            self.scalar_bar.SetPosition(0.93, 0.58)
+            self.scalar_bar.SetPosition(0.93, 0.55)
 
     @property
     def has_scores(self) -> bool:

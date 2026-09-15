@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from enum import Enum
 import math
 from dataclasses import dataclass, replace
 
 import numpy as np
 
 import vtk
+
+class CameraMode(Enum):
+    LOOK_AT = 0,
+    TRACKBALL = 1
+
 
 @dataclass(frozen=True)
 class CameraOrbitState:

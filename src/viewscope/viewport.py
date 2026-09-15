@@ -28,8 +28,8 @@ from viewscope.config import (
 )
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
-from viewscope.scene.camera import SceneCameraController
-from viewscope.scene.gizmos import CameraGlyphs, CameraOutline, FloorGrid
+from viewscope.scene.camera import CameraMode, SceneCameraController
+from viewscope.scene.gizmos import CameraGlyphs, CameraOutline, FloorGrid, CameraModeGizmo
 from viewscope.scene.stats import FieldStats
 from viewscope.scene.views import MeshView, TargetCloudView
 
@@ -65,6 +65,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.cloud = None
         self.glyphs = None
         self.camera = None
+        self._camera_mode = CameraMode.LOOK_AT
         self._render_mode = MODE_ALL
         self._mouse_locked = False
         self._mouse_lock_global_pos = QPoint()
@@ -96,6 +97,11 @@ class Viewport(QVTKRenderWindowInteractor):
         representation.AnchorToUpperLeft()
 
         self.set_camera_orientation_visible(True)
+
+        # CameraMode gizmo configuration
+        self.camera_mode_gizmo = CameraModeGizmo(self)
+        self.camera_mode_gizmo.mode_changed.connect(self.set_scene_camera_mode)
+        self.camera_mode_gizmo.raise_()
 
         self._finalized = False  # see shutdown()
 
@@ -268,13 +274,6 @@ class Viewport(QVTKRenderWindowInteractor):
                 float(info.position[2]),
             )
 
-    def _moved(self, info: CameraInfo | None):
-        if self.glyphs is not None:
-            self.glyphs.set_active(None if info is None else info.index)
-
-        self.camera_changed.emit(info)
-        self.render()
-
     def set_camera_orientation_visible(self, visible: bool):
         if visible:
             self.orientation_widget.On()
@@ -283,9 +282,29 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.render()
 
+    def set_scene_camera_mode(self, mode: CameraMode):
+        if mode == self._camera_mode:
+            return
+
+        self._camera_mode = mode
+        if self._camera_mode is CameraMode.TRACKBALL:
+            self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+        else:
+            self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleUser())
+
+        self.camera_mode_gizmo.set_current_mode(mode)
+        self.render()
+
     def toggle_camera_orientation_visible(self):
         current_visibility = self.orientation_widget.GetEnabled()
         self.set_camera_orientation_visible(not current_visibility)
+
+    def _moved(self, info: CameraInfo | None):
+        if self.glyphs is not None:
+            self.glyphs.set_active(None if info is None else info.index)
+
+        self.camera_changed.emit(info)
+        self.render()
 
     # -- Mouse --------------------------------------------------------
 
@@ -359,7 +378,7 @@ class Viewport(QVTKRenderWindowInteractor):
         QCursor.setPos(self._mouse_lock_global_pos)
         super().mouseMoveEvent(fake_ev)
 
-        if self.camera is not None:
+        if self.camera is not None and self._camera_mode is CameraMode.LOOK_AT:
             if ev.buttons() & Qt.MouseButton.LeftButton:
                 self.camera.orbit(delta.x(), delta.y())
             elif ev.buttons() & Qt.MouseButton.MiddleButton:
@@ -370,7 +389,8 @@ class Viewport(QVTKRenderWindowInteractor):
             self.render()
 
     def wheelEvent(self, ev: QWheelEvent):
-        if not self.has_scene or self.camera is None:
+        if not self.has_scene or self.camera is None or self._camera_mode is not CameraMode.LOOK_AT:
+            super().wheelEvent(ev)
             return
 
         # angleDelta().y() is in eighths of a degree; 120 == one notch on most mouses.
@@ -423,6 +443,20 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera_picked.emit(camera_id)
 
         return True
+
+    # -- Window events ---------------------------------------------------
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+
+        margin = 12
+        self.camera_mode_gizmo.adjustSize()
+
+        x = self.width() - self.camera_mode_gizmo.width() - margin
+        y = margin
+
+        self.camera_mode_gizmo.move(x, y)
+        self.camera_mode_gizmo.raise_()
 
     # TODO(Azaam): Uncomment method, when resuming Grid optimization
     # def _on_camera_modified(self, obj, event) -> None:
