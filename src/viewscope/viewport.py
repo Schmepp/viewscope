@@ -228,15 +228,17 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.has_scene and self.camera is not None:
             self._moved(self.camera.show_overview())
 
-    def on_camera_changed(self, info: CameraInfo | None): # pass in an instance of CameraInfo?? So that camera colour change can happen here
-        """Update the highlighted camera."""
+    def on_camera_changed(
+        self, info: CameraInfo | None
+    ):  # pass in an instance of CameraInfo?? So that camera colour change can happen here
+        """Update the highlighted camera. Change its colour to Gold, build outline around it."""
         if info is not None:
-            self.glyphs.set_actor_colour_by_index(info.index) # change colour here
-            print("_On0-camera_changed")
+            self.glyphs.set_actor_colour_by_index(info.index)  # change colour here
+            self.set_selected_camera_position(info)
 
-        self.selected_outline.remove_from(self.renderer)
-        if self.selected_camera_pos != (0, 0, 0):
-            self.selected_outline.build(self.renderer, self.selected_camera_pos)
+            self.selected_outline.remove_from(self.renderer)
+            if self.selected_camera_pos != (0, 0, 0):
+                self.selected_outline.build(self.renderer, self.selected_camera_pos)
 
         self.render()
 
@@ -273,8 +275,6 @@ class Viewport(QVTKRenderWindowInteractor):
     def _moved(self, info: CameraInfo | None):
         if self.glyphs is not None:
             self.glyphs.set_active(None if info is None else info.index)
-
-            self.glyphs.set_actor_colour(info.index) # change colour here
 
         self.camera_changed.emit(info)
         self.render()
@@ -400,8 +400,8 @@ class Viewport(QVTKRenderWindowInteractor):
         if actor is None:
             return False
 
-        # change colour [NOTE(AZAAM) THIS WORKS]
-        #self.glyphs.set_actor_colour(actor)
+        # NOTE(AZAAM): This method works too.
+        # self.glyphs.set_actor_colour(actor)
 
         camera_id = self.glyphs.camera_id_of_actor(actor)
         if camera_id is None:
