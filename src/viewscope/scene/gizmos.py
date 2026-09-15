@@ -173,8 +173,8 @@ class CameraGlyphs:
         actor.GetProperty().SetColor(*color)
 
     def reset_actors_colour(self):
-        for actor in self.glyphs.items():
-            actor.GetProperty().SetColor(self.COLOUR_DEFAULT)
+        for actor,id in self.glyphs.items():
+            actor.GetProperty().SetColor(*self.COLOUR_DEFAULT)
 
     def camera_id_of_actor(self, actor: vtk.vtkActor) -> int | None:
         return self.glyphs.get(actor)
