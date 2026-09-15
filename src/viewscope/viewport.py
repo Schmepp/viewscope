@@ -42,7 +42,7 @@ class Viewport(QVTKRenderWindowInteractor):
     """
 
     # Swallow residual noise from the cursor warp during manipulation
-    _WARP_ECHO_EPSILON: float = 2.0 # px
+    _WARP_ECHO_EPSILON: float = 2.0  # px
 
     camera_changed = Signal(CameraInfo)
     camera_picked = Signal(int)
@@ -279,6 +279,7 @@ class Viewport(QVTKRenderWindowInteractor):
             self.orientation_widget.On()
         else:
             self.orientation_widget.Off()
+
         self.render()
 
     def toggle_camera_orientation_visible(self):
@@ -336,7 +337,9 @@ class Viewport(QVTKRenderWindowInteractor):
         # Swallow the warp's own echo (and any sub-pixel OS noise) without
         # discarding a whole event; real motion merged into a compressed
         # event still gets through, so nothing gets batched/skipped.
-        if (abs(delta.x()) <= self._WARP_ECHO_EPSILON) and (abs(delta.y()) <= self._WARP_ECHO_EPSILON):
+        if (abs(delta.x()) <= self._WARP_ECHO_EPSILON) and (
+            abs(delta.y()) <= self._WARP_ECHO_EPSILON
+        ):
             return
 
         # Accumulate relative delta onto virtual local position
