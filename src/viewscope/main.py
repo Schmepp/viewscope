@@ -11,6 +11,7 @@ import platform
 import sys
 
 from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QGuiApplication
 
 from viewscope import config
 from viewscope.startup import StartupWindow
@@ -24,6 +25,13 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setOrganizationName(config.ORG_NAME)
     app.setApplicationName(config.APP_NAME)
+
+    # Wayland doesn't allow clients to warp the global cursor for
+    # security reasons - which is done by the viewport.
+    # To work around this, we force the application into X11 compatibility mode
+    if app.platformName() == "wayland":
+        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+        print("[Warning]: Viewscope is not fully-compatible with Wayland. Switching to X11 compatibility mode...")
 
     # The startup screen opens the viewer itself, once a project is loaded.
     startup = StartupWindow()
