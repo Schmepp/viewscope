@@ -117,6 +117,10 @@ class FloorGrid:
 
 class CameraGlyphs:
     """One frustum per planned viewpoint."""
+    # Camera Colours
+    COLOUR_DEFAULT = (1,1,1)
+    COLOUR_ACTIVE = (1.00, 0.85, 0.10) # Gold
+    COLOUR_NEW = (0.20, 0.80, 1.00) # Cyan
 
     def __init__(self, plan: vc.Plan):
         self.glyphs: dict[vtk.vtkActor, int] = {}
@@ -154,21 +158,24 @@ class CameraGlyphs:
         self._active = index
         self._refresh()
 
-    def set_actor_colour(self, index, color=(1,1,1)):
+    def set_actor_colour_by_index(self, index:int, color=COLOUR_ACTIVE):
         pass
-        print(self._active, " is active one") # This works
+        # print(self._active, " is active one") # This works
+        self.reset_actors_colour()
         for actor, id in self.glyphs.items():
             if index == id:
+                print("FOund camera")
                 actor.GetMapper().ScalarVisibilityOff()
-                color = (1.00, 0.85, 0.10)
+                # color = self.COLOUR_ACTIVE
                 actor.GetProperty().SetColor(*color)
-        # actor.GetMapper().ScalarVisibilityOff()
-    def set_actor_colour(self, actor, color=(1,1,1)):
+    def set_actor_colour(self, actor:vtk.vtkActor, color=COLOUR_ACTIVE):
         pass
-        print(self._active, " is active one") # This works
         actor.GetMapper().ScalarVisibilityOff()
-        color = (1.00, 0.85, 0.10)
+        # color = self.COLOUR_ACTIVE
         actor.GetProperty().SetColor(*color)
+    def reset_actors_colour(self):
+        for actor, id in self.glyphs.items():
+            self.set_actor_colour(actor, self.COLOUR_DEFAULT)
 
     def camera_id_of_actor(self, actor: vtk.vtkActor) -> int | None:
         return self.glyphs.get(actor)
