@@ -89,7 +89,14 @@ class SceneCameraController:
         cam.SetPosition(*self._orbit.camera_position())
         cam.SetViewUp(0, 0, 1)
         cam.SetViewAngle(self._orbit.view_angle)
-        self.renderer.ResetCameraClippingRange()
+
+        # Keep the near plane close enough that geometry doesn't disappear
+        # when the camera gets close to the pivot.
+        distance = self._orbit.distance
+        near_clip = max(distance * 0.001, 1e-5)
+        far_clip = max(distance * 100.0, near_clip + 1.0)
+
+        cam.SetClippingRange(near_clip, far_clip)
 
     def _ensure_orbit_active(self):
         """
@@ -148,13 +155,14 @@ class SceneCameraController:
         self._orbit = replace(self._orbit, distance=distance)
         self._apply_orbit()
 
-    def frame_scene(self):
-        """
-        Deliberately reframe on current scene bounds (similar to Unity's 'Frame Selected').
-        This is the *only* place scene bounds are allowed to affect the camera.
-        """
-        self.renderer.ResetCamera()
-        self._orbit = self._orbit_from_camera()
+    # TODO(Adam): This function is currently unused. Use or remove it!
+    # def frame_scene(self):
+    #     """
+    #     Deliberately reframe on current scene bounds (similar to Unity's 'Frame Selected').
+    #     This is the only place scene bounds are allowed to affect the camera.
+    #     """
+    #     self.renderer.ResetCamera()
+    #     self._orbit = self._orbit_from_camera()
 
     # -- Overview --------------------------------------------------------
 
