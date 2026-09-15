@@ -6,7 +6,7 @@ from typing import cast
 
 import vtk
 from PySide6.QtCore import QPoint, QPointF, Qt, Signal
-from PySide6.QtGui import QCursor, QMouseEvent
+from PySide6.QtGui import QCursor, QMouseEvent, QWheelEvent
 from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
 )
@@ -28,6 +28,7 @@ from viewscope.config import (
 )
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
+from viewscope.scene.camera import SceneCameraController
 from viewscope.scene.gizmos import CameraGlyphs, CameraOutline, FloorGrid
 from viewscope.scene.stats import FieldStats
 from viewscope.scene.views import MeshView, TargetCloudView
@@ -40,9 +41,9 @@ class Viewport(QVTKRenderWindowInteractor):
     Emits `camera_changed` with a CameraInfo, or None for the overview, so
     panels can follow along without reaching into the renderer.
     """
-
     # Swallow residual noise from the cursor warp during manipulation
     _WARP_ECHO_EPSILON: float = 2.0  # px
+    _ZOOM_NOTCH_SENSITIVITY: float = 20
 
     camera_changed = Signal(CameraInfo)
     camera_picked = Signal(int)
@@ -55,7 +56,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.GetRenderWindow().AddRenderer(self.renderer)
 
         self._interactor = self.GetRenderWindow().GetInteractor()
-        self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+        self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleUser())
 
         self._mouse_picker = vtk.vtkPropPicker()
         self._mouse_picker.PickFromListOn()
@@ -140,7 +141,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.grid_origin_point = self._ground_centre(data)
         self.floor_grid.move_to(self.grid_origin_point)
 
-        self.camera = CameraController(self.renderer, YFOV_DEG)
+        self.camera = SceneCameraController(self.renderer, YFOV_DEG)
         self.renderer.ResetCamera()
         self.camera.save_overview()
         self.set_mode(self._mode)
@@ -357,6 +358,27 @@ class Viewport(QVTKRenderWindowInteractor):
 
         QCursor.setPos(self._mouse_lock_global_pos)
         super().mouseMoveEvent(fake_ev)
+
+        if self.camera is not None:
+            if ev.buttons() & Qt.MouseButton.LeftButton:
+                self.camera.orbit(delta.x(), delta.y())
+            elif ev.buttons() & Qt.MouseButton.MiddleButton:
+                self.camera.pan(delta.x(), delta.y())
+            elif ev.buttons() & Qt.MouseButton.RightButton:
+                self.camera.dolly(-delta.y())
+
+            self.render()
+
+    def wheelEvent(self, ev: QWheelEvent):
+        if not self.has_scene or self.camera is None:
+            return
+
+        # angleDelta().y() is in eighths of a degree; 120 == one notch on most mouses.
+        scroll_notches = ev.angleDelta().y() / 120.0
+        self.camera.dolly(scroll_notches * self._ZOOM_NOTCH_SENSITIVITY)
+        self.render()
+
+        ev.accept()
 
     def _mouse_lock_enter(self, ev: QMouseEvent):
         self._mouse_locked = True
