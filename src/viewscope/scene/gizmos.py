@@ -154,6 +154,22 @@ class CameraGlyphs:
         self._active = index
         self._refresh()
 
+    def set_actor_colour(self, index, color=(1,1,1)):
+        pass
+        print(self._active, " is active one") # This works
+        for actor, id in self.glyphs.items():
+            if index == id:
+                actor.GetMapper().ScalarVisibilityOff()
+                color = (1.00, 0.85, 0.10)
+                actor.GetProperty().SetColor(*color)
+        # actor.GetMapper().ScalarVisibilityOff()
+    def set_actor_colour(self, actor, color=(1,1,1)):
+        pass
+        print(self._active, " is active one") # This works
+        actor.GetMapper().ScalarVisibilityOff()
+        color = (1.00, 0.85, 0.10)
+        actor.GetProperty().SetColor(*color)
+
     def camera_id_of_actor(self, actor: vtk.vtkActor) -> int | None:
         return self.glyphs.get(actor)
 

@@ -270,6 +270,8 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.glyphs is not None:
             self.glyphs.set_active(None if info is None else info.index)
 
+            self.glyphs.set_actor_colour(info.index) # change colour here
+
         self.camera_changed.emit(info)
         self.render()
 
@@ -393,6 +395,9 @@ class Viewport(QVTKRenderWindowInteractor):
         actor = self._mouse_picker.GetActor()
         if actor is None:
             return False
+
+        # change colour
+        self.glyphs.set_actor_colour(actor)
 
         camera_id = self.glyphs.camera_id_of_actor(actor)
         if camera_id is None:
