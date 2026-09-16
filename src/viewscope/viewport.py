@@ -165,7 +165,8 @@ class Viewport(QVTKRenderWindowInteractor):
         self._interactor.Initialize()
 
     def shutdown(self):
-        """Release the GL context explicitly; skipping this crashes on macOS.
+        """
+        Release the GL context explicitly; skipping this crashes on macOS.
 
         Runs at most once: closing the window and later destroying it would
         otherwise finalize the same render window twice, which frees the same
@@ -173,6 +174,7 @@ class Viewport(QVTKRenderWindowInteractor):
         """
         if self._finalized:
             return
+
         self._finalized = True
         self.Finalize()
 
@@ -193,6 +195,9 @@ class Viewport(QVTKRenderWindowInteractor):
         self._targets = np.asarray(data.targets, dtype=np.float64)
         self._surface_picker.AddPickList(self.mesh.actor)
         self._point_picker.AddPickList(self.cloud.actor)
+        self._mouse_picker.AddPickList(self.mesh.actor)
+        for glyph_actor in self.glyphs.actors:
+            self._mouse_picker.AddPickList(glyph_actor)
 
         self.grid_origin_point = self._ground_centre(data)
         self.floor_grid.move_to(self.grid_origin_point)
@@ -317,12 +322,13 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.has_scene and self.camera is not None:
             self._moved(self.camera.show_overview())
 
-    def on_camera_changed(
-        self, info: CameraInfo | None
-    ):  # pass in an instance of CameraInfo?? So that camera colour change can happen here
+    def on_camera_changed(self, info: CameraInfo | None):
         """Update the highlighted camera. Change its colour to Gold, build outline around it."""
+        # INVARIANT: The glyphs should not be uninitialized at this stage!
+        assert self.glyphs is not None
+
         if info is not None:
-            self.glyphs.set_actor_colour_by_index(info.index)  # change colour here
+            self.glyphs.set_actor_colour_by_index(info.index)
             self.set_selected_camera_position(info)
 
             self.selected_outline.remove_from(self.renderer)
@@ -619,6 +625,9 @@ class Viewport(QVTKRenderWindowInteractor):
         # NOTE(AZAAM): This method works too.
         # self.glyphs.set_actor_colour(actor)
 
+        # NOTE(Adam): With the scene mesh added to the pick list,
+        #       this will correctly return None when clicking on the mesh,
+        #       therefore blocking glyph selections through the mesh.
         camera_id = self.glyphs.camera_id_of_actor(actor)
         if camera_id is None:
             return False

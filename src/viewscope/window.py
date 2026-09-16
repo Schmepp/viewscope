@@ -48,7 +48,8 @@ class MainWindow(QMainWindow):
         expected_viewpoints: int | None = None,
         defer_load: bool = False,
     ):
-        """Build the shell and, unless the load is deferred, start reading the bundle.
+        """
+        Build the shell and, unless the load is deferred, start reading the bundle.
 
         expected_viewpoints is the plan size a shipped bundle is known to hold,
         checked while loading. Pass defer_load=True to leave the loader idle:
@@ -60,7 +61,7 @@ class MainWindow(QMainWindow):
         self.resize(1500, 950)
 
         self.viewport = Viewport(self)
-        self.setCentralWidget(self.viewport)  # set the cental widget vtk
+        self.setCentralWidget(self.viewport)  # Set the cental widget vtk
 
         self.visibility = None  # TargetVisibility, once a scene is loaded
         self.reports = None  # TargetReports, likewise
@@ -79,6 +80,7 @@ class MainWindow(QMainWindow):
         self.selected_target: TargetReport | None = None
         self.occlusion_on = False
 
+        self.camera_viewport = CameraViewport(self)
         self.display_panel = DisplayPanel()
         self.metrics_panel = MetricsPanel()
         self.viewpoints_panel = ViewpointsPanel()
@@ -110,9 +112,7 @@ class MainWindow(QMainWindow):
         self.loader.progress.connect(self.statusBar().showMessage)
         self.loader.loaded.connect(self._on_scene_loaded)
         self.loader.failed.connect(self._on_failed)
-        self.loader.plan_validation_failed.connect(
-            self.show_error_dialog
-        )  # Connect file validation Dialog
+        self.loader.plan_validation_failed.connect(self.show_error_dialog)
         self.loader.filename_validation_failed.connect(self.show_error_dialog)
         if not defer_load:
             self.loader.start()
@@ -122,11 +122,11 @@ class MainWindow(QMainWindow):
         self.viewport.start()
         self.camera_viewport.start()
 
-    # -- construction --------------------------------------------------
+    # -- Construction --------------------------------------------------
 
     def _add_dock(self, title, widget, area):
         dock = QDockWidget(title, self)
-        dock.setObjectName(f"dock_{title}")  # required for saveState
+        dock.setObjectName(f"dock_{title}")  # Required for saveState
         dock.setWidget(widget)
         dock.setAllowedAreas(Qt.DockWidgetArea.AllDockWidgetAreas)
         self.addDockWidget(area, dock)
@@ -137,7 +137,6 @@ class MainWindow(QMainWindow):
         self.display_panel.mode_changed.connect(self.viewport.set_render_mode)
         self.display_panel.point_size_changed.connect(self.viewport.set_point_size)
         self.display_panel.field_changed.connect(self._on_field_changed)
-        self.display_panel.point_size_changed.connect(self.camera_viewport.set_point_size)
         self.display_panel.field_changed.connect(self._on_field_changed)
         self.display_panel.occlusion_toggled.connect(self._on_occlusion_toggled)
         self.display_panel.grid_toggled.connect(self.viewport.set_grid_visible)
@@ -224,7 +223,7 @@ class MainWindow(QMainWindow):
         )
         for act in camera_actions:
             toolbar.addAction(act)
-            self.addAction(act)  # keeps shortcuts alive when VTK has focus
+            self.addAction(act)  # Keeps shortcuts alive when VTK has focus
 
         view_menu = self.menuBar().addMenu("&View")
         for dock in self.docks.values():
@@ -287,7 +286,6 @@ class MainWindow(QMainWindow):
 
     def _on_field_changed(self, field):
         self.metrics_panel.show_field(self.viewport.set_scalar_field(field))
-        self.metrics_panel.show_field(self.camera_viewport.set_scalar_field(field))
 
     def _on_camera_changed(self, info: CameraInfo | None):
         if SCENE_STORE.scene is None:
