@@ -251,12 +251,13 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.has_scene and self.camera is not None:
             self._moved(self.camera.show_overview())
 
-    def on_camera_changed(
-        self, info: CameraInfo | None
-    ):  # pass in an instance of CameraInfo?? So that camera colour change can happen here
+    def on_camera_changed(self, info: CameraInfo | None):
         """Update the highlighted camera. Change its colour to Gold, build outline around it."""
+        # INVARIANT: The glyphs should not be uninitialized at this stage!
+        assert self.glyphs is not None
+
         if info is not None:
-            self.glyphs.set_actor_colour_by_index(info.index)  # change colour here
+            self.glyphs.set_actor_colour_by_index(info.index)
             self.set_selected_camera_position(info)
 
             self.selected_outline.remove_from(self.renderer)
