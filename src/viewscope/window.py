@@ -349,12 +349,15 @@ class MainWindow(QMainWindow):
             None if self.selected_camera is None else self.selected_camera.index
         )
         self._refresh_target_overlay()
+        self.highlight_target_observers(report)
 
         self.statusBar().showMessage(
             f"Target {report.index}: {len(report.observers)} observers across "
             f"{report.occupied_sectors} of {report.sector_count} sectors",
             6000,
         )
+
+        # self.highlight_target_observers(report)
 
     def _on_sector_count_changed(self, _count: int):
         """The same target, cut into a different number of wedges."""
@@ -387,6 +390,16 @@ class MainWindow(QMainWindow):
             SCENE_STORE.scene.diagonal,
             self.target_panel.options(),
         )
+
+    def highlight_target_observers(self, target:TargetReport):
+        """Obtains the camera indices for the observers of the selected target,
+        and appends them to a list.
+        Then calls a viewport method to actually change the camera's glyphs."""
+        observerIndices = []
+        # for obs in self.selected_target.observers: # Append cam indices to the observer list
+        for obs in target.observers: # Append cam indices to the observer list
+            observerIndices.append(obs.camera_index)
+        self.viewport.highlight_target_observers(observerIndices)
 
     @property
     def sector_count(self) -> int:

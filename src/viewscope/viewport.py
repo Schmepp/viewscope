@@ -721,6 +721,11 @@ class Viewport(QVTKRenderWindowInteractor):
 
         return display_x, display_y
 
+    def highlight_target_observers(self, observer_list):
+        self.glyphs.reset_actors_colour() # Erase all glyphs before changing colours
+        for obs_index in observer_list:
+            self.glyphs.set_actor_colour_by_index(obs_index)
+
     # -- Window events ---------------------------------------------------
 
     def resizeEvent(self, ev):

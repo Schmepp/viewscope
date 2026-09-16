@@ -170,14 +170,14 @@ class CameraGlyphs:
         self._refresh()
 
     def set_actor_colour_by_index(self, index: int, color=COLOUR_ACTIVE):
-        self.reset_actors_colour()
+        # self.reset_actors_colour()
         for actor, id in self.glyphs.items():
             if index == id:
                 actor.GetMapper().ScalarVisibilityOff()  # Disabling this property for best result
                 actor.GetProperty().SetColor(*color)
 
     def set_actor_colour(self, actor: vtk.vtkActor, color=COLOUR_ACTIVE):
-        self.reset_actors_colour()
+        # self.reset_actors_colour()
         actor.GetMapper().ScalarVisibilityOff()  # Disabling this property for best result
         actor.GetProperty().SetColor(*color)
 
