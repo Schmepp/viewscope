@@ -7,6 +7,8 @@ from enum import Enum, auto
 import numpy as np
 import vtk
 
+import viewscope_core as vc
+
 
 class CameraMode(Enum):
     LOOK_AT = (auto(),)
@@ -28,24 +30,21 @@ class CameraOrbitState:
     pitch: float  # Radians
     view_angle: float  # Degrees
 
-    def camera_position(self) -> tuple[float, ...]:
-        cp, sp = math.cos(self.pitch), math.sin(self.pitch)
-        cy, sy = math.cos(self.yaw), math.sin(self.yaw)
-        offset = (self.distance * cp * sy, -self.distance * cp * cy, self.distance * sp)
+    def pose(self) -> np.ndarray:
+        """The 4x4 camera-to-world pose matrix for this state."""
+        yaw_deg = math.degrees(self.yaw) - 90.0
+        pitch_deg = math.degrees(self.pitch)
+        forward = vc.forward_vector(yaw_deg, pitch_deg)
+        position = np.asarray(self.pivot, dtype=np.float64) + self.distance * forward
 
-        return tuple(p + o for p, o in zip(self.pivot, offset, strict=False))
+        return vc.camera_pose(position, yaw_deg, pitch_deg)
+
+    def camera_position(self) -> tuple[float, ...]:
+        return tuple(self.pose()[:3, 3])
 
     def camera_up(self) -> tuple[float, float, float]:
-        """
-        Computes analytic 'up': the tangent to the orbit sphere in the
-        pitch-increasing direction. Always unit length and always exactly
-        orthogonal to the view direction by construction - unlike VTK's
-        default, which derives 'up' from a fixed world-up hint.
-        """
-        cp, sp = math.cos(self.pitch), math.sin(self.pitch)
-        cy, sy = math.cos(self.yaw), math.sin(self.yaw)
-
-        return (-sp * sy, sp * cy, cp)
+        """The pose's local Y axis in world space."""
+        return tuple(self.pose()[:3, 1])
 
 
 class SceneCameraController:
@@ -255,15 +254,6 @@ class SceneCameraController:
         distance = max(self.MIN_DISTANCE, distance)
         self._orbit = replace(self._orbit, distance=distance)
         self._apply_orbit()
-
-    # TODO(Adam): This function is currently unused. Use or remove it!
-    # def frame_scene(self):
-    #     """
-    #     Deliberately reframe on current scene bounds (similar to Unity's 'Frame Selected').
-    #     This is the only place scene bounds are allowed to affect the camera.
-    #     """
-    #     self.renderer.ResetCamera()
-    #     self._orbit = self._orbit_from_camera()
 
     # -- Overview --------------------------------------------------------
 
