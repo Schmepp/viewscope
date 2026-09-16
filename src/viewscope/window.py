@@ -158,6 +158,7 @@ class MainWindow(QMainWindow):
         self.target_panel.cleared.connect(self.clear_target)
         self.target_panel.camera_picked.connect(self.camera_viewport.show_camera)
         self.target_panel.camera_picked.connect(self.viewpoints_panel.select_row)
+        # self.target_panel.colour_mode_changed.connect(self._target_colour_mode_changed)
 
         # While planning is on, clicking a camera in the 3D view takes it out
         # of the route or puts it back.
@@ -350,7 +351,10 @@ class MainWindow(QMainWindow):
         )
         self._refresh_target_overlay()
         # call method to change colours of observers
-        self.viewport.highlight_target_observers(self.observer_indices(report))
+        # self.highlight_all_observers(report) # highlight all observers
+        # self.highlight_best_cameras(report, "sector") #NOTE: highlight only best observers
+        # self.highlight_best_cameras(report, self.target_colour_mode)
+        self.highlight_best_cameras(report, self.target_panel.options().colour_by)
 
         self.statusBar().showMessage(
             f"Target {report.index}: {len(report.observers)} observers across "
@@ -399,6 +403,25 @@ class MainWindow(QMainWindow):
             observer_indices.append(obs.camera_index)
         return observer_indices
         # self.viewport.highlight_target_observers(observer_indices)
+
+    # def _target_colour_mode_changed(self, mode:str):
+    #     """Highighlight the best camera's with a specified colour mode"""
+    #     pass
+    # if self.selected_target is None:
+    #     return
+    # self.highlight_best_cameras(self.selected_target, mode)
+    # self.target_colour_mode = mode
+
+    def highlight_all_observers(self, report):
+        indices = self.observer_indices(report)
+        self.viewport.highlight_target_observers(indices)
+
+    def highlight_best_cameras(self, report: TargetReport, colour_mode: str = "Weight"):
+        best = []
+        for observer in report.observers:
+            if observer.best:  # Filter the best camera in each sector
+                best.append(observer)
+        self.viewport.colour_best_observers(best, report.sector_count, colour_mode)
 
     @property
     def sector_count(self) -> int:

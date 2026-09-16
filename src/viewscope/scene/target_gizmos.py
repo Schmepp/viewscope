@@ -41,6 +41,16 @@ def sector_colour(sector: int, sector_count: int) -> tuple[float, float, float]:
     return colorsys.hsv_to_rgb((sector % sector_count) / sector_count, 0.72, 1.0)
 
 
+# Took weight_colour out of the class.
+def weight_colour(lut: vtk.vtkLookupTable, weight: float) -> tuple[float, float, float]:
+    """Read one weight off the same table the scalar bar draws.
+    Takes LUT as an argument."""
+    rgb = [0.0, 0.0, 0.0]
+    lut.GetColor(float(np.clip(weight, 0.0, 1.0)), rgb)
+
+    return rgb[0], rgb[1], rgb[2]
+
+
 class TargetOverlay:
     """Every actor that belongs to the picked target, added and dropped together."""
 

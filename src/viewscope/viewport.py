@@ -20,6 +20,8 @@ import viewscope.qt  # noqa: F401
 from viewscope.camera.structs import CameraInfo
 from viewscope.config import (
     BACKGROUND,
+    COLOUR_BY_SECTOR,
+    COLOUR_BY_WEIGHT,
     MODE_ALL,
     MODE_GEOMETRY,
     MODE_TARGETS,
@@ -34,7 +36,7 @@ from viewscope.data.store import SCENE_STORE
 from viewscope.scene.camera import CameraMode, SceneCameraController
 from viewscope.scene.gizmos import CameraGlyphs, CameraModeGizmo, CameraOutline, FloorGrid
 from viewscope.scene.stats import FieldStats
-from viewscope.scene.target_gizmos import TargetOverlay
+from viewscope.scene.target_gizmos import TargetOverlay, sector_colour, weight_colour, weight_lut
 from viewscope.scene.target_report import TargetReport
 from viewscope.scene.views import MeshView, TargetCloudView
 
@@ -722,9 +724,28 @@ class Viewport(QVTKRenderWindowInteractor):
         return display_x, display_y
 
     def highlight_target_observers(self, observer_list):
+        """Change the colour of all the observers of in list."""
         self.glyphs.reset_actors_colour()  # Erase all glyphs before changing colours
         for obs_index in observer_list:
             self.glyphs.set_actor_colour_by_index(obs_index)
+        self.render()
+
+    def colour_best_observers(self, observer_list, sector_count, colour_mode):
+        """Assign colours to the observers in observer_list, according to the mode selected
+        (Sector or Weight) and the observer's sector_count.
+        Then changes the colour of the glyph's of each observer in list."""
+        self.glyphs.reset_actors_colour()
+
+        # colours = {}  # use dictionary to store camera_index - colour
+        lut = weight_lut()
+        for obs in observer_list:
+            if colour_mode == COLOUR_BY_SECTOR:
+                # colours[obs.camera_index] = sector_colour(obs.sector, sector_count)
+                new_colour = sector_colour(obs.sector, sector_count)
+            elif colour_mode == COLOUR_BY_WEIGHT:
+                # colours[obs.camera_index] = weight_colour(lut, obs.weight)
+                new_colour = weight_colour(lut, obs.weight)
+            self.glyphs.set_actor_colour_by_index(obs.camera_index, new_colour)
         self.render()
 
     # -- Window events ---------------------------------------------------
