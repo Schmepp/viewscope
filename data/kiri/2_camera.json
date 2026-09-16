@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "frame": "z-up-right-handed",
+  "units": "metres",
+  "camera": {
+    "width": 1368,
+    "height": 912,
+    "yfov_deg": 53.1301
+  },
+  "coverage": {
+    "targets": 60000,
+    "observed": 4227,
+    "fraction": 0.07045,
+    "cameras": 2,
+    "cameras_available": 185
+  },
+  "viewpoints": [
+    {
+      "id": "vp158",
+      "index": 158,
+      "position": [
+        191.1322,
+        95.6643,
+        6.4693
+      ],
+      "yaw_deg": 109.0,
+      "pitch_deg": -4.0
+    },
+    {
+      "id": "vp161",
+      "index": 161,
+      "position": [
+        193.8322,
+        96.3643,
+        6.0693
+      ],
+      "yaw_deg": 118.0,
+      "pitch_deg": -1.0
+    }
+  ]
+}

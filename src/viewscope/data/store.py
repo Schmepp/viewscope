@@ -63,6 +63,58 @@ class SceneStore(QObject):
         self.scene_changed.emit()
         self.plan_changed.emit(info)
 
+    def ensure_cameras(self, entries) -> tuple[tuple[int, ...], int]:
+        """Make sure the plan holds every one of these viewpoints.
+
+        `entries` are (id, position, yaw_deg, pitch_deg). Viewpoints the plan
+        already has are left exactly as they are; the rest are appended,
+        keeping the ids they arrived with. Returns the plan row of every
+        entry, in the order they were given, and how many were appended.
+
+        This is what loading a route runs on: the file says which cameras
+        should be in the scene, and afterwards they are.
+        """
+        if self.scene is None:
+            return (), 0
+
+        old_plan = self.scene.plan
+        row_of = {name: index for index, name in enumerate(old_plan.ids)}
+
+        rows, fresh = [], []
+        for name, position, yaw, pitch in entries:
+            if name in row_of:
+                rows.append(row_of[name])
+                continue
+
+            row = len(old_plan.ids) + len(fresh)
+            row_of[name] = row
+            fresh.append((name, np.asarray(position, dtype=float), float(yaw), float(pitch)))
+            rows.append(row)
+
+        if not fresh:
+            return tuple(rows), 0
+
+        self.scene.plan = Plan(
+            camera=old_plan.camera,
+            ids=old_plan.ids + tuple(entry[0] for entry in fresh),
+            positions=np.concatenate((old_plan.positions, np.array([entry[1] for entry in fresh]))),
+            yaws_deg=np.concatenate((old_plan.yaws_deg, np.array([entry[2] for entry in fresh]))),
+            pitches_deg=np.concatenate(
+                (old_plan.pitches_deg, np.array([entry[3] for entry in fresh]))
+            ),
+        )
+
+        first = CameraInfo(
+            index=len(old_plan.ids),
+            position=fresh[0][1],
+            yaw=fresh[0][2],
+            pitch=fresh[0][3],
+        )
+        self.scene_changed.emit()
+        self.plan_changed.emit(first)
+
+        return tuple(rows), len(fresh)
+
     @property
     def scene(self) -> SceneData | None:
         return self._scene

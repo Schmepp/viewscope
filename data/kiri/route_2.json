@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "frame": "z-up-right-handed",
+  "units": "metres",
+  "camera": {
+    "width": 1368,
+    "height": 912,
+    "yfov_deg": 53.1301
+  },
+  "coverage": {
+    "targets": 60000,
+    "observed": 47428,
+    "fraction": 0.790467,
+    "cameras": 11,
+    "cameras_available": 185
+  },
+  "viewpoints": [
+    {
+      "id": "vp013",
+      "index": 13,
+      "position": [
+        168.9322,
+        111.5643,
+        2.0693
+      ],
+      "yaw_deg": 1.0,
+      "pitch_deg": -60.0
+    },
+    {
+      "id": "vp021",
+      "index": 21,
+      "position": [
+        175.0322,
+        95.6643,
+        2.0693
+      ],
+      "yaw_deg": 54.0,
+      "pitch_deg": -55.0
+    },
+    {
+      "id": "vp027",
+      "index": 27,
+      "position": [
+        180.7322,
+        94.5643,
+        4.7693
+      ],
+      "yaw_deg": 64.0,
+      "pitch_deg": -65.0
+    },
+    {
+      "id": "vp041",
+      "index": 41,
+      "position": [
+        189.1322,
+        98.8643,
+        12.1693
+      ],
+      "yaw_deg": 109.0,
+      "pitch_deg": -73.0
+    },
+    {
+      "id": "vp056",
+      "index": 56,
+      "position": [
+        194.3322,
+        95.3643,
+        4.9693
+      ],
+      "yaw_deg": 120.0,
+      "pitch_deg": -58.0
+    },
+    {
+      "id": "vp070",
+      "index": 70,
+      "position": [
+        175.0322,
+        110.9643,
+        9.0693
+      ],
+      "yaw_deg": -59.0,
+      "pitch_deg": -71.0
+    },
+    {
+      "id": "vp080",
+      "index": 80,
+      "position": [
+        182.9322,
+        122.1643,
+        6.9693
+      ],
+      "yaw_deg": -75.0,
+      "pitch_deg": -66.0
+    },
+    {
+      "id": "vp127",
+      "index": 127,
+      "position": [
+        205.1322,
+        114.4643,
+        -0.3307
+      ],
+      "yaw_deg": -166.0,
+      "pitch_deg": 0.0
+    },
+    {
+      "id": "vp132",
+      "index": 132,
+      "position": [
+        199.5322,
+        95.7643,
+        1.0693
+      ],
+      "yaw_deg": 134.0,
+      "pitch_deg": -5.0
+    },
+    {
+      "id": "vp160",
+      "index": 160,
+      "position": [
+        180.3322,
+        97.6643,
+        8.4693
+      ],
+      "yaw_deg": 55.0,
+      "pitch_deg": -10.0
+    },
+    {
+      "id": "vp178",
+      "index": 178,
+      "position": [
+        179.0322,
+        116.0643,
+        14.5693
+      ],
+      "yaw_deg": -40.0,
+      "pitch_deg": -27.0
+    }
+  ]
+}

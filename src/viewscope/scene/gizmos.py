@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
 
 import viewscope_core as vc
+from viewscope.config import ROUTE_SELECTED_COLOUR, ROUTE_UNSELECTED_COLOUR
 from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode
 
@@ -128,6 +129,9 @@ class CameraGlyphs:
 
     def __init__(self, plan: vc.Plan):
         self.glyphs: dict[vtk.vtkActor, int] = {}
+        #: The plan id of every row, so a loaded file can name the viewpoints
+        #: it wants drawn by id rather than by position in the plan.
+        self.ids: tuple[str, ...] = tuple(plan.ids)
         for i in range(len(plan.positions)):
             vertices, faces, colours, edges = vc.camera_glyph(
                 plan.positions[i], plan.yaws_deg[i], plan.pitches_deg[i]
@@ -137,6 +141,8 @@ class CameraGlyphs:
 
         self._visible: bool = True
         self._active: int | None = None
+        self._route: set[int] | None = None
+        self._shown: set[str] | None = None
         self._outline: type = CameraOutline
         # self.new_camera_id = None
 
@@ -179,6 +185,26 @@ class CameraGlyphs:
         for actor, _id in self.glyphs.items():
             actor.GetProperty().SetColor(*self.COLOUR_DEFAULT)
 
+    def set_route(self, selected: set[int] | None, shown: set[str] | None = None):
+        """Paint the route: blue for in, dimmed for out.
+
+        Pass None to give every frustum its own colours back, which is what
+        happens the moment route planning stops.
+
+        `shown` is the plan ids a loaded file named. Every camera in the scene
+        whose id is not one of them is switched off rather than dimmed, so the
+        scene holds that plan and nothing else. None, the usual case, draws
+        every viewpoint the plan has.
+        """
+        self._route = None if selected is None else set(selected)
+        self._shown = None if shown is None else set(shown)
+        self._refresh()
+
+    def show_only(self, ids: set[str] | None):
+        """Switch off every camera the given plan ids do not name."""
+        self._shown = None if ids is None else set(ids)
+        self._refresh()
+
     def camera_id_of_actor(self, actor: vtk.vtkActor) -> int | None:
         return self.glyphs.get(actor)
 
@@ -194,8 +220,27 @@ class CameraGlyphs:
 
     def _refresh(self):
         for actor, id in self.glyphs.items():
-            # Never draw the frustum you are inside; it fills the view.
-            actor.SetVisibility(self._visible and id != self._active)
+            # Every camera in the scene, one at a time: it is drawn only if
+            # the glyphs are on at all, it is not the frustum you are sitting
+            # inside (that one fills the view), and, when a plan has been
+            # loaded, that plan names its id.
+            actor.SetVisibility(
+                self._visible
+                and id != self._active
+                and (self._shown is None or self.ids[id] in self._shown)
+            )
+
+            mapper = actor.GetMapper()
+            if self._route is None:
+                # The glyph carries its own vertex colours; let them through.
+                mapper.ScalarVisibilityOn()
+                actor.GetProperty().SetColor(1.0, 1.0, 1.0)
+                continue
+
+            mapper.ScalarVisibilityOff()
+            actor.GetProperty().SetColor(
+                *(ROUTE_SELECTED_COLOUR if id in self._route else ROUTE_UNSELECTED_COLOUR)
+            )
 
 
 class CameraOutline:

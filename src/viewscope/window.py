@@ -13,6 +13,7 @@ from PySide6.QtCore import QByteArray, QSettings, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QDockWidget,
+    QFileDialog,
     QMainWindow,
     QMessageBox,
     QStatusBar,
@@ -20,14 +21,18 @@ from PySide6.QtWidgets import (
 
 from viewscope.camera.structs import CameraInfo
 from viewscope.CameraViewport import CameraViewport
-from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME
+from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME, ROUTE_FILENAME
 from viewscope.data.loader import SceneLoader
+from viewscope.data.route import RoutePlan, load_route
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
 from viewscope.dialogs.file_error_dialog import FileErrorDialog
 from viewscope.DisplayPanel import DisplayPanel
 from viewscope.MetricsPanel import MetricsPanel
+from viewscope.panels.plan_route_panel import PlanRoutePanel
+from viewscope.panels.target_panel import TargetPanel
 from viewscope.panels.viewpoints_panel import ViewpointsPanel
+from viewscope.scene.target_report import TargetReport, TargetReports
 from viewscope.scene.visibility import TargetVisibility
 from viewscope.viewport import Viewport
 
@@ -58,16 +63,33 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.viewport)  # set the cental widget vtk
 
         self.visibility = None  # TargetVisibility, once a scene is loaded
+        self.reports = None  # TargetReports, likewise
+        self.route = RoutePlan()
+        #: What the whole route can see, while planning is on. Recounted on
+        #: every route change, because both the coverage line and the
+        #: occlusion colouring read it.
+        self.route_mask = None
+        #: When a plan was loaded from a file, the viewpoint ids it named.
+        #: Every camera in the scene whose id is not one of them is switched
+        #: off, so the scene holds that plan and nothing else, until another
+        #: is loaded or the whole plan is asked for back. None while every
+        #: viewpoint is on show.
+        self.route_shown: set[str] | None = None
         self.selected_camera = None
+        self.selected_target: TargetReport | None = None
         self.occlusion_on = False
 
         self.display_panel = DisplayPanel()
         self.metrics_panel = MetricsPanel()
         self.viewpoints_panel = ViewpointsPanel()
+        self.target_panel = TargetPanel()
+        self.plan_route_panel = PlanRoutePanel()
         self.camera_viewport = CameraViewport(self)
 
         self.docks = {}
         self._add_dock("Viewpoints", self.viewpoints_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
+        self._add_dock("Target", self.target_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
+        self._add_dock("Plan Route", self.plan_route_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
         self._add_dock("Display", self.display_panel, Qt.DockWidgetArea.RightDockWidgetArea)
         self._add_dock("Camera View", self.camera_viewport, Qt.DockWidgetArea.RightDockWidgetArea)
         self._add_dock("Metrics", self.metrics_panel, Qt.DockWidgetArea.RightDockWidgetArea)
@@ -128,6 +150,27 @@ class MainWindow(QMainWindow):
         self.viewport.camera_picked.connect(self.camera_viewport.show_camera)
         self.viewport.camera_picked.connect(self.viewpoints_panel.select_row)
 
+        # Picking a target in the 3D view fills the target panel in; the
+        # panel's own controls only ever change what is drawn for it.
+        self.viewport.target_picked.connect(self._on_target_picked)
+        self.viewport.target_cleared.connect(self.clear_target)
+        self.target_panel.sector_count_changed.connect(self._on_sector_count_changed)
+        self.target_panel.overlay_changed.connect(self._refresh_target_overlay)
+        self.target_panel.cleared.connect(self.clear_target)
+        self.target_panel.camera_picked.connect(self.camera_viewport.show_camera)
+        self.target_panel.camera_picked.connect(self.viewpoints_panel.select_row)
+
+        # While planning is on, clicking a camera in the 3D view takes it out
+        # of the route or puts it back.
+        self.viewport.camera_picked.connect(self._on_route_camera_picked)
+        self.plan_route_panel.plan_requested.connect(self.start_route_planning)
+        self.plan_route_panel.stop_requested.connect(self.stop_route_planning)
+        self.plan_route_panel.load_requested.connect(self.load_route_file)
+        self.plan_route_panel.select_all_requested.connect(self._on_route_select_all)
+        self.plan_route_panel.clear_requested.connect(self._on_route_clear)
+        self.plan_route_panel.camera_picked.connect(self.camera_viewport.show_camera)
+        self.plan_route_panel.camera_picked.connect(self.viewpoints_panel.select_row)
+
         SCENE_STORE.plan_changed.connect(self._on_plan_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
 
@@ -162,6 +205,12 @@ class MainWindow(QMainWindow):
         self.act_overview.setShortcut(QKeySequence("O"))
         self.act_overview.triggered.connect(self.viewport.show_overview)
 
+        self.act_clear_target = QAction("Clear Target", self)
+        self.act_clear_target.setShortcut(QKeySequence(Qt.Key.Key_Escape))
+        self.act_clear_target.setToolTip("Let go of the picked target (Esc)")
+        self.act_clear_target.triggered.connect(self.clear_target)
+        self.act_clear_target.setEnabled(False)
+
         self.toggle_orientation = QAction("Toggle Orientation", self, checkable=True)
         self.toggle_orientation.triggered.connect(self.viewport.toggle_camera_orientation_visible)
         self.toggle_orientation.setChecked(True)
@@ -170,6 +219,7 @@ class MainWindow(QMainWindow):
             self.act_prev,
             self.act_next,
             self.act_overview,
+            self.act_clear_target,
             self.toggle_orientation,
         )
         for act in camera_actions:
@@ -215,6 +265,7 @@ class MainWindow(QMainWindow):
     def _on_scene_loaded(self, scene: SceneData):
         SCENE_STORE.set_scene(scene)
         self.visibility = TargetVisibility(scene)
+        self.reports = TargetReports(scene, self.visibility)
 
         self.viewport.set_scene(scene)
         self.camera_viewport.set_scene(scene)
@@ -227,6 +278,8 @@ class MainWindow(QMainWindow):
             self.metrics_panel.show_field(None)
             if scene.scores_error:
                 print(f"scores unavailable: {scene.scores_error}")
+
+        self._refresh_route()
 
         self.viewport.show_overview()
         self.camera_viewport.show_overview()
@@ -246,6 +299,8 @@ class MainWindow(QMainWindow):
         self.selected_camera = info
         if info is not None:
             self.viewpoints_panel.select_row(info.index)
+        self.target_panel.select_camera(None if info is None else info.index)
+        self.plan_route_panel.select_camera(None if info is None else info.index)
 
         camera_count = SCENE_STORE.camera_count
         self.statusBar().showMessage(
@@ -260,6 +315,16 @@ class MainWindow(QMainWindow):
 
         self.viewport.on_plan_changed()
 
+        # A new camera changes who observes what, so every cached report and
+        # the overlay drawn from one are out of date.
+        if self.reports is not None:
+            self.reports.forget()
+        self._rebuild_target()
+
+        # on_plan_changed built fresh glyphs, which know nothing of the route.
+        self.route.forget_beyond(SCENE_STORE.camera_count)
+        self._refresh_route()
+
         self.selected_camera = info
         if info is not None:
             self.viewpoints_panel.select_row(info.index)
@@ -269,6 +334,220 @@ class MainWindow(QMainWindow):
             "Overview" if info is None else f"Camera {info.index + 1} of {camera_count}"
         )
 
+    # -- target inspection ---------------------------------------------
+
+    def _on_target_picked(self, index: int):
+        """Break down the target just clicked in the 3D view."""
+        report = None if self.reports is None else self.reports.report(index, self.sector_count)
+
+        if report is None:
+            self.clear_target()
+            return
+
+        self.selected_target = report
+        self.act_clear_target.setEnabled(True)
+        self.target_panel.show_target(report)
+        self.target_panel.select_camera(
+            None if self.selected_camera is None else self.selected_camera.index
+        )
+        self._refresh_target_overlay()
+
+        self.statusBar().showMessage(
+            f"Target {report.index}: {len(report.observers)} observers across "
+            f"{report.occupied_sectors} of {report.sector_count} sectors",
+            6000,
+        )
+
+    def _on_sector_count_changed(self, _count: int):
+        """The same target, cut into a different number of wedges."""
+        self._rebuild_target()
+
+    def clear_target(self):
+        """Let go of the picked target, in the panel and in the view."""
+        if self.selected_target is None:
+            return
+
+        self.selected_target = None
+        self.act_clear_target.setEnabled(False)
+        self.target_panel.show_target(None)
+        self.viewport.clear_target_overlay()
+
+    def _rebuild_target(self):
+        """Re-read the selected target, for when the plan or the sectors move."""
+        if self.selected_target is not None:
+            self._on_target_picked(self.selected_target.index)
+
+    def _refresh_target_overlay(self):
+        """Redraw the overlay from the panel's current options."""
+        if self.selected_target is None or SCENE_STORE.scene is None:
+            self.viewport.clear_target_overlay()
+            return
+
+        self.viewport.show_target_overlay(
+            self.selected_target,
+            SCENE_STORE.scene.plan.positions,
+            SCENE_STORE.scene.diagonal,
+            self.target_panel.options(),
+        )
+
+    @property
+    def sector_count(self) -> int:
+        return self.target_panel.sector_count
+
+    # -- route planning ------------------------------------------------
+
+    def start_route_planning(self):
+        """Put every viewpoint in the route and start choosing between them."""
+        if SCENE_STORE.scene is None:
+            return
+
+        self.route.start(SCENE_STORE.camera_count)
+        self.route_shown = None
+        self.plan_route_panel.show_saved(None)
+        self._refresh_route()
+        self.statusBar().showMessage(
+            "Planning a route: click a camera to take it out, or put it back", 6000
+        )
+
+    def load_route_file(self):
+        """Plan the route named by a json file, instead of the plan on show.
+
+        The file is read as a plan: a route saved earlier, or the plan.json of
+        another bundle. Viewpoints it names that the current plan already has
+        are matched by id and left where they are; the rest are appended, so a
+        route planned against a different plan still arrives whole.
+        """
+        if SCENE_STORE.scene is None:
+            return
+
+        path = self._ask_loaded_route_path()
+        if path is None:
+            return
+
+        try:
+            entries = load_route(path)
+        except ValueError as exc:
+            QMessageBox.warning(self, "ViewScope", f"Could not load that route.\n\n{exc}")
+            return
+
+        rows, added = SCENE_STORE.ensure_cameras(
+            [(entry.id, entry.position, entry.yaw_deg, entry.pitch_deg) for entry in entries]
+        )
+
+        self.route.select(rows)
+        self.route.resume()
+        # The file names the plan on show: every other camera in the scene is
+        # switched off until the user asks for the rest back.
+        self.route_shown = {entry.id for entry in entries}
+        self._refresh_route()
+        self.plan_route_panel.show_loaded(path, added)
+        self.statusBar().showMessage(f"Planning the {len(rows)} viewpoints of {path.name}", 6000)
+
+    def stop_route_planning(self):
+        """Write the route out, then leave planning. Cancelling keeps planning on."""
+        scene = SCENE_STORE.scene
+        if scene is None or not self.route.planning:
+            return
+
+        path = self._ask_route_path()
+        if path is None:
+            self.statusBar().showMessage("Still planning: nothing was saved", 4000)
+            return
+
+        observed = 0 if self.route_mask is None else int(self.route_mask.sum())
+        try:
+            written = self.route.save(path, scene.plan, observed, len(scene.targets))
+        except OSError as exc:
+            QMessageBox.critical(self, "ViewScope", f"Could not save the route.\n\n{exc}")
+            return
+
+        self.route.stop()
+        self._refresh_route()
+        self.plan_route_panel.show_saved(written)
+        self.statusBar().showMessage(f"Route saved to {written}", 6000)
+
+    def _ask_route_path(self):
+        """Where to write the route, or None if the user changed their mind."""
+        suggested = Path(self.loader.data_dir) / ROUTE_FILENAME
+        chosen, _filter = QFileDialog.getSaveFileName(
+            self, "Save route", str(suggested), "JSON (*.json)"
+        )
+
+        return Path(chosen) if chosen else None
+
+    def _ask_loaded_route_path(self):
+        """Which route to read, or None if the user changed their mind."""
+        start = Path(self.loader.data_dir) / ROUTE_FILENAME
+        chosen, _filter = QFileDialog.getOpenFileName(
+            self, "Load route", str(start), "JSON (*.json)"
+        )
+
+        return Path(chosen) if chosen else None
+
+    def _on_route_camera_picked(self, index: int):
+        if not self.route.planning:
+            return
+
+        inside = self.route.toggle(index)
+        self._refresh_route()
+
+        plan = SCENE_STORE.scene.plan if SCENE_STORE.scene is not None else None
+        name = plan.ids[index] if plan is not None and index < len(plan.ids) else f"#{index + 1}"
+        self.statusBar().showMessage(
+            f"{name} {'added to' if inside else 'taken out of'} the route", 4000
+        )
+
+    def _on_route_select_all(self):
+        """Put the whole plan in the route, and back on the screen with it."""
+        self.route.select_all(SCENE_STORE.camera_count)
+        self.route_shown = None
+        self._refresh_route()
+
+    def _on_route_clear(self):
+        self.route.clear()
+        self._refresh_route()
+
+    def _route_coverage(self):
+        """The targets the route can see between them, or None when it sees none."""
+        if self.visibility is None or not len(self.route):
+            return None
+
+        try:
+            return self.visibility.union_mask(self.route.selected)
+        except Exception as exc:
+            self.statusBar().showMessage(f"Coverage unavailable: {exc}", 5000)
+            return None
+
+    def _refresh_route(self):
+        """Repaint the glyphs and recount the coverage, after any route change."""
+        scene = SCENE_STORE.scene
+        if scene is None:
+            self.plan_route_panel.show_route(None)
+            return
+
+        self.route_mask = self._route_coverage() if self.route.planning else None
+        observed = 0 if self.route_mask is None else int(self.route_mask.sum())
+
+        selected = set(self.route.selected)
+        if self.route_shown is not None:
+            # A camera put back into the route is drawn, whatever the file said.
+            ids = scene.plan.ids
+            self.route_shown |= {ids[i] for i in selected if i < len(ids)}
+
+        # The route colours are only worn while planning, but a loaded plan
+        # keeps the rest of the viewpoints off the screen either way: it is
+        # the plan on show until another one is loaded.
+        self.viewport.set_route_selection(
+            selected if self.route.planning else None, self.route_shown
+        )
+        self.plan_route_panel.show_route(
+            self.route.status(scene.plan, observed, len(scene.targets))
+        )
+
+        # Occlusion follows the route while planning, so every camera in it
+        # paints at once rather than only the one last clicked.
+        self._apply_occlusion()
+
     # -- occlusion -----------------------------------------------------
 
     def _on_occlusion_toggled(self, enabled: bool):
@@ -276,11 +555,21 @@ class MainWindow(QMainWindow):
         self._apply_occlusion()
 
     def _apply_occlusion(self):
-        """Push the selected camera's visibility mask into both viewports."""
+        """Push a visibility mask into the viewport.
+
+        While a route is being planned that is everything the route sees
+        between them, so taking a camera out shows what goes dark with it.
+        Otherwise it is the one selected viewpoint.
+        """
         mask = None
+        planning = self.route.planning
 
         if self.occlusion_on:
-            if self.selected_camera is None:
+            if planning:
+                mask = self.route_mask
+                if mask is None:
+                    self.statusBar().showMessage("Put a camera in the route to see its cover", 4000)
+            elif self.selected_camera is None:
                 self.statusBar().showMessage("Pick a viewpoint to see what it can view", 4000)
             elif self.visibility is not None:
                 try:
@@ -292,7 +581,12 @@ class MainWindow(QMainWindow):
 
         if mask is not None:
             seen = int(mask.sum())
-            self.statusBar().showMessage(f"{seen} of {mask.size} targets visible", 5000)
+            subject = (
+                f"the {len(self.route)} cameras in the route" if planning else "this viewpoint"
+            )
+            self.statusBar().showMessage(
+                f"{seen} of {mask.size} targets visible to {subject}", 5000
+            )
 
     # -- layout persistence --------------------------------------------
 

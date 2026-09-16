@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "frame": "z-up-right-handed",
+  "units": "metres",
+  "camera": {
+    "width": 1368,
+    "height": 912,
+    "yfov_deg": 53.1301
+  },
+  "coverage": {
+    "targets": 60000,
+    "observed": 14373,
+    "fraction": 0.23955,
+    "cameras": 3,
+    "cameras_available": 120
+  },
+  "viewpoints": [
+    {
+      "id": "vp023",
+      "index": 23,
+      "position": [
+        4.7953,
+        -21.3156,
+        9.7418
+      ],
+      "yaw_deg": 102.6786,
+      "pitch_deg": -17.6663
+    },
+    {
+      "id": "vp036",
+      "index": 36,
+      "position": [
+        0.1028,
+        -21.0711,
+        11.8258
+      ],
+      "yaw_deg": 90.2795,
+      "pitch_deg": -23.2261
+    },
+    {
+      "id": "vp057",
+      "index": 57,
+      "position": [
+        2.6643,
+        -19.0967,
+        15.1924
+      ],
+      "yaw_deg": 97.9424,
+      "pitch_deg": -32.7642
+    }
+  ]
+}

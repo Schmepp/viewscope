@@ -1,0 +1,272 @@
+{
+  "version": 1,
+  "frame": "z-up-right-handed",
+  "units": "metres",
+  "camera": {
+    "width": 1368,
+    "height": 912,
+    "yfov_deg": 53.1301
+  },
+  "coverage": {
+    "targets": 60000,
+    "observed": 56225,
+    "fraction": 0.937083,
+    "cameras": 23,
+    "cameras_available": 185
+  },
+  "viewpoints": [
+    {
+      "id": "vp005",
+      "index": 5,
+      "position": [
+        178.7322,
+        129.4643,
+        -4.8307
+      ],
+      "yaw_deg": -77.0,
+      "pitch_deg": -40.0
+    },
+    {
+      "id": "vp009",
+      "index": 9,
+      "position": [
+        193.5322,
+        117.4643,
+        11.9693
+      ],
+      "yaw_deg": -164.0,
+      "pitch_deg": -80.0
+    },
+    {
+      "id": "vp012",
+      "index": 12,
+      "position": [
+        210.1322,
+        119.4643,
+        -8.5307
+      ],
+      "yaw_deg": -155.0,
+      "pitch_deg": -6.0
+    },
+    {
+      "id": "vp021",
+      "index": 21,
+      "position": [
+        175.0322,
+        95.6643,
+        2.0693
+      ],
+      "yaw_deg": 54.0,
+      "pitch_deg": -55.0
+    },
+    {
+      "id": "vp023",
+      "index": 23,
+      "position": [
+        178.4322,
+        85.7643,
+        -7.2307
+      ],
+      "yaw_deg": 66.0,
+      "pitch_deg": -19.0
+    },
+    {
+      "id": "vp030",
+      "index": 30,
+      "position": [
+        208.1322,
+        116.7643,
+        -4.2307
+      ],
+      "yaw_deg": -150.0,
+      "pitch_deg": -25.0
+    },
+    {
+      "id": "vp066",
+      "index": 66,
+      "position": [
+        179.4322,
+        91.7643,
+        0.2693
+      ],
+      "yaw_deg": 56.0,
+      "pitch_deg": -54.0
+    },
+    {
+      "id": "vp074",
+      "index": 74,
+      "position": [
+        191.9322,
+        101.5643,
+        18.0693
+      ],
+      "yaw_deg": 138.0,
+      "pitch_deg": -77.0
+    },
+    {
+      "id": "vp075",
+      "index": 75,
+      "position": [
+        183.2322,
+        90.3643,
+        -0.3307
+      ],
+      "yaw_deg": 70.0,
+      "pitch_deg": -54.0
+    },
+    {
+      "id": "vp077",
+      "index": 77,
+      "position": [
+        187.1322,
+        119.2643,
+        16.2693
+      ],
+      "yaw_deg": -97.0,
+      "pitch_deg": -77.0
+    },
+    {
+      "id": "vp083",
+      "index": 83,
+      "position": [
+        198.3322,
+        96.1643,
+        2.9693
+      ],
+      "yaw_deg": 135.0,
+      "pitch_deg": -53.0
+    },
+    {
+      "id": "vp084",
+      "index": 84,
+      "position": [
+        187.6322,
+        100.0643,
+        18.2693
+      ],
+      "yaw_deg": 88.0,
+      "pitch_deg": -79.0
+    },
+    {
+      "id": "vp091",
+      "index": 91,
+      "position": [
+        207.1322,
+        99.0643,
+        -4.2307
+      ],
+      "yaw_deg": 162.0,
+      "pitch_deg": -38.0
+    },
+    {
+      "id": "vp096",
+      "index": 96,
+      "position": [
+        177.8322,
+        97.5643,
+        5.9693
+      ],
+      "yaw_deg": 51.0,
+      "pitch_deg": -59.0
+    },
+    {
+      "id": "vp097",
+      "index": 97,
+      "position": [
+        196.4322,
+        106.0643,
+        13.9693
+      ],
+      "yaw_deg": 155.0,
+      "pitch_deg": -74.0
+    },
+    {
+      "id": "vp109",
+      "index": 109,
+      "position": [
+        200.5322,
+        92.3643,
+        -5.1307
+      ],
+      "yaw_deg": 129.0,
+      "pitch_deg": 14.0
+    },
+    {
+      "id": "vp121",
+      "index": 121,
+      "position": [
+        183.2322,
+        90.3643,
+        -0.3307
+      ],
+      "yaw_deg": 74.0,
+      "pitch_deg": -3.0
+    },
+    {
+      "id": "vp124",
+      "index": 124,
+      "position": [
+        189.9322,
+        89.6643,
+        -2.3307
+      ],
+      "yaw_deg": 92.0,
+      "pitch_deg": 1.0
+    },
+    {
+      "id": "vp133",
+      "index": 133,
+      "position": [
+        171.8322,
+        97.0643,
+        -1.0307
+      ],
+      "yaw_deg": 41.0,
+      "pitch_deg": 2.0
+    },
+    {
+      "id": "vp146",
+      "index": 146,
+      "position": [
+        200.6322,
+        107.3643,
+        6.3693
+      ],
+      "yaw_deg": 166.0,
+      "pitch_deg": -18.0
+    },
+    {
+      "id": "vp150",
+      "index": 150,
+      "position": [
+        176.2322,
+        98.6643,
+        5.6693
+      ],
+      "yaw_deg": 50.0,
+      "pitch_deg": -8.0
+    },
+    {
+      "id": "vp166",
+      "index": 166,
+      "position": [
+        178.8322,
+        118.4643,
+        10.1693
+      ],
+      "yaw_deg": -53.0,
+      "pitch_deg": -13.0
+    },
+    {
+      "id": "vp175",
+      "index": 175,
+      "position": [
+        181.4322,
+        100.4643,
+        14.6693
+      ],
+      "yaw_deg": 57.0,
+      "pitch_deg": -28.0
+    }
+  ]
+}

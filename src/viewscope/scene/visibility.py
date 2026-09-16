@@ -41,6 +41,16 @@ class TargetVisibility:
 
         return self._cache[index]
 
+    def union_mask(self, indices) -> np.ndarray:
+        """The targets at least one of these cameras can see."""
+        union = np.zeros(len(self._scene.targets), dtype=bool)
+        for index in indices:
+            mask = self.mask_for(index)
+            if mask is not None:
+                union |= mask
+
+        return union
+
     def forget(self, index: int | None = None):
         """Drop cached masks, for when a camera moves or the plan changes."""
         if index is None:
