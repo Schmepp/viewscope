@@ -10,8 +10,6 @@ target normal that the observers fall into.
 
 from __future__ import annotations
 
-import colorsys
-
 import numpy as np
 import vtk
 from vtkmodules.util import numpy_support as vtknp
@@ -19,8 +17,11 @@ from vtkmodules.util import numpy_support as vtknp
 from viewscope.config import (
     COLOUR_BY_SECTOR,
     COLOUR_BY_WEIGHT,
+    SECTOR_COLOURS,
     TARGET_MARKER_COLOUR,
     WEIGHT_HUE,
+    WEIGHT_SATURATION_RANGE,
+    WEIGHT_VALUE_RANGE,
     OverlayOptions,
 )
 from viewscope.scene import transform
@@ -28,25 +29,24 @@ from viewscope.scene.target_report import TargetReport
 
 
 def weight_lut() -> vtk.vtkLookupTable:
-    """One purple, light for a weak camera through to dark for a strong one, over [0, 1].
-
-    A single hue keeps the reading one-dimensional: only depth changes, so a
-    camera barely worth flying reads as a wash and the ones actually carrying
-    the target read as ink.
-    """
+    """One blue, light for a weak camera through to dark for a strong one, over [0, 1]."""
     lut = vtk.vtkLookupTable()
+    # VTK ramps on an S-curve unless told otherwise, which bunches the middle
+    # weights together and pulls the ends apart. Weight is linear, so the
+    # colour is too, and what is read off the bar is what was measured.
+    lut.SetRampToLinear()
     lut.SetHueRange(WEIGHT_HUE, WEIGHT_HUE)
-    lut.SetSaturationRange(0.15, 0.95)
-    lut.SetValueRange(1.0, 0.60)
+    lut.SetSaturationRange(*WEIGHT_SATURATION_RANGE)
+    lut.SetValueRange(*WEIGHT_VALUE_RANGE)
     lut.SetTableRange(0.0, 1.0)
     lut.Build()
 
     return lut
 
 
-def sector_colour(sector: int, sector_count: int) -> tuple[float, float, float]:
-    """A hue per wedge, walking the colour wheel the way the wedges walk the compass."""
-    return colorsys.hsv_to_rgb((sector % sector_count) / sector_count, 0.72, 1.0)
+def sector_colour(sector: int) -> tuple[float, float, float]:
+    """The colour that belongs to one wedge, taken in order from the fixed set."""
+    return SECTOR_COLOURS[sector % len(SECTOR_COLOURS)]
 
 
 def weight_colour(lut: vtk.vtkLookupTable, weight: float) -> tuple[float, float, float]:
@@ -58,7 +58,7 @@ def weight_colour(lut: vtk.vtkLookupTable, weight: float) -> tuple[float, float,
 
 
 def observer_colour(
-    observer, sector_count: int, colour_by: str, lut: vtk.vtkLookupTable
+    observer, colour_by: str, lut: vtk.vtkLookupTable
 ) -> tuple[float, float, float]:
     """The one colour that stands for an observer, whatever is drawing it.
 
@@ -66,7 +66,7 @@ def observer_colour(
     twice over, so both read it off here and cannot drift apart.
     """
     if colour_by == COLOUR_BY_SECTOR:
-        return sector_colour(observer.sector, sector_count)
+        return sector_colour(observer.sector)
 
     return weight_colour(lut, observer.weight)
 
@@ -156,7 +156,7 @@ class TargetOverlay:
             if not 0 <= observer.camera_index < len(positions):
                 continue
 
-            colour = self._ray_colour(observer, report.sector_count, colour_by)
+            colour = self._ray_colour(observer, colour_by)
             groups[observer.best].append((positions[observer.camera_index], colour))
 
         actors = []
@@ -174,8 +174,8 @@ class TargetOverlay:
 
         return actors
 
-    def _ray_colour(self, observer, sector_count, colour_by):
-        return observer_colour(observer, sector_count, colour_by, self._lut)
+    def _ray_colour(self, observer, colour_by):
+        return observer_colour(observer, colour_by, self._lut)
 
     def _scalar_bar(self) -> vtk.vtkScalarBarActor:
         """Reads the ray colours back as weights."""

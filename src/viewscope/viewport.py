@@ -738,7 +738,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.glyphs.reset_actors_colour()
 
         for observer in report.observers:
-            colour = observer_colour(observer, report.sector_count, colour_by, self._weight_lut)
+            colour = observer_colour(observer, colour_by, self._weight_lut)
             self.glyphs.set_actor_colour_by_index(observer.camera_index, colour)
 
     # -- Window events ---------------------------------------------------
