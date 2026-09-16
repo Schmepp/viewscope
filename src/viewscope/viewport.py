@@ -303,7 +303,7 @@ class Viewport(QVTKRenderWindowInteractor):
     def clear_target_overlay(self):
         """Take the target overlay down, leaving the rest of the scene alone."""
         self._overlay.clear()
-        self.glyphs.reset_actors_colour()  # Clear all camera colours
+        self.glyphs.set_observer_colours(None)
         self.render()
 
     def set_grid_visible(self, visible: bool):
@@ -332,11 +332,12 @@ class Viewport(QVTKRenderWindowInteractor):
         # INVARIANT: The glyphs should not be uninitialized at this stage!
         assert self.glyphs is not None
 
+        self.glyphs.set_selected(None if info is None else info.index)
+        self.selected_outline.remove_from(self.renderer)
+
         if info is not None:
-            self.glyphs.set_actor_colour_by_index(info.index)
             self.set_selected_camera_position(info)
 
-            self.selected_outline.remove_from(self.renderer)
             if self.selected_camera_pos != (0, 0, 0):
                 self.selected_outline.build(self.renderer, self.selected_camera_pos)
 
@@ -625,11 +626,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
         actor = self._mouse_picker.GetActor()
         if actor is None:
-            self.glyphs.reset_actors_colour()  # Clear all camera colours
             return False
-
-        # NOTE(AZAAM): This method works too.
-        # self.glyphs.set_actor_colour(actor)
 
         # NOTE(Adam): With the scene mesh added to the pick list,
         #       this will correctly return None when clicking on the mesh,
@@ -664,7 +661,6 @@ class Viewport(QVTKRenderWindowInteractor):
 
         if index is None:
             self.target_cleared.emit()
-            # self.glyphs.reset_actors_colour() # Clear all camera colours
             return False
 
         self.target_picked.emit(index)
@@ -735,12 +731,16 @@ class Viewport(QVTKRenderWindowInteractor):
         colour, the frustum out in the scene says where that camera is
         without the eye having to follow the line back.
         """
-        self.glyphs.reset_actors_colour()
         top_camera = None if report.top_observer is None else report.top_observer.camera_index
 
-        for observer in report.observers:
-            colour = observer_colour(observer, colour_by, self._weight_lut, top_camera)
-            self.glyphs.set_actor_colour_by_index(observer.camera_index, colour)
+        self.glyphs.set_observer_colours(
+            {
+                observer.camera_index: observer_colour(
+                    observer, colour_by, self._weight_lut, top_camera
+                )
+                for observer in report.observers
+            }
+        )
 
     # -- Window events ---------------------------------------------------
 

@@ -142,6 +142,10 @@ class CameraGlyphs:
         self._active: int | None = None
         self._route: set[int] | None = None
         self._shown: set[str] | None = None
+        #: The camera the user has selected, wearing COLOUR_ACTIVE.
+        self._selected: int | None = None
+        #: Camera index -> colour, for the observers of the picked target.
+        self._observers: dict[int, tuple[float, float, float]] = {}
         self._outline: type = CameraOutline
         # self.new_camera_id = None
 
@@ -168,24 +172,14 @@ class CameraGlyphs:
         self._active = index
         self._refresh()
 
-    def set_actor_colour_by_index(self, index: int, color=COLOUR_ACTIVE):
-        """Paint one frustum, leaving every other one as it is."""
-        for actor, id in self.glyphs.items():
-            if index == id:
-                actor.GetMapper().ScalarVisibilityOff()  # Disabling this property for best result
-                actor.GetProperty().SetColor(*color)
+    def set_selected(self, index: int | None):
+        """Mark the camera the user has picked; None when nothing is picked."""
+        self._selected = index
+        self._refresh()
 
-    def set_actor_colour(self, actor: vtk.vtkActor, color=COLOUR_ACTIVE):
-        actor.GetMapper().ScalarVisibilityOff()  # Disabling this property for best result
-        actor.GetProperty().SetColor(*color)
-
-    def reset_actors_colour(self):
-        """Give every frustum back the colours it wears when nothing is picked.
-
-        Painting a glyph switches its vertex colours off, so this goes back
-        through _refresh rather than setting white: whatever the route is
-        doing survives a target being let go.
-        """
+    def set_observer_colours(self, colours: dict[int, tuple[float, float, float]] | None):
+        """Paint the observers of the picked target; None when no target is up."""
+        self._observers = dict(colours or {})
         self._refresh()
 
     def set_route(self, selected: set[int] | None, shown: set[str] | None = None):
@@ -234,16 +228,36 @@ class CameraGlyphs:
             )
 
             mapper = actor.GetMapper()
-            if self._route is None:
+            colour = self._colour_of(id)
+
+            if colour is None:
                 # The glyph carries its own vertex colours; let them through.
                 mapper.ScalarVisibilityOn()
                 actor.GetProperty().SetColor(1.0, 1.0, 1.0)
                 continue
 
             mapper.ScalarVisibilityOff()
-            actor.GetProperty().SetColor(
-                *(ROUTE_SELECTED_COLOUR if id in self._route else ROUTE_UNSELECTED_COLOUR)
-            )
+            actor.GetProperty().SetColor(*colour)
+
+    def _colour_of(self, id: int) -> tuple[float, float, float] | None:
+        """What one frustum wears, strongest claim first, or None for its own colours.
+
+        Every colour a glyph can wear is decided here, from state, and applied
+        by a full _refresh. Nothing paints a glyph on its own: a colour that is
+        set directly is a colour nothing knows how to take off again, which is
+        how a camera used to keep the selection gold after the selection had
+        moved on.
+        """
+        if id == self._selected:
+            return self.COLOUR_ACTIVE
+
+        if id in self._observers:
+            return self._observers[id]
+
+        if self._route is not None:
+            return ROUTE_SELECTED_COLOUR if id in self._route else ROUTE_UNSELECTED_COLOUR
+
+        return None
 
 
 class CameraOutline:
