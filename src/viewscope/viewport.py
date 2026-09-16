@@ -725,6 +725,7 @@ class Viewport(QVTKRenderWindowInteractor):
         self.glyphs.reset_actors_colour() # Erase all glyphs before changing colours
         for obs_index in observer_list:
             self.glyphs.set_actor_colour_by_index(obs_index)
+        self.render()
 
     # -- Window events ---------------------------------------------------
 
