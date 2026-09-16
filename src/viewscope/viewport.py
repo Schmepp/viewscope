@@ -531,7 +531,7 @@ class Viewport(QVTKRenderWindowInteractor):
         # NOTE(AZAAM): This method works too.
         # self.glyphs.set_actor_colour(actor)
 
-        # NOTE: With the scene mesh added to the pick list,
+        # NOTE(Adam): With the scene mesh added to the pick list,
         #       this will correctly return None when clicking on the mesh,
         #       therefore blocking glyph selections through the mesh.
         camera_id = self.glyphs.camera_id_of_actor(actor)
