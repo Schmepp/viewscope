@@ -20,6 +20,7 @@ from viewscope.config import (
     COLOUR_BY_SECTOR,
     COLOUR_BY_WEIGHT,
     TARGET_MARKER_COLOUR,
+    WEIGHT_HUE,
     OverlayOptions,
 )
 from viewscope.scene import transform
@@ -27,9 +28,16 @@ from viewscope.scene.target_report import TargetReport
 
 
 def weight_lut() -> vtk.vtkLookupTable:
-    """Blue for a weak camera through to red for a strong one, over [0, 1]."""
+    """One purple, light for a weak camera through to dark for a strong one, over [0, 1].
+
+    A single hue keeps the reading one-dimensional: only depth changes, so a
+    camera barely worth flying reads as a wash and the ones actually carrying
+    the target read as ink.
+    """
     lut = vtk.vtkLookupTable()
-    lut.SetHueRange(0.667, 0.0)
+    lut.SetHueRange(WEIGHT_HUE, WEIGHT_HUE)
+    lut.SetSaturationRange(0.15, 0.95)
+    lut.SetValueRange(1.0, 0.60)
     lut.SetTableRange(0.0, 1.0)
     lut.Build()
 
@@ -41,14 +49,26 @@ def sector_colour(sector: int, sector_count: int) -> tuple[float, float, float]:
     return colorsys.hsv_to_rgb((sector % sector_count) / sector_count, 0.72, 1.0)
 
 
-# Took weight_colour out of the class.
 def weight_colour(lut: vtk.vtkLookupTable, weight: float) -> tuple[float, float, float]:
-    """Read one weight off the same table the scalar bar draws.
-    Takes LUT as an argument."""
+    """Read one weight off the same table the scalar bar draws."""
     rgb = [0.0, 0.0, 0.0]
     lut.GetColor(float(np.clip(weight, 0.0, 1.0)), rgb)
 
     return rgb[0], rgb[1], rgb[2]
+
+
+def observer_colour(
+    observer, sector_count: int, colour_by: str, lut: vtk.vtkLookupTable
+) -> tuple[float, float, float]:
+    """The one colour that stands for an observer, whatever is drawing it.
+
+    The ray out to a camera and the camera's own frustum are the same fact
+    twice over, so both read it off here and cannot drift apart.
+    """
+    if colour_by == COLOUR_BY_SECTOR:
+        return sector_colour(observer.sector, sector_count)
+
+    return weight_colour(lut, observer.weight)
 
 
 class TargetOverlay:
@@ -155,17 +175,7 @@ class TargetOverlay:
         return actors
 
     def _ray_colour(self, observer, sector_count, colour_by):
-        if colour_by == COLOUR_BY_SECTOR:
-            return sector_colour(observer.sector, sector_count)
-
-        return self._weight_colour(observer.weight)
-
-    def _weight_colour(self, weight: float) -> tuple[float, float, float]:
-        """Read one weight off the same table the scalar bar draws."""
-        rgb = [0.0, 0.0, 0.0]
-        self._lut.GetColor(float(np.clip(weight, 0.0, 1.0)), rgb)
-
-        return rgb[0], rgb[1], rgb[2]
+        return observer_colour(observer, sector_count, colour_by, self._lut)
 
     def _scalar_bar(self) -> vtk.vtkScalarBarActor:
         """Reads the ray colours back as weights."""

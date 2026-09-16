@@ -44,6 +44,11 @@ COLOUR_BY_WEIGHT = "Weight"
 COLOUR_BY_SECTOR = "Sector"
 TARGET_COLOUR_MODES = [COLOUR_BY_WEIGHT, COLOUR_BY_SECTOR]
 
+# The hue the weight ramp is built on, as an HSV fraction: weight is read as
+# depth of one purple, not as a walk around the wheel, which is what the
+# sector colours already use.
+WEIGHT_HUE = 0.77
+
 # The picked target itself. Its radius is a fraction of the scene diagonal,
 # because bundles differ in scale by an order of magnitude and a marker fixed
 # in metres would be a speck on one and a boulder on the next.

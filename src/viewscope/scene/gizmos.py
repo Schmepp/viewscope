@@ -123,7 +123,6 @@ class CameraGlyphs:
     """One frustum per planned viewpoint."""
 
     # Camera Colours
-    COLOUR_DEFAULT: tuple = (1, 1, 1)
     COLOUR_ACTIVE: tuple = (1.00, 0.85, 0.10)  # Gold
     COLOUR_NEW: tuple = (0.20, 0.80, 1.00)  # Cyan
 
@@ -170,20 +169,24 @@ class CameraGlyphs:
         self._refresh()
 
     def set_actor_colour_by_index(self, index: int, color=COLOUR_ACTIVE):
-        # self.reset_actors_colour()
+        """Paint one frustum, leaving every other one as it is."""
         for actor, id in self.glyphs.items():
             if index == id:
                 actor.GetMapper().ScalarVisibilityOff()  # Disabling this property for best result
                 actor.GetProperty().SetColor(*color)
 
     def set_actor_colour(self, actor: vtk.vtkActor, color=COLOUR_ACTIVE):
-        # self.reset_actors_colour()
         actor.GetMapper().ScalarVisibilityOff()  # Disabling this property for best result
         actor.GetProperty().SetColor(*color)
 
     def reset_actors_colour(self):
-        for actor, _id in self.glyphs.items():
-            actor.GetProperty().SetColor(*self.COLOUR_DEFAULT)
+        """Give every frustum back the colours it wears when nothing is picked.
+
+        Painting a glyph switches its vertex colours off, so this goes back
+        through _refresh rather than setting white: whatever the route is
+        doing survives a target being let go.
+        """
+        self._refresh()
 
     def set_route(self, selected: set[int] | None, shown: set[str] | None = None):
         """Paint the route: blue for in, dimmed for out.
