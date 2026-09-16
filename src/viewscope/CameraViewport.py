@@ -15,7 +15,6 @@ from viewscope.config import (
     BACKGROUND,
     MODE_ALL,
     MODE_GEOMETRY,
-    MODE_TARGETS,
     MODE_TEXTURED,
     YFOV_DEG,
 )
@@ -41,7 +40,7 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.GetRenderWindow().AddRenderer(self.renderer)
 
         self._interactor = self.GetRenderWindow().GetInteractor()
-        self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleUser()) # Disable all input
+        self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleUser())  # Disable all input
 
         self.mesh = None
         self.camera = None

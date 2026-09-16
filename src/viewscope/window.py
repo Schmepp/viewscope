@@ -89,9 +89,7 @@ class MainWindow(QMainWindow):
         self.loader.progress.connect(self.statusBar().showMessage)
         self.loader.loaded.connect(self._on_scene_loaded)
         self.loader.failed.connect(self._on_failed)
-        self.loader.plan_validation_failed.connect(
-            self.show_error_dialog
-        )
+        self.loader.plan_validation_failed.connect(self.show_error_dialog)
         self.loader.filename_validation_failed.connect(self.show_error_dialog)
         if not defer_load:
             self.loader.start()
