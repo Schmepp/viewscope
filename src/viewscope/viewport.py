@@ -158,6 +158,7 @@ class Viewport(QVTKRenderWindowInteractor):
         for view in (self.mesh, self.cloud, self.glyphs):
             view.add_to(self.renderer)
 
+        self._mouse_picker.AddPickList(self.mesh.actor)
         for glyph_actor in self.glyphs.actors:
             self._mouse_picker.AddPickList(glyph_actor)
 
