@@ -44,7 +44,7 @@ class Viewport(QVTKRenderWindowInteractor):
     # Swallow residual noise from the cursor warp during manipulation
     _WARP_ECHO_EPSILON: float = 2.0  # px
     _ZOOM_NOTCH_SENSITIVITY: float = 20
-    _CAMERA_MODE_TRANSITION_DURATION_MS: float = 250.0
+    _CAMERA_MODE_TRANSITION_DURATION_MS: float = 500.0
 
     camera_changed = Signal(CameraInfo)
     camera_picked = Signal(int)
