@@ -34,14 +34,27 @@ class CameraOrbitState:
 
         return tuple(p + o for p, o in zip(self.pivot, offset))
 
+    def camera_up(self) -> tuple[float, float, float]:
+        """
+        Computes analytic 'up': the tangent to the orbit sphere in the
+        pitch-increasing direction. Always unit length and always exactly
+        orthogonal to the view direction by construction - unlike VTK's
+        default, which derives 'up' from a fixed world-up hint.
+        """
+        cp, sp = math.cos(self.pitch), math.sin(self.pitch)
+        cy, sy = math.cos(self.yaw), math.sin(self.yaw)
+
+        return (-sp * sy, sp * cy, cp)
+
 
 class SceneCameraController:
     """Perspective look-at scene camera."""
-    YAW_SENSITIVITY: float = 0.005 # rad/px
-    PITCH_SENSITIVITY: float = 0.005    # rad/px
-    PAN_SENSITIVITY: float = 0.0015  # fraction of distance/px
-    ZOOM_SENSITIVITY: float = 0.0025  # fraction of distance/unit
-    PITCH_LIMIT: float = math.radians(89.0)
+    YAW_SENSITIVITY: float = 0.005 # Rad/px
+    YAW_SINGULARITY_RATIO: float = 1e-3  # Horizontal/Distance
+    PITCH_SENSITIVITY: float = 0.005    # Rad/px
+    PAN_SENSITIVITY: float = 0.0015  # Fraction of distance/px
+    ZOOM_SENSITIVITY: float = 0.0025  # Fraction of distance/Unit
+    PITCH_LIMIT: float = math.radians(89.0) # Camera can't be 90deg overhead/below
     MIN_DISTANCE: float = 1e-3
 
     def __init__(self, renderer: vtk.vtkRenderer, yfov_deg: float):
@@ -66,6 +79,7 @@ class SceneCameraController:
         cam = self.renderer.GetActiveCamera()
         position = np.array(cam.GetPosition(), dtype=float)
         focal = np.array(cam.GetFocalPoint(), dtype=float)
+        up = np.array(cam.GetViewUp(), dtype=float)
         offset = position - focal
 
         distance = float(np.linalg.norm(offset))
@@ -73,8 +87,27 @@ class SceneCameraController:
             distance = self.MIN_DISTANCE
 
         horizontal = math.hypot(offset[0], offset[1])
-        yaw = math.atan2(offset[0], -offset[1])
         pitch = math.atan2(offset[2], horizontal)
+
+        # NOTE: Clamp the pitch as seen in orbit().
+        #       Without this, a pose adopted from outside this controller
+        #       (the orientation widget's top/bottom) can land us
+        #       exactly at the pole. At pitch == +-90deg the view direction is
+        #       parallel to our fixed world-up (0, 0, 1).
+        #
+        #       VTK's camera basis is singular - GetViewTransformMatrix() (used
+        #       by pan()) starts returning garbage/NaN, which then corrupts every
+        #       subsequent orbit/pan/dolly, including making zoom look broken.
+        pitch = max(-self.PITCH_LIMIT, min(self.PITCH_LIMIT, pitch))
+
+        # Near a pole, offset[0]/offset[1] are noise, not a direction;
+        # atan2 on them would give a near-random yaw. The yaw is still
+        # recoverable from the actual up vector reported by VTK.
+        sp = math.sin(pitch)
+        if (horizontal < (distance * self.YAW_SINGULARITY_RATIO)) and (abs(sp) > 1e-6):
+            yaw = math.atan2(-up[0] / sp, up[1] / sp)
+        else:
+            yaw = math.atan2(offset[0], -offset[1])
 
         return CameraOrbitState(
             pivot=tuple(focal),
@@ -91,7 +124,7 @@ class SceneCameraController:
         cam = self.renderer.GetActiveCamera()
         cam.SetFocalPoint(*self._orbit.pivot)
         cam.SetPosition(*self._orbit.camera_position())
-        cam.SetViewUp(0, 0, 1)
+        cam.SetViewUp(*self._orbit.camera_up())
         cam.SetViewAngle(self._orbit.view_angle)
 
         # Keep the near plane close enough that geometry doesn't disappear
