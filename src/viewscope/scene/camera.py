@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from enum import Enum
 import math
 from dataclasses import dataclass, replace
+from enum import Enum, auto
 
 import numpy as np
-
 import vtk
 
+
 class CameraMode(Enum):
-    LOOK_AT = 0,
-    TRACKBALL = 1
+    LOOK_AT = (auto(),)
+    TRACKBALL = auto()
 
 
 @dataclass(frozen=True)
@@ -21,18 +21,19 @@ class CameraOrbitState:
     Deliberately not derived from scene bounds after construction, so
     nothing in the renderer can perturb it as a side effect.
     """
+
     pivot: tuple[float, float, float]
     distance: float
     yaw: float  # Radians
-    pitch: float # Radians
-    view_angle: float # Degrees
+    pitch: float  # Radians
+    view_angle: float  # Degrees
 
     def camera_position(self) -> tuple[float, ...]:
         cp, sp = math.cos(self.pitch), math.sin(self.pitch)
         cy, sy = math.cos(self.yaw), math.sin(self.yaw)
         offset = (self.distance * cp * sy, -self.distance * cp * cy, self.distance * sp)
 
-        return tuple(p + o for p, o in zip(self.pivot, offset))
+        return tuple(p + o for p, o in zip(self.pivot, offset, strict=False))
 
     def camera_up(self) -> tuple[float, float, float]:
         """
@@ -49,12 +50,13 @@ class CameraOrbitState:
 
 class SceneCameraController:
     """Perspective look-at scene camera."""
-    YAW_SENSITIVITY: float = 0.005 # Rad/px
+
+    YAW_SENSITIVITY: float = 0.005  # Rad/px
     YAW_SINGULARITY_RATIO: float = 1e-3  # Horizontal/Distance
-    PITCH_SENSITIVITY: float = 0.005    # Rad/px
+    PITCH_SENSITIVITY: float = 0.005  # Rad/px
     PAN_SENSITIVITY: float = 0.0015  # Fraction of distance/px
     ZOOM_SENSITIVITY: float = 0.0025  # Fraction of distance/Unit
-    PITCH_LIMIT: float = math.radians(89.0) # Camera can't be 90deg overhead/below
+    PITCH_LIMIT: float = math.radians(89.0)  # Camera can't be 90deg overhead/below
     MIN_DISTANCE: float = 1e-3
 
     def __init__(self, renderer: vtk.vtkRenderer, yfov_deg: float):

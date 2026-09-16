@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import cast
 
 import vtk
-from PySide6.QtCore import QPoint, QPointF, Qt, Signal, QElapsedTimer, QTimer
+from PySide6.QtCore import QElapsedTimer, QPoint, QPointF, Qt, QTimer, Signal
 from PySide6.QtGui import QCursor, QMouseEvent, QWheelEvent
 from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
@@ -16,7 +16,6 @@ from vtkmodules.vtkInteractionWidgets import (
 )
 
 import viewscope.qt  # noqa: F401
-from viewscope.camera.controller import CameraController
 from viewscope.camera.structs import CameraInfo
 from viewscope.config import (
     BACKGROUND,
@@ -29,7 +28,7 @@ from viewscope.config import (
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
 from viewscope.scene.camera import CameraMode, SceneCameraController
-from viewscope.scene.gizmos import CameraGlyphs, CameraOutline, FloorGrid, CameraModeGizmo
+from viewscope.scene.gizmos import CameraGlyphs, CameraModeGizmo, CameraOutline, FloorGrid
 from viewscope.scene.stats import FieldStats
 from viewscope.scene.views import MeshView, TargetCloudView
 
@@ -41,6 +40,7 @@ class Viewport(QVTKRenderWindowInteractor):
     Emits `camera_changed` with a CameraInfo, or None for the overview, so
     panels can follow along without reaching into the renderer.
     """
+
     # Swallow residual noise from the cursor warp during manipulation
     _WARP_ECHO_EPSILON: float = 2.0  # px
     _ZOOM_NOTCH_SENSITIVITY: float = 20
@@ -89,8 +89,12 @@ class Viewport(QVTKRenderWindowInteractor):
         # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
         self.orientation_widget.SetParentRenderer(self.renderer)
-        self.orientation_widget.AddObserver(vtk.vtkCommand.InteractionEvent, self._on_camera_moved_external)
-        self.orientation_widget.AddObserver(vtk.vtkCommand.EndInteractionEvent, self._on_camera_moved_external)
+        self.orientation_widget.AddObserver(
+            vtk.vtkCommand.InteractionEvent, self._on_camera_moved_external
+        )
+        self.orientation_widget.AddObserver(
+            vtk.vtkCommand.EndInteractionEvent, self._on_camera_moved_external
+        )
 
         # Representation - the widget that's drawn in render window
         representation = cast(
@@ -343,7 +347,7 @@ class Viewport(QVTKRenderWindowInteractor):
             self._mode_transition_timer.stop()
             self._mode_transition_start = None
 
-    def _on_camera_moved_external(self, obj = None, event = None):
+    def _on_camera_moved_external(self, obj=None, event=None):
         """
         Resync SceneCameraController after something outside it (the
         orientation widget, a planned-viewpoint jump, etc.) moves the VTK

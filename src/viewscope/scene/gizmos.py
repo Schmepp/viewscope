@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import vtk
-
-from PySide6.QtCore import Signal, Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout
-
-from viewscope.scene.camera import CameraMode
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
 
 import viewscope_core as vc
 from viewscope.scene import transform
+from viewscope.scene.camera import CameraMode
 
 
 class FloorGrid:
@@ -220,7 +218,7 @@ class CameraModeGizmo(QFrame):
 
     mode_changed = Signal(CameraMode)
 
-    def __init__(self, parent = None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setObjectName("CameraModeGizmo")
