@@ -224,7 +224,10 @@ def test_the_same_viewpoint_twice_is_refused(tmp_path):
     ("viewpoint", "message"),
     [
         ({"position": [0.0, 0.0, 5.0], "yaw_deg": 0.0, "pitch_deg": 0.0}, "has no id"),
-        ({"id": "vp000", "position": [0.0, 0.0], "yaw_deg": 0.0, "pitch_deg": 0.0}, "three numbers"),
+        (
+            {"id": "vp000", "position": [0.0, 0.0], "yaw_deg": 0.0, "pitch_deg": 0.0},
+            "three numbers",
+        ),
         ({"id": "vp000", "position": [0.0, 0.0, 5.0], "pitch_deg": 0.0}, "not a finite number"),
         (
             {"id": "vp000", "position": [0.0, 0.0, 5.0], "yaw_deg": 0.0, "pitch_deg": 90.0},
