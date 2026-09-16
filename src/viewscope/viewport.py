@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import cast
 
 import vtk
-from PySide6.QtCore import QPoint, QPointF, Qt, Signal
+from PySide6.QtCore import QPoint, QPointF, Qt, Signal, QElapsedTimer, QTimer
 from PySide6.QtGui import QCursor, QMouseEvent, QWheelEvent
 from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
@@ -44,6 +44,7 @@ class Viewport(QVTKRenderWindowInteractor):
     # Swallow residual noise from the cursor warp during manipulation
     _WARP_ECHO_EPSILON: float = 2.0  # px
     _ZOOM_NOTCH_SENSITIVITY: float = 20
+    _CAMERA_MODE_TRANSITION_DURATION_MS: float = 250.0
 
     camera_changed = Signal(CameraInfo)
     camera_picked = Signal(int)
@@ -105,7 +106,15 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera_mode_gizmo.mode_changed.connect(self.set_scene_camera_mode)
         self.camera_mode_gizmo.raise_()
 
-        self._finalized = False  # see shutdown()
+        # Animates the LOOK_AT camera into place after leaving TRACKBALL mode,
+        # rather than snapping to stale orbit state on the next interaction.
+        self._mode_transition_timer = QTimer(self)
+        self._mode_transition_timer.setInterval(16)  # Assuming ~60fps
+        self._mode_transition_timer.timeout.connect(self._on_camera_mode_transition_tick)
+        self._mode_transition_elapsed = QElapsedTimer()
+        self._mode_transition_start = None
+
+        self._finalized = False  # See shutdown()
 
         # FloorGrid configuration. set_scene moves it onto the ground of
         # whichever bundle is loaded, so this is only where it starts.
@@ -284,22 +293,30 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.render()
 
-    def set_scene_camera_mode(self, mode: CameraMode):
-        if mode == self._camera_mode:
-            return
-
-        self._camera_mode = mode
-        if self._camera_mode is CameraMode.TRACKBALL:
-            self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
-        else:
-            self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleUser())
-
-        self.camera_mode_gizmo.set_current_mode(mode)
-        self.render()
-
     def toggle_camera_orientation_visible(self):
         current_visibility = self.orientation_widget.GetEnabled()
         self.set_camera_orientation_visible(not current_visibility)
+
+    def set_scene_camera_mode(self, mode: CameraMode):
+        # INVARIANT: Camera cannot be null!
+        assert self.camera is not None
+
+        if mode == self._camera_mode:
+            return
+
+        prev_mode = self._camera_mode
+        self._camera_mode = mode
+
+        if self._camera_mode is CameraMode.TRACKBALL:
+            self._cancel_camera_mode_transition()
+            self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
+        else:
+            self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleUser())
+            if prev_mode is CameraMode.TRACKBALL:
+                self._begin_camera_mode_transition()
+
+        self.camera_mode_gizmo.set_current_mode(mode)
+        self.render()
 
     def _moved(self, info: CameraInfo | None):
         if self.glyphs is not None:
@@ -308,16 +325,58 @@ class Viewport(QVTKRenderWindowInteractor):
         self.camera_changed.emit(info)
         self.render()
 
+    def _begin_camera_mode_transition(self):
+        """
+        Animate from wherever trackball left the camera into the nearest
+        pose the look-at model can represent (same position/pivot, roll
+        discarded), instead of snapping there on the next orbit/pan/dolly.
+        """
+        # INVARIANT: Camera cannot be null!
+        assert self.camera is not None
+
+        self._mode_transition_start = self.camera.begin_transition_to_orbit()
+        self._mode_transition_elapsed.restart()
+        self._mode_transition_timer.start()
+
+    def _cancel_camera_mode_transition(self):
+        if self._mode_transition_timer.isActive():
+            self._mode_transition_timer.stop()
+            self._mode_transition_start = None
+
     def _on_camera_moved_external(self, obj = None, event = None):
         """
         Resync SceneCameraController after something outside it (the
         orientation widget, a planned-viewpoint jump, etc.) moves the VTK
         camera directly.
         """
-        if self.camera is not None:
-            self.camera.sync_from_camera()
+        # INVARIANT: Camera cannot be null!
+        assert self.camera is not None
+
+        self.camera.sync_from_camera()
+        self.render()
+
+    def _on_camera_mode_transition_tick(self):
+        """Lerp the transition animation."""
+        # INVARIANT: Camera cannot be null!
+        assert self.camera is not None
+
+        if self._mode_transition_start is None:
+            self._mode_transition_timer.stop()
+            return
+
+        t = self._mode_transition_elapsed.elapsed() / self._CAMERA_MODE_TRANSITION_DURATION_MS
+        if t >= 1.0:
+            self.camera.finish_transition()
+            self._mode_transition_timer.stop()
+            self._mode_transition_start = None
+        else:
+            self.camera.apply_transition(self._mode_transition_start, self._smoothstep(t))
 
         self.render()
+
+    @staticmethod
+    def _smoothstep(t: float) -> float:
+        return t * t * (3.0 - 2.0 * t)
 
     # -- Mouse --------------------------------------------------------
 
@@ -414,6 +473,13 @@ class Viewport(QVTKRenderWindowInteractor):
         ev.accept()
 
     def _mouse_lock_enter(self, ev: QMouseEvent):
+        # INVARIANT: Camera cannot be null!
+        assert self.camera is not None
+
+        if self._mode_transition_timer.isActive():
+            self.camera.finish_transition()
+            self._cancel_camera_mode_transition()
+
         self._mouse_locked = True
         self._mouse_lock_global_pos = ev.globalPosition().toPoint()
 

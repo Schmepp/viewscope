@@ -66,6 +66,69 @@ class SceneCameraController:
         """Resync orbit state from the camera's current pose."""
         self._orbit = self._orbit_from_camera()
 
+    def begin_transition_to_orbit(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+        """
+        Capture the camera's current raw pose (e.g. wherever trackball left
+        it) and compute the nearest pose the look-at model can represent, as
+        a target without moving the camera yet.
+
+        Returns the captured start pose; the target ends up in self._orbit.
+        Callers interpolate toward it with apply_transition(), then call
+        finish_transition() to land exactly on it.
+        """
+        cam = self.renderer.GetActiveCamera()
+        start = (
+            np.array(cam.GetPosition(), dtype=float),
+            np.array(cam.GetFocalPoint(), dtype=float),
+            np.array(cam.GetViewUp(), dtype=float),
+            cam.GetViewAngle(),
+        )
+
+        # Projects the current (possibly rolled) trackball pose onto the
+        # nearest yaw/pitch/no-roll pose - same position and pivot, roll discarded.
+        self.sync_from_camera()
+        return start
+
+    def apply_transition(self, start: tuple[np.ndarray, np.ndarray, np.ndarray, float], t: float):
+        """
+        Lerp the camera part-way (t in [0, 1]) from a captured start pose
+        toward the current _orbit target.
+        """
+        assert self._orbit is not None
+        start_position, start_focal, start_up, start_angle = start
+
+        target_position = np.array(self._orbit.camera_position(), dtype=float)
+        target_focal = np.array(self._orbit.pivot, dtype=float)
+        target_up = np.array(self._orbit.camera_up(), dtype=float)
+
+        position = start_position + (target_position - start_position) * t
+        focal = start_focal + (target_focal - start_focal) * t
+        up = start_up + (target_up - start_up) * t
+
+        norm = np.linalg.norm(up)
+        if norm > 1e-9:
+            up = up / norm
+
+        view_angle = start_angle + (self._orbit.view_angle - start_angle) * t
+
+        cam = self.renderer.GetActiveCamera()
+        cam.SetPosition(*position)
+        cam.SetFocalPoint(*focal)
+        cam.SetViewUp(*up)
+        cam.SetViewAngle(view_angle)
+
+        distance = float(np.linalg.norm(position - focal))
+        near_clip = max(distance * 0.001, 1e-5)
+        far_clip = max(distance * 100.0, near_clip + 1.0)
+        cam.SetClippingRange(near_clip, far_clip)
+
+    def finish_transition(self):
+        """
+        Land exactly on the projected target, clearing any residual
+        interpolation error from the lerp.
+        """
+        self._apply_orbit()
+
     # -- Orbit state -----------------------------------------------------
 
     def _orbit_from_camera(self) -> CameraOrbitState:
@@ -139,6 +202,8 @@ class SceneCameraController:
         """Lazily adopt the current camera pose the first time we're used."""
         if self._orbit is None:
             self.sync_from_camera()
+
+    # -- Pose manipulation -----------------------------------------------
 
     def orbit(self, dx: float, dy: float):
         """
