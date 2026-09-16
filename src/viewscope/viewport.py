@@ -91,13 +91,18 @@ class Viewport(QVTKRenderWindowInteractor):
         self._overlay = TargetOverlay()
         self._mode = MODE_ALL
 
+        self._camera_mode = CameraMode.LOOK_AT
+        self._render_mode = MODE_ALL
         self._mouse_locked = False
         self._mouse_lock_global_pos = QPoint()
+        self._mouse_virtual_local_pos = QPointF()
 
-        self._mouse_virtual_local_pos = QPoint()
+        # Where the gesture started, and how far it has travelled since. A
+        # left click that never travels is a pick; one that does is the user
+        # swinging the view around, and picks nothing.
         self._press_position = QPointF()
         self._picked_glyph = False
-        self._drag_px = 0
+        self._drag_px = 0.0
 
         # TODO(Azaam): Enable the two lines, when resuming Grid optimization
         # Adding observer only on active camera, for zoom-scale calculation.
@@ -469,7 +474,7 @@ class Viewport(QVTKRenderWindowInteractor):
         # left click that never travels is a pick; one that does is the user
         # swinging the view around, and picks nothing.
         self._press_position = ev.position()
-        self._drag_px = 0
+        self._drag_px = 0.0
         self._picked_glyph = False
 
         # NOTE(Adam): Early-return here handles camera-click vs viewport manip on left-click
@@ -522,11 +527,6 @@ class Viewport(QVTKRenderWindowInteractor):
         current_global = ev.globalPosition()
         delta = current_global - anchor
 
-       # if self._mouse_locked:
-       #     current_global = ev.globalPosition().toPoint()
-       #     delta = current_global - self._mouse_lock_global_pos
-       #     self._drag_px += delta.manhattanLength()
-
         # Swallow the warp's own echo (and any sub-pixel OS noise) without
         # discarding a whole event; real motion merged into a compressed
         # event still gets through, so nothing gets batched/skipped.
@@ -534,6 +534,10 @@ class Viewport(QVTKRenderWindowInteractor):
             abs(delta.y()) <= self._WARP_ECHO_EPSILON
         ):
             return
+
+        # How far the gesture has travelled, past the warp echo: what tells a
+        # click meant as a pick from one meant to swing the view around.
+        self._drag_px += abs(delta.x()) + abs(delta.y())
 
         # Accumulate relative delta onto virtual local position
         self._mouse_virtual_local_pos += delta
@@ -693,6 +697,20 @@ class Viewport(QVTKRenderWindowInteractor):
         offsets = self._targets - np.asarray(world_position, dtype=np.float64)
 
         return int(np.argmin(np.einsum("ij,ij->i", offsets, offsets)))
+
+    # -- Window events ---------------------------------------------------
+
+    def resizeEvent(self, ev):
+        super().resizeEvent(ev)
+
+        margin = 12
+        self.camera_mode_gizmo.adjustSize()
+
+        x = self.width() - self.camera_mode_gizmo.width() - margin
+        y = margin
+
+        self.camera_mode_gizmo.move(x, y)
+        self.camera_mode_gizmo.raise_()
 
     # TODO(Azaam): Uncomment method, when resuming Grid optimization
     # def _on_camera_modified(self, obj, event) -> None:
