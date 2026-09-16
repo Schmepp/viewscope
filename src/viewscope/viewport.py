@@ -736,9 +736,10 @@ class Viewport(QVTKRenderWindowInteractor):
         without the eye having to follow the line back.
         """
         self.glyphs.reset_actors_colour()
+        top_camera = None if report.top_observer is None else report.top_observer.camera_index
 
         for observer in report.observers:
-            colour = observer_colour(observer, colour_by, self._weight_lut)
+            colour = observer_colour(observer, colour_by, self._weight_lut, top_camera)
             self.glyphs.set_actor_colour_by_index(observer.camera_index, colour)
 
     # -- Window events ---------------------------------------------------
