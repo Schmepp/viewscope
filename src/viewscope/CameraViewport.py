@@ -41,25 +41,22 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.renderer.SetBackground(*BACKGROUND)
         self.GetRenderWindow().AddRenderer(self.renderer)
 
-        self._interactor = self.GetRenderWindow().GetInteractor()
-        self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
-
         self.mesh = None
         self.cloud = None
         self.glyphs = None
         self.camera = None
-        self._mode = MODE_TEXTURED  # set to textured mode by default
-        self._finalized = False  # see shutdown()
+        self._mode = MODE_TEXTURED
+        self._finalized = False  # See shutdown()
 
     # -- Lifecycle -----------------------------------------------------
 
     def start(self):
         """Call once the window is on screen."""
-        self._interactor.Initialize()
-        self._interactor.Disable()  # Disable the interactor entirely
+        self.GetRenderWindow().GetInteractor().Disable()
 
     def shutdown(self):
-        """Release the GL context explicitly; skipping this crashes on macOS.
+        """
+        Release the GL context explicitly; skipping this crashes on macOS.
 
         Runs at most once: closing the window and later destroying it would
         otherwise finalize the same render window twice, which frees the same
@@ -67,6 +64,7 @@ class CameraViewport(QVTKRenderWindowInteractor):
         """
         if self._finalized:
             return
+
         self._finalized = True
         self.Finalize()
 
