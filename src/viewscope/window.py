@@ -350,7 +350,7 @@ class MainWindow(QMainWindow):
         )
         self._refresh_target_overlay()
         # call method to change colours of observers
-        self.viewport.highlight_target_observers(self.get_observer_indices(report))
+        self.viewport.highlight_target_observers(self.observer_indices(report))
 
         self.statusBar().showMessage(
             f"Target {report.index}: {len(report.observers)} observers across "
@@ -390,12 +390,12 @@ class MainWindow(QMainWindow):
             self.target_panel.options(),
         )
 
-    def get_observer_indices(self, report:TargetReport) -> list[int]:
+    def observer_indices(self, report: TargetReport) -> list[int]:
         """Obtains the camera indices for the observers of the selected target,
         and appends them to a list.
         This will be passed into a viewport method to change the camera's glyphs colour."""
         observer_indices = []
-        for obs in report.observers: # Append cam indices to the observer list
+        for obs in report.observers:  # Append cam indices to the observer list
             observer_indices.append(obs.camera_index)
         return observer_indices
         # self.viewport.highlight_target_observers(observer_indices)
