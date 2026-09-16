@@ -66,6 +66,11 @@ ROUTE_FILENAME = "route.json"
 # gesture, so a little hand tremor still reads as a click.
 PICK_DRAG_SLOP_PX = 8
 
+# How near the cursor a target has to sit to count as the thing that was
+# clicked. Device-independent pixels, measured on screen rather than in
+# metres, so the reach is the same however far the view is zoomed out.
+PICK_TARGET_RADIUS_PX = 14
+
 
 @dataclass(frozen=True)
 class OverlayOptions:

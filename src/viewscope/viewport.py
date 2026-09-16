@@ -25,6 +25,7 @@ from viewscope.config import (
     MODE_TARGETS,
     MODE_TEXTURED,
     PICK_DRAG_SLOP_PX,
+    PICK_TARGET_RADIUS_PX,
     YFOV_DEG,
     OverlayOptions,
 )
@@ -627,21 +628,6 @@ class Viewport(QVTKRenderWindowInteractor):
 
         return True
 
-
-    # -- Window events ---------------------------------------------------
-
-    def resizeEvent(self, ev):
-        super().resizeEvent(ev)
-
-        margin = 12
-        self.camera_mode_gizmo.adjustSize()
-
-        x = self.width() - self.camera_mode_gizmo.width() - margin
-        y = margin
-
-        self.camera_mode_gizmo.move(x, y)
-        self.camera_mode_gizmo.raise_()
-
     def _display_position(self, position: QPointF) -> tuple[int, int]:
         """A Qt widget position as the render window's own pixel coordinates."""
         # NOTE(Adam): Qt uses the top-left origin.
@@ -678,7 +664,9 @@ class Viewport(QVTKRenderWindowInteractor):
         # The mesh goes first, so a click only ever reaches what it can see.
         self._surface_picker.Pick(x, y, 0, self.renderer)
         if self._surface_picker.GetActor() is not None:
-            return self._nearest_target(self._surface_picker.GetPickPosition())
+            return self._within_reach(
+                self._nearest_target(self._surface_picker.GetPickPosition()), x, y
+            )
 
         # No mesh under the cursor: either it is hidden, or the click missed
         # the model. Either way the cloud is all that is left to hit.
@@ -688,15 +676,41 @@ class Viewport(QVTKRenderWindowInteractor):
 
         point_id = int(self._point_picker.GetPointId())
         if 0 <= point_id < len(self._targets):
-            return point_id
+            return self._within_reach(point_id, x, y)
 
-        return self._nearest_target(self._point_picker.GetPickPosition())
+        return self._within_reach(self._nearest_target(self._point_picker.GetPickPosition()), x, y)
 
     def _nearest_target(self, world_position) -> int:
         """The target closest to a point on the surface."""
         offsets = self._targets - np.asarray(world_position, dtype=np.float64)
 
         return int(np.argmin(np.einsum("ij,ij->i", offsets, offsets)))
+
+    def _within_reach(self, index: int, x: int, y: int) -> int | None:
+        """The target, unless the click landed too far away to have meant it.
+
+        Picking off the surface hands back whichever target is nearest the
+        point that was hit, and on bare mesh the nearest one can be metres
+        off. Held to a radius around the cursor, a click on nothing stays
+        nothing, and the selection is let go instead of jumping.
+        """
+        target_x, target_y = self._display_of_world(self._targets[index])
+        reach = PICK_TARGET_RADIUS_PX * self.devicePixelRatioF()
+
+        if float(np.hypot(target_x - x, target_y - y)) > reach:
+            return None
+
+        return index
+
+    def _display_of_world(self, world_position) -> tuple[float, float]:
+        """A point in the scene as the render window's own pixel coordinates."""
+        self.renderer.SetWorldPoint(
+            float(world_position[0]), float(world_position[1]), float(world_position[2]), 1.0
+        )
+        self.renderer.WorldToDisplay()
+        display_x, display_y, _ = self.renderer.GetDisplayPoint()
+
+        return display_x, display_y
 
     # -- Window events ---------------------------------------------------
 
