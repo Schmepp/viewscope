@@ -88,6 +88,8 @@ class Viewport(QVTKRenderWindowInteractor):
         # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
         self.orientation_widget.SetParentRenderer(self.renderer)
+        self.orientation_widget.AddObserver(vtk.vtkCommand.InteractionEvent, self._on_camera_moved_external)
+        self.orientation_widget.AddObserver(vtk.vtkCommand.EndInteractionEvent, self._on_camera_moved_external)
 
         # Representation - the widget that's drawn in render window
         representation = cast(
@@ -304,6 +306,17 @@ class Viewport(QVTKRenderWindowInteractor):
             self.glyphs.set_active(None if info is None else info.index)
 
         self.camera_changed.emit(info)
+        self.render()
+
+    def _on_camera_moved_external(self, obj = None, event = None):
+        """
+        Resync SceneCameraController after something outside it (the
+        orientation widget, a planned-viewpoint jump, etc.) moves the VTK
+        camera directly.
+        """
+        if self.camera is not None:
+            self.camera.sync_from_camera()
+
         self.render()
 
     # -- Mouse --------------------------------------------------------

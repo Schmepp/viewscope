@@ -49,6 +49,10 @@ class SceneCameraController:
         self.yfov_deg = yfov_deg
         self._orbit: CameraOrbitState | None = None
 
+    def sync_from_camera(self):
+        """Resync orbit state from the camera's current pose."""
+        self._orbit = self._orbit_from_camera()
+
     # -- Orbit state -----------------------------------------------------
 
     def _orbit_from_camera(self) -> CameraOrbitState:
@@ -99,12 +103,9 @@ class SceneCameraController:
         cam.SetClippingRange(near_clip, far_clip)
 
     def _ensure_orbit_active(self):
-        """
-        Adopt the current camera pose as the orbit base if we're not already
-        manipulating it - covers first-ever use and resuming from a planned viewpoint.
-        """
+        """Lazily adopt the current camera pose the first time we're used."""
         if self._orbit is None:
-            self._orbit = self._orbit_from_camera()
+            self.sync_from_camera()
 
     def orbit(self, dx: float, dy: float):
         """
