@@ -55,16 +55,16 @@ class MainWindow(QMainWindow):
         self.resize(1500, 950)
 
         self.viewport = Viewport(self)
-        self.setCentralWidget(self.viewport)  # set the cental widget vtk
+        self.setCentralWidget(self.viewport)  # Set the cental widget vtk
 
         self.visibility = None  # TargetVisibility, once a scene is loaded
         self.selected_camera = None
         self.occlusion_on = False
 
+        self.camera_viewport = CameraViewport(self)
         self.display_panel = DisplayPanel()
         self.metrics_panel = MetricsPanel()
         self.viewpoints_panel = ViewpointsPanel()
-        self.camera_viewport = CameraViewport(self)
 
         self.docks = {}
         self._add_dock("Viewpoints", self.viewpoints_panel, Qt.DockWidgetArea.LeftDockWidgetArea)

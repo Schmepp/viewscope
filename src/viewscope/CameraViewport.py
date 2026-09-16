@@ -41,18 +41,21 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.renderer.SetBackground(*BACKGROUND)
         self.GetRenderWindow().AddRenderer(self.renderer)
 
+        self._interactor = self.GetRenderWindow().GetInteractor()
+        self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleUser()) # Disable all input
+
         self.mesh = None
-        self.cloud = None
+        self.cloud = None # TODO: Completely remove cloud & glyphs
         self.glyphs = None
         self.camera = None
-        self._mode = MODE_TEXTURED
+        self._render_mode = MODE_TEXTURED
         self._finalized = False  # See shutdown()
 
     # -- Lifecycle -----------------------------------------------------
 
     def start(self):
         """Call once the window is on screen."""
-        self.GetRenderWindow().GetInteractor().Disable()
+        self._interactor.Initialize()
 
     def shutdown(self):
         """
@@ -78,12 +81,13 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.cloud = None
         self.glyphs = CameraGlyphs(data.plan)
 
-        self.mesh.add_to(self.renderer)  # Only render the Mesh
+        # Only render the Mesh
+        self.mesh.add_to(self.renderer)
 
         self.camera = CameraController(self.renderer, YFOV_DEG)
         self.renderer.ResetCamera()
         self.camera.save_overview()
-        self.set_mode(self._mode)
+        self.set_render_mode(self._render_mode)
 
     @property
     def has_scene(self) -> bool:
@@ -91,14 +95,14 @@ class CameraViewport(QVTKRenderWindowInteractor):
 
     # -- Display state -------------------------------------------------
 
-    def set_mode(self, mode: str):
-        if self._mode == mode:
+    def set_render_mode(self, mode: str):
+        if self._render_mode == mode:
             return
 
         if not self.has_scene:
             return
 
-        self._mode = mode
+        self._render_mode = mode
         show_mesh = mode in (MODE_TEXTURED, MODE_GEOMETRY, MODE_ALL)
 
         if self.mesh is not None:

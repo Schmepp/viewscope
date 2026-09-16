@@ -132,7 +132,8 @@ class Viewport(QVTKRenderWindowInteractor):
         self._interactor.Initialize()
 
     def shutdown(self):
-        """Release the GL context explicitly; skipping this crashes on macOS.
+        """
+        Release the GL context explicitly; skipping this crashes on macOS.
 
         Runs at most once: closing the window and later destroying it would
         otherwise finalize the same render window twice, which frees the same
@@ -140,6 +141,7 @@ class Viewport(QVTKRenderWindowInteractor):
         """
         if self._finalized:
             return
+
         self._finalized = True
         self.Finalize()
 
