@@ -155,7 +155,7 @@ class TargetOverlay:
         rgb = [0.0, 0.0, 0.0]
         self._lut.GetColor(float(np.clip(weight, 0.0, 1.0)), rgb)
 
-        return tuple(rgb)
+        return rgb[0], rgb[1], rgb[2]
 
     def _scalar_bar(self) -> vtk.vtkScalarBarActor:
         """Reads the ray colours back as weights."""

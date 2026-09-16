@@ -4,6 +4,7 @@ import json
 
 import numpy as np
 import pytest
+import trimesh
 
 import viewscope_core as vc
 from viewscope.data.scene import SceneData
@@ -210,7 +211,7 @@ def scene_with(plan_positions, *, scores=None, visibility=None):
     )
 
     return SceneData(
-        mesh=None,
+        mesh=trimesh.Trimesh(),
         targets=targets,
         normals=normals,
         plan=plan,
@@ -254,6 +255,7 @@ def test_a_scored_bundle_is_read_rather_than_recomputed():
     scene = scene_with([camera_at(100.0), camera_at(250.0)], scores=scores)
 
     report = TargetReports(scene).report(0, 8)
+    assert report is not None
 
     assert not report.live
     assert [o.sector for o in report.observers] == [2, 5]
@@ -276,6 +278,7 @@ def test_an_unstored_sector_count_is_derived_from_the_stored_weights():
     scene = scene_with([camera_at(190.0)], scores=scores)
 
     report = TargetReports(scene).report(0, 6)
+    assert report is not None
 
     assert len(report.sectors) == 6
     assert report.observers[0].weight == pytest.approx(0.42, abs=1e-6)
@@ -300,6 +303,7 @@ def test_a_plan_the_bundle_never_scored_is_recomputed():
     assert not reports.stored
 
     report = reports.report(0, 8)
+    assert report is not None
     assert report.live
     assert len(report.observers) == 2
     assert report.observers[0].weight == pytest.approx(1.0)
@@ -310,6 +314,7 @@ def test_the_shipped_visibility_matrix_decides_who_observes():
     scene = scene_with([camera_at(0.0), camera_at(180.0)], visibility=visible)
 
     report = TargetReports(scene).report(0, 8)
+    assert report is not None
 
     assert [o.camera_index for o in report.observers] == [0]
     assert not report.assumed_visibility
@@ -321,6 +326,7 @@ def test_a_camera_with_no_visibility_data_is_assumed_to_see_the_target():
     scene = scene_with([camera_at(0.0), camera_at(180.0)], visibility=visible)
 
     report = TargetReports(scene).report(0, 8)
+    assert report is not None
 
     assert [o.camera_index for o in report.observers] == [0, 1]
     assert report.assumed_visibility

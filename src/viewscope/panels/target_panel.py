@@ -100,7 +100,7 @@ class TargetPanel(QWidget):
         form = QFormLayout(box)
 
         self.sectors = QComboBox()
-        self.sectors.addItems(str(count) for count in SECTOR_COUNTS)
+        self.sectors.addItems([str(count) for count in SECTOR_COUNTS])
         self.sectors.setToolTip("How many equal wedges the compass around the normal is cut into")
         self.sectors.currentTextChanged.connect(
             lambda text: self.sector_count_changed.emit(int(text))

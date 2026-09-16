@@ -23,7 +23,7 @@ class SceneData:
     targets: np.ndarray
     normals: np.ndarray
     plan: vc.Plan
-    scores: object | None = None
+    scores: vc.Scores | None = None
     scores_error: str | None = None
     visibility: np.ndarray | None = None
 

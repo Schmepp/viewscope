@@ -263,6 +263,7 @@ class TargetReports:
     def _from_scores(self, index, position, normal, sector_count) -> TargetReport:
         """Read the stored row, deriving only what the bundle has no column for."""
         scores = self._scene.scores
+        assert scores is not None  # self.stored is the only route here
         row = scores.observers(index)
         ids = np.asarray(row["camera_index"], dtype=np.int64)
         derived = sector_count not in STORED_SECTOR_COUNTS
@@ -302,13 +303,12 @@ class TargetReports:
         """Which cameras can see this target, and whether that had to be assumed."""
         count = len(self._scene.plan.ids)
         shipped = self._scene.visibility
-        shipped_rows = 0 if shipped is None else len(shipped)
 
         seen = np.zeros(count, dtype=bool)
         assumed = False
 
         for camera in range(count):
-            if camera < shipped_rows:
+            if shipped is not None and camera < len(shipped):
                 seen[camera] = bool(shipped[camera][index])
                 continue
 
