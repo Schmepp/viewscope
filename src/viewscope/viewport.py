@@ -301,6 +301,7 @@ class Viewport(QVTKRenderWindowInteractor):
     def clear_target_overlay(self):
         """Take the target overlay down, leaving the rest of the scene alone."""
         self._overlay.clear()
+        self.glyphs.reset_actors_colour()  # Clear all camera colours
         self.render()
 
     def set_grid_visible(self, visible: bool):
@@ -622,6 +623,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
         actor = self._mouse_picker.GetActor()
         if actor is None:
+            self.glyphs.reset_actors_colour()  # Clear all camera colours
             return False
 
         # NOTE(AZAAM): This method works too.
@@ -660,6 +662,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
         if index is None:
             self.target_cleared.emit()
+            # self.glyphs.reset_actors_colour() # Clear all camera colours
             return False
 
         self.target_picked.emit(index)
