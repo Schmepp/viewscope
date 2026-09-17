@@ -11,6 +11,8 @@ receives finished actors.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 from pathlib import Path
 
 import vtk
@@ -205,13 +207,16 @@ class PhotoMeshLoader(QThread):
             importer.SetFileNameMTL(str(materials))
             importer.SetTexturePath(str(self.path.parent))
 
+        # NOTE(Adam): Ok so this is insanely flipping slow... Nice
+        #             (Its an OBJ file)
         importer.Update()
 
         actors = self._imported_actors()
         if not actors:
             raise ValueError(f"{self.path.name} imported no geometry")
 
-        for actor in actors:
+        # Texture preparation function to execute texture loads in parallel
+        def _prepare(actor: vtk.vtkActor):
             actor.GetMapper().Update()
             texture = actor.GetTexture()
             if texture is not None:
@@ -235,6 +240,12 @@ class PhotoMeshLoader(QThread):
                     resize.Update()
                     texture.SetInputData(resize.GetOutput())
 
+        # NOTE(Adam): Textures are independent files with no shared state between them, so
+        #             decoding them concurrently is safe and cuts time during scene loading.
+        with ThreadPoolExecutor(max_workers=min(8, len(actors))) as pool:
+            list(pool.map(_prepare, actors))
+
+        for actor in actors:
             self._renderer.RemoveActor(actor)
 
         self._window.Finalize()
