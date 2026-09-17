@@ -33,6 +33,7 @@ from viewscope.config import (
     TARGET_COLOUR_MODES,
     OverlayOptions,
 )
+from viewscope.panels.sector_barchart import SectorBarChart  # Bar Chart
 from viewscope.scene.target_report import TargetReport
 
 HINT = "Click a target in the 3D view to break it down."
@@ -69,6 +70,8 @@ class TargetPanel(QWidget):
         layout.addWidget(self._build_summary())
 
         layout.addWidget(QLabel("Sectors"))
+        self.sector_bar_chart = SectorBarChart()  # Show Barchart first
+        layout.addWidget(self.sector_bar_chart)
         self.sector_table = self._build_table(["Sector", "Cameras", "Best weight", "Best camera"])
         layout.addWidget(self.sector_table)
 
@@ -168,6 +171,9 @@ class TargetPanel(QWidget):
     def show_target(self, report: TargetReport | None):
         """Fill the panel in for one target, or empty it out when given None."""
         self._report = report
+
+        # Update barchart asap
+        self.sector_bar_chart.update_chart(report)
 
         self.hint.setText(HINT if report is None else f"Target {report.index}")
         self.clear_button.setEnabled(report is not None)
