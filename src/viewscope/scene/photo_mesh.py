@@ -1,5 +1,3 @@
-# NOTE(Adam): My question here is... What the fuck?
-
 """
 The full-resolution textured model the camera view takes its photos from.
 The main viewport draws the simplified scene.obj, because that is the half of
@@ -23,7 +21,8 @@ from viewscope.config import GEOMETRY_COLOUR, PHOTO_MESH_DIR
 
 
 def find_photo_mesh(data_dir) -> Path | None:
-    """The full-resolution OBJ a bundle ships, or None when it ships none.
+    """
+    The full-resolution OBJ a bundle ships, or None when it ships none.
     Bundles are not required to carry one. Without it the camera view keeps
     the simplified mesh every other panel draws, which is the picture it has
     always shown.
@@ -41,7 +40,8 @@ def find_photo_mesh(data_dir) -> Path | None:
 
 
 def find_materials(mesh_path: Path) -> Path | None:
-    """The .mtl beside a model, by name where it matches and by folder where not.
+    """
+    The .mtl beside a model, by name where it matches and by folder where not.
     The name in the OBJ's own `mtllib` line would be authoritative, but it is
     written after the last vertex: on a model this size, finding it means
     reading the better part of a gigabyte to learn something the folder
@@ -63,14 +63,12 @@ class PhotoMesh:
     an actor carries one texture at a time.
     """
 
-    def __init__(self, actors, source=None):
-        self.actors = list(actors)
+    def __init__(self, actors: list[vtk.vtkActor]):
+        self.actors = actors
+
         # What each actor was imported wearing, so geometry mode can put the
         # textures back afterwards.
         self._textures = [(actor, actor.GetTexture()) for actor in self.actors]
-        # The render window the importer filled. Held only so it outlives the
-        # import; nothing draws into it.
-        self._source = source
 
     @property
     def cells(self) -> int:
@@ -90,7 +88,8 @@ class PhotoMesh:
             actor.SetVisibility(visible)
 
     def clone(self) -> PhotoMesh:
-        """A second set of actors over the same triangles and the same images.
+        """
+        A second set of actors over the same triangles and the same images.
         Two renderers cannot share one set of actors: hiding the mesh in one
         panel would hide it in the other, and each render window uploads to
         its own GL context regardless. What is worth sharing is what was
@@ -98,9 +97,9 @@ class PhotoMesh:
         and both are held here by reference rather than copied.
         """
         actors = []
-        for source, texture in self._textures:
+        for src_actor, texture in self._textures:
             mapper = vtk.vtkPolyDataMapper()
-            mapper.SetInputData(source.GetMapper().GetInput())
+            mapper.SetInputData(src_actor.GetMapper().GetInput())
 
             actor = vtk.vtkActor()
             actor.SetMapper(mapper)
@@ -108,8 +107,6 @@ class PhotoMesh:
             if texture is not None:
                 shared = vtk.vtkTexture()
                 shared.SetInputData(texture.GetInput())
-                # Sampled exactly as the original is, so the two panels draw
-                # the same picture rather than one subtly softer than the other.
                 shared.SetInterpolate(texture.GetInterpolate())
                 shared.SetMipmap(texture.GetMipmap())
                 shared.SetRepeat(texture.GetRepeat())
@@ -119,10 +116,11 @@ class PhotoMesh:
 
             actors.append(actor)
 
-        return PhotoMesh(actors, self._source)
+        return PhotoMesh(actors)
 
     def show_textured(self):
-        """The model as it was photographed, with no shading of ours on top.
+        """
+        The model as it was photographed, with no shading of ours on top.
         These textures are the survey photographs themselves: the light in
         them was real light, already in the picture. Lighting them a second
         time is what blew the panel out, and there is nothing to recover
@@ -143,16 +141,18 @@ class PhotoMesh:
             prop.EdgeVisibilityOff()
 
     def show_geometry(self):
-        """The shape on its own, textures off.
+        """
+        The shape on its own, textures off.
         No wireframe over it, unlike the simplified mesh: seven million
         triangles of edge are a solid block of colour and cost a second a
         frame to draw.
         """
         for actor in self.actors:
             prop = actor.GetProperty()
-            actor.SetTexture(None)
+            # actor.SetTexture(vtk.vtkTexture())
             actor.GetMapper().ScalarVisibilityOff()
             prop.SetRepresentationToSurface()
+
             # Lit the usual way here, unlike the textured mode: with the
             # photographs off there is no baked light left, and shading is
             # the only thing giving the shape any relief.
@@ -164,13 +164,15 @@ class PhotoMesh:
 
 
 class PhotoMeshLoader(QThread):
-    """Reads the full-resolution model off the interface thread.
+    """
+    Reads the full-resolution model off the interface thread.
     vtkOBJImporter is what makes this worth doing at all: it reads the
     gigabyte OBJ, its materials and its textures in a handful of seconds,
     where the trimesh path the planning library uses takes minutes.
     """
 
-    #: A finished PhotoMesh, ready to be added to a renderer.
+    MAX_TEXTURE_DIM: int = 4096
+
     loaded = Signal(object)
     failed = Signal(str)
 
@@ -210,24 +212,37 @@ class PhotoMeshLoader(QThread):
             raise ValueError(f"{self.path.name} imported no geometry")
 
         for actor in actors:
-            # Parse the geometry and decode the textures here rather than
-            # leaving them for the first frame, which the interface thread
-            # draws. What is left for it is the upload to the GPU.
             actor.GetMapper().Update()
             texture = actor.GetTexture()
             if texture is not None:
                 texture.Update()
-                # The importer leaves sampling on nearest. Up close a single
-                # texel covers many pixels, and without this the photograph
-                # comes apart into squares.
                 texture.InterpolateOn()
+
+                # NOTE(Adam): We limit the max resolution of loaded textures here
+                #             to avoid exorbitant RAM usage and to reduce GPU load.
+                image: vtk.vtkImageData = texture.GetInput()
+                max_dim = max(image.GetDimensions()[:2])
+                if max_dim > self.MAX_TEXTURE_DIM:
+                    scale = self.MAX_TEXTURE_DIM / max_dim
+
+                    resize = vtk.vtkImageResize()
+                    resize.SetInputData(image)
+                    resize.SetOutputDimensions(
+                        int(image.GetDimensions()[0] * scale),
+                        int(image.GetDimensions()[1] * scale),
+                        1,
+                    )
+                    resize.Update()
+                    texture.SetInputData(resize.GetOutput())
 
             self._renderer.RemoveActor(actor)
 
-        return PhotoMesh(actors, self._window)
+        self._window.Finalize()
+        return PhotoMesh(actors)
 
-    def _imported_actors(self) -> list:
-        """Every actor the importer made, minus the empty ones.
+    def _imported_actors(self) -> list[vtk.vtkActor]:
+        """
+        Every actor the importer made, minus the empty ones.
         A material the model declares but never uses still arrives as an
         actor, holding no triangles.
         """

@@ -122,6 +122,7 @@ class MainWindow(QMainWindow):
         self.loader.failed.connect(self._on_failed)
         self.loader.plan_validation_failed.connect(self.show_error_dialog)
         self.loader.filename_validation_failed.connect(self.show_error_dialog)
+
         if not defer_load:
             self.loader.start()
 
@@ -297,7 +298,8 @@ class MainWindow(QMainWindow):
         self.camera_viewport.show_overview()
         self.statusBar().showMessage("Ready", 3000)
 
-        self._load_photo_mesh(scene.data_dir)
+        if scene.data_dir is not None:
+            self._load_photo_mesh(scene.data_dir)
 
     def _on_field_changed(self, field):
         self.metrics_panel.show_field(self.viewport.set_scalar_field(field))
@@ -380,13 +382,17 @@ class MainWindow(QMainWindow):
 
         self.statusBar().showMessage(f"Rendered {Path(path).name}", 5000)
 
-    def _load_photo_mesh(self, data_dir):
+    def _load_photo_mesh(self, data_dir: Path):
         """
         Start reading the full-resolution model, if the bundle ships one.
         Read here rather than in either viewport, because both of them draw
         it: a gigabyte of triangles and eight textures are worth parsing once
         and handing round.
         """
+        # Don't run the loader if it's already running
+        if self.photo_loader is not None and self.photo_loader.isRunning():
+            return
+
         path = find_photo_mesh(data_dir)
         if path is None:
             return
@@ -420,7 +426,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Full-resolution model unavailable", 5000)
 
     def _stop_photo_loader(self):
-        """Let go of a read still in flight, so nothing lands in a dead window."""
+        """
+        Let go of a read still in flight, so nothing lands in a dead window.
+        Blocks until the thread actually finishes.
+        """
         loader = self.photo_loader
         self.photo_loader = None
 
@@ -429,7 +438,7 @@ class MainWindow(QMainWindow):
 
         loader.blockSignals(True)
         if loader.isRunning():
-            loader.wait(10000)
+            loader.wait()
 
     # -- Target Inspection ---------------------------------------------
 
