@@ -1,5 +1,3 @@
-# NOTE(Adam): My question here is... What the fuck?
-
 """
 Stills of the viewport's shot, rendered by pyrender rather than by VTK.
 VTK draws the interactive view, because that is what a window full of pickers
@@ -14,12 +12,15 @@ full-resolution model is VTK's, read by the importer the camera view uses.
 from __future__ import annotations
 
 import numpy as np
+from trimesh import Geometry
 
 from viewscope_core.render import SceneRenderer
+import viewscope_core as vc
 
 
 class StillRenderer:
-    """A pyrender view of the scene mesh, held between shots.
+    """
+    A pyrender view of the scene mesh, held between shots.
     Building one costs a fraction of a second and takes an offscreen GL
     context with it, so it is made once and rebuilt only when the shot
     changes shape: a different mesh, a different size, a different lens.
@@ -30,18 +31,15 @@ class StillRenderer:
         self._mesh = None
         self._shape = None
 
-    def render(self, mesh, pose, width: int, height: int, yfov_deg: float) -> np.ndarray:
+    def render(self, mesh: Geometry, pose: np.ndarray, width: int, height: int, yfov_deg: float) -> np.ndarray:
         """The scene as seen from `pose`, as height x width x 3 uint8."""
-        # INVARIANT: The renderer cannot be uninitialized at this stage!
-        assert self._renderer is not None
-
         self._ensure(mesh, int(width), int(height), float(yfov_deg))
+
+        # INVARIANT: The renderer should not be uninitialized at this stage!
+        assert self._renderer is not None
         return self._renderer.render_color(np.asarray(pose, dtype=np.float64))
 
-    def _ensure(self, mesh, width: int, height: int, yfov_deg: float):
-        # INVARIANT: The renderer cannot be uninitialized at this stage!
-        assert self._renderer is not None
-
+    def _ensure(self, mesh: Geometry, width: int, height: int, yfov_deg: float):
         shape = (width, height, round(yfov_deg, 4))
         if self._mesh is mesh and self._shape == shape:
             return
