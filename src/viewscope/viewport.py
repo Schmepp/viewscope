@@ -742,6 +742,13 @@ class Viewport(QVTKRenderWindowInteractor):
             }
         )
 
+    def toggle_glyph_wireframe(self, bool):
+        """Toggle between the solid and wireframe representation for CameraGlyph.
+        Render scene as soon as bool updates."""
+        self.glyphs.wireframe_enabled = bool
+        self.glyphs._refresh()
+        self.render()
+
     # -- Window events ---------------------------------------------------
 
     def resizeEvent(self, ev):
