@@ -141,6 +141,7 @@ class MainWindow(QMainWindow):
         self.display_panel.occlusion_toggled.connect(self._on_occlusion_toggled)
         self.display_panel.grid_toggled.connect(self.viewport.set_grid_visible)
         self.display_panel.glyphs_toggled.connect(self.viewport.set_glyphs_visible)
+        self.display_panel.glyph_wireframe_toggled.connect(self.viewport.toggle_glyph_wireframe)
 
         # This updates the camera in FPV viewport
         # TODO(Adam): In future, I would prefer if camera_picked

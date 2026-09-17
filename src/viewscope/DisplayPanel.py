@@ -27,6 +27,7 @@ class DisplayPanel(QWidget):
     field_changed = Signal(str)
     point_size_changed = Signal(int)
     glyphs_toggled = Signal(bool)
+    glyph_wireframe_toggled = Signal(bool)
     occlusion_toggled = Signal(bool)
     grid_toggled = Signal(bool)
 
@@ -63,6 +64,11 @@ class DisplayPanel(QWidget):
         self.grid.setChecked(True)
         self.grid.toggled.connect(self.grid_toggled)
         form.addRow(self.grid)
+
+        self.glyph_wireframe = QCheckBox("Toggle Camera Wireframe")
+        self.glyph_wireframe.setChecked(True)
+        self.glyph_wireframe.toggled.connect(self.glyph_wireframe_toggled)
+        form.addRow(self.glyph_wireframe)
 
         # Press to paint the targets the selected camera can see; press again
         # to go back to the scalar field colouring.

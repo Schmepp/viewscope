@@ -148,6 +148,7 @@ class CameraGlyphs:
         self._observers: dict[int, tuple[float, float, float]] = {}
         self._outline: type = CameraOutline
         # self.new_camera_id = None
+        self.wireframe_enabled: bool = True
 
     @property
     def actors(self) -> list[vtk.vtkActor]:
@@ -227,6 +228,12 @@ class CameraGlyphs:
                 and (self._shown is None or self.ids[id] in self._shown)
             )
 
+            # Wireframe vs Surface mode
+            if id == self._selected or id in self._observers:
+                self.set_frustrum_representation(actor, "Observer")
+            else:
+                self.set_frustrum_representation(actor, "none")
+
             mapper = actor.GetMapper()
             colour = self._colour_of(id)
 
@@ -258,6 +265,20 @@ class CameraGlyphs:
             return ROUTE_SELECTED_COLOUR if id in self._route else ROUTE_UNSELECTED_COLOUR
 
         return None
+
+    def set_frustrum_representation(self, actor: vtk.vtkActor, mode: str):
+        """Set a frustrum's representation to surface or wireframe, based on their 'mode'.
+        If that actor is an observer -> surface/filled representation.
+        Otherwise, if not an observer -> wireframe representation"""
+        if mode == "Observer":
+            actor.GetProperty().SetRepresentationToSurface()
+            actor.GetProperty().SetOpacity(1.0)
+        else:
+            actor.GetProperty().SetOpacity(0.2)  # change opacity regardless
+            if self.wireframe_enabled:
+                actor.GetProperty().SetRepresentationToWireframe()
+            else:
+                actor.GetProperty().SetRepresentationToSurface()
 
 
 class CameraOutline:
