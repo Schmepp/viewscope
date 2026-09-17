@@ -119,3 +119,37 @@ def apply_pose(camera, pose, yfov_deg, distance):
     camera.UseHorizontalViewAngleOff()
     camera.SetViewAngle(yfov_deg)
     camera.SetClippingRange(0.1, max(100.0, 10.0 * distance))
+
+
+def pose_from_camera(camera) -> np.ndarray:
+    """
+    The 4x4 camera-to-world pose a vtkCamera is currently holding.
+    The inverse of apply_pose, in the same OpenGL convention, so a pose taken
+    off the live camera frames the same shot when it is handed to a renderer
+    that works in poses rather than in windows.
+    """
+    position = np.asarray(camera.GetPosition(), dtype=np.float64)
+    focal = np.asarray(camera.GetFocalPoint(), dtype=np.float64)
+
+    forward = focal - position
+    forward = forward / np.linalg.norm(forward)
+
+    # View up is a hint and need not be square to the view direction, which
+    # is why the up axis is rebuilt from the right one rather than used as
+    # given. Looking straight along it leaves nothing to cross with, so any
+    # axis off the view direction will do to break the tie.
+    up_hint = np.asarray(camera.GetViewUp(), dtype=np.float64)
+    right = np.cross(forward, up_hint)
+    if np.linalg.norm(right) < 1e-9:
+        up_hint = np.array([1.0, 0.0, 0.0]) if abs(forward[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+        right = np.cross(forward, up_hint)
+
+    right = right / np.linalg.norm(right)
+
+    pose = np.eye(4, dtype=np.float64)
+    pose[:3, 0] = right
+    pose[:3, 1] = np.cross(right, forward)
+    pose[:3, 2] = -forward
+    pose[:3, 3] = position
+
+    return pose

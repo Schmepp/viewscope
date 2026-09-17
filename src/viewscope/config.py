@@ -33,6 +33,12 @@ EDGE_COLOUR = (0.15, 0.16, 0.20)
 VISIBLE_COLOUR = (0.90, 0.11, 0.14)
 OCCLUDED_COLOUR = (0.42, 0.43, 0.47)
 
+# The camera view draws the full-resolution textured model, not the
+# simplified scene.obj the main viewport runs on: the viewport is the half
+# that has to animate on a laptop without much GPU, while a simulated
+# photograph is worth looking at only for the detail in it. Bundles that
+# carry one keep it in this subfolder, beside its .mtl and textures.
+PHOTO_MESH_DIR = "Mesh"
 
 # -- target inspection -----------------------------------------------------
 
