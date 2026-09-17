@@ -29,7 +29,6 @@ class SectorBarChart(QWidget):
 
         self.chart = QChart()
         self.chart.setTitle("Best Weight Per Sector")
-        # self.chart.setAnimationOptions(QChart.SeriesAnimations)
         self.chart.legend().setVisible(True)
 
         self.view = QChartView(self.chart)  #
@@ -43,8 +42,8 @@ class SectorBarChart(QWidget):
     def update_chart(self, report: TargetReport | None):
         """Update the bar chart with the latest report.
         This should be called whenever a new target is picked."""
-        # clear chart
-        self.chart.removeAllSeries()
+
+        self.chart.removeAllSeries()  # clear chart
         for axis in list(self.chart.axes()):
             self.chart.removeAxis(axis)
 
@@ -76,10 +75,10 @@ class SectorBarChart(QWidget):
         self.chart.addAxis(axis_y, Qt.AlignmentFlag.AlignLeft)
         series.attachAxis(axis_y)
 
-        # Used Claud to help with drawing + calculqting average
-        occupied = [h for h in heights if h > 0]
-        avg = sum(occupied) / len(occupied) if occupied else None
-        self.draw_average_line(avg, categories, axis_y)
+        # Used Claude to help with drawing the average line
+        occupied = [h for h in heights if h > 0]  # exlcude the empty sectors from average calc.
+        average = sum(occupied) / len(occupied) if occupied else None
+        self.draw_average_line(average, categories, axis_y)
 
     def draw_average_line(self, average, categories, axis_y):
         """Drawing the line that represents the average weight.
@@ -97,40 +96,3 @@ class SectorBarChart(QWidget):
         line.attachAxis(line_axis_x)
 
         line.attachAxis(axis_y)  # share the y-axis with the bars
-
-
-##-- Example from the docs --##
-# self.set_0 = QBarSet("Jane")
-# self.set_1 = QBarSet("John")
-# self.set_2 = QBarSet("Axel")
-# self.set_3 = QBarSet("Mary")
-# self.set_4 = QBarSet("Samantha")
-
-# self.set_0.append([1, 2, 3, 4, 5, 6])
-# self.set_1.append([5, 0, 0, 4, 0, 7])
-# self.set_2.append([3, 5, 8, 13, 8, 5])
-# self.set_3.append([5, 6, 7, 3, 4, 5])
-# self.set_4.append([9, 7, 5, 3, 1, 2])
-
-# self.series = QBarSeries()
-# self.series.append(self.set_0)
-# self.series.append(self.set_1)
-# self.series.append(self.set_2)
-# self.series.append(self.set_3)
-# self.series.append(self.set_4)
-# self.categories = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
-# self.axis_x = QBarCategoryAxis()
-# self.axis_x.append(self.categories)
-# self.chart.addAxis(self.axis_x, Qt.AlignBottom)
-# self.series.attachAxis(self.axis_x)
-
-# self.axis_y = QValueAxis()
-# self.axis_y.setRange(0, 15)
-# self.chart.addAxis(self.axis_y, Qt.AlignLeft)
-# self.series.attachAxis(self.axis_y)
-
-# self.chart.legend().setVisible(True)
-# self.chart.legend().setAlignment(Qt.AlignBottom)
-
-# self._chart_view = QChartView(self.chart)
-# self._chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
