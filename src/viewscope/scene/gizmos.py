@@ -227,6 +227,14 @@ class CameraGlyphs:
                 and (self._shown is None or self.ids[id] in self._shown)
             )
 
+            # Wireframe vs Surface mode
+            if id == self._selected or id in self._observers:
+                # actor.GetProperty().SetRepresentationToSurface()
+                self.set_frustrum_representation(actor, "Observer")
+            else:
+                # actor.GetProperty().SetRepresentationToWireframe()
+                self.set_frustrum_representation(actor, "none")
+
             mapper = actor.GetMapper()
             colour = self._colour_of(id)
 
@@ -238,6 +246,7 @@ class CameraGlyphs:
 
             mapper.ScalarVisibilityOff()
             actor.GetProperty().SetColor(*colour)
+
 
     def _colour_of(self, id: int) -> tuple[float, float, float] | None:
         """What one frustum wears, strongest claim first, or None for its own colours.
@@ -258,6 +267,23 @@ class CameraGlyphs:
             return ROUTE_SELECTED_COLOUR if id in self._route else ROUTE_UNSELECTED_COLOUR
 
         return None
+
+    # def _representation_of(self, id: int):
+        # if id == self._observers:
+            # return vtk.vtkActor.GetProperty().SetRepresentationToWireframe()
+    def set_frustrum_representation(self, actor:vtk.vtkActor, mode:str):
+        pass
+        if mode=="Observer":
+            pass
+            actor.GetProperty().SetRepresentationToSurface()
+            actor.GetProperty().SetOpacity(1.0)
+        else:
+            pass
+            actor.GetProperty().SetRepresentationToWireframe()
+            actor.GetProperty().SetOpacity(0.2)
+        
+
+    
 
 
 class CameraOutline:
