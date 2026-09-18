@@ -214,7 +214,7 @@ class PhotoMeshLoader(QThread):
             self.progress.emit("Loaded from cache", 100)
             return cached_mesh
 
-        self.progress.emit("Parsing model geometry...", 0)
+        self.progress.emit("Parsing model geometry...", 1)
 
         importer = vtkOBJImporter()
         importer.SetFileName(str(self.path))
