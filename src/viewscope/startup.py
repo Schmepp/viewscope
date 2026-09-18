@@ -375,16 +375,16 @@ class StartupWindow(QWidget):
         cap = PhotoMeshLoader.MAX_TEXTURE_DIM
         tips = {
             QUALITY_LOW: config.tooltip(
-                "Requires around 400MB",
+                "Requires around 600MB",
                 "The simplified planning mesh on its own. "
-                "every panel draws the shape of the site rather than the "
+                "Every panel draws the shape of the site rather than the "
                 "surface the survey photographed.",
             ),
             QUALITY_MEDIUM: config.tooltip(
                 "Requires around 6GB",
                 "Adds the photographed model and its textures capped at "
-                f"{cap}px. The first open of a project parses it; every open "
-                "after that reads it back from the cache. Indistingusable from High setting"
+                f"{cap}px. The first open of a project parses it. Every open "
+                "after that reads it back from the cache. "
                 "This is ideal for laptops with 8GB RAM",
             ),
             QUALITY_HIGH: config.tooltip(
