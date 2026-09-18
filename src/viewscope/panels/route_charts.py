@@ -34,7 +34,7 @@ from PySide6.QtCharts import (
     QValueAxis,
 )
 from PySide6.QtCore import QMargins, Qt
-from PySide6.QtGui import QColor, QPainter
+from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from viewscope.data.route import QUADRANTS, RouteStatus
@@ -42,6 +42,15 @@ from viewscope.data.route import QUADRANTS, RouteStatus
 #: One colour per quadrant, in quadrant order, and never reassigned: the
 #: colour says which quadrant, not how big the slice is.
 QUADRANT_COLOURS = ("#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7")
+
+#: The two ends of the coverage bar: what the route sees, and what is left.
+OBSERVED_COLOUR = "#e34948"
+UNOBSERVED_COLOUR = "#ffffff"
+
+#: White on a white chart is nothing at all, so the unobserved end is given
+#: an edge to be read by. Without it the bar would look as though it simply
+#: stopped where the coverage ended, with no whole to be a part of.
+UNOBSERVED_EDGE = "#b8b6b0"
 
 #: The pie stands to the left of its legend, which is the only way four
 #: labelled quadrants fit across a dock this narrow.
@@ -76,8 +85,13 @@ class CoverageBar(_ChartWidget):
         self.chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
 
         self._observed = QBarSet("Observed")
+        self._observed.setColor(QColor(OBSERVED_COLOUR))
+        self._observed.setPen(QPen(Qt.PenStyle.NoPen))
         self._observed.append([0.0])
+
         self._unobserved = QBarSet("Not observed")
+        self._unobserved.setColor(QColor(UNOBSERVED_COLOUR))
+        self._unobserved.setPen(QPen(QColor(UNOBSERVED_EDGE), 1))
         self._unobserved.append([0.0])
 
         series = QHorizontalStackedBarSeries()
@@ -107,7 +121,7 @@ class CoverageBar(_ChartWidget):
         self.chart.setTitle(
             "No targets to observe"
             if status is None or not targets
-            else f"Observed {status.coverage:.1%} of {targets:,} targets"
+            else f"Observed {status.observed:,} of {targets:,} targets"
         )
 
         self._observed.replace(0, float(observed))

@@ -50,7 +50,7 @@ from viewscope.scene.stats import FieldStats
 from viewscope.scene.still import StillRenderer
 from viewscope.scene.target_gizmos import TargetOverlay, observer_colour, weight_lut
 from viewscope.scene.target_report import TargetReport
-from viewscope.scene.views import MeshView, TargetCloudView
+from viewscope.scene.views import MeshView, TargetCloudView, UnobservedTargets
 
 
 class Viewport(QVTKRenderWindowInteractor):
@@ -134,6 +134,10 @@ class Viewport(QVTKRenderWindowInteractor):
         self.selected_camera_pos = (0, 0, 0)
 
         self.flight_path = FlightPathLine()
+        self.unobserved = UnobservedTargets()
+        # While the targets nothing can see are flagged, they are the only
+        # ones drawn, so the cloud they were picked out of comes off.
+        self._flagging_unobserved = False
 
         # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
@@ -272,10 +276,26 @@ class Viewport(QVTKRenderWindowInteractor):
             elif self._mesh_visible:
                 self.mesh.show_textured()
 
-        if self.cloud is not None:
-            self.cloud.set_visible(mode in (MODE_TARGETS, MODE_ALL))
+        self._apply_cloud_visibility()
 
         self.render()
+
+    def _apply_cloud_visibility(self):
+        """Show the targets the mode and the flagging between them call for.
+
+        Two things have a say. The render mode decides whether targets are
+        drawn at all - a mode showing only the mesh draws neither the cloud
+        nor the flags, which would otherwise be points hanging in front of it
+        with nothing to belong to. Flagging then decides which of them: the
+        ones nothing can see, or all of them.
+        """
+        if self.cloud is None:
+            return
+
+        showing_targets = self._render_mode in (MODE_TARGETS, MODE_ALL)
+
+        self.cloud.set_visible(showing_targets and not self._flagging_unobserved)
+        self.unobserved.set_visible(showing_targets)
 
     @property
     def _mesh_visible(self) -> bool:
@@ -321,7 +341,32 @@ class Viewport(QVTKRenderWindowInteractor):
     def set_point_size(self, size: int):
         if self.has_scene and self.cloud is not None:
             self.cloud.set_point_size(size)
+            # The flags sit on the cloud, so they grow with it.
+            self.unobserved.set_point_size(size)
             self.render()
+
+    def show_unobserved(self, targets):
+        """Draw these targets - the ones nothing can see - and only these.
+
+        The rest of the cloud comes off while they are up. Picking a handful
+        of points out of sixty thousand by colour alone is hard however they
+        are coloured, and what is being looked for is where the gaps are:
+        with everything else gone, what is left on screen is the answer.
+        """
+        if not self.has_scene:
+            return
+
+        self._flagging_unobserved = True
+        self.unobserved.show(self.renderer, targets)
+        self._apply_cloud_visibility()
+        self.render()
+
+    def clear_unobserved(self):
+        """Take the flags off and give the rest of the targets back."""
+        self._flagging_unobserved = False
+        self.unobserved.remove_from(self.renderer)
+        self._apply_cloud_visibility()
+        self.render()
 
     def set_glyphs_visible(self, visible: bool):
         if self.has_scene and self.glyphs is not None:

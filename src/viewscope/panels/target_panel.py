@@ -10,6 +10,7 @@ through `show_*`. It touches neither VTK nor the scene.
 """
 
 from __future__ import annotations
+import contextlib
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -175,7 +176,8 @@ class TargetPanel(QWidget):
         """Fill the panel in for one target, or empty it out when given None."""
         self._report = report
 
-        self.sector_bar_chart.update_chart(report)
+        with contextlib.suppress(Exception):
+            self.sector_bar_chart.update_chart(report)
 
         self.hint.setText(HINT if report is None else f"Target {report.index}")
         self.clear_button.setEnabled(report is not None)

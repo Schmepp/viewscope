@@ -14,9 +14,12 @@ from viewscope.config import (
     GLYPH_WIREFRAME_OPACITY,
     ROUTE_SELECTED_COLOUR,
     ROUTE_UNSELECTED_COLOUR,
+    UNOBSERVED_COLOUR,
+    UNOBSERVED_POINT_GROWTH,
 )
 from viewscope.scene.flight_path import FlightPathLine
 from viewscope.scene.gizmos import CameraGlyphs
+from viewscope.scene.views import UnobservedTargets
 
 
 @pytest.fixture
@@ -173,3 +176,121 @@ def test_a_path_of_one_point_draws_nothing():
     line.show(vtk.vtkRenderer(), np.array([[1.0, 2.0, 3.0]]))
 
     assert line.actor is None
+
+
+# -----------------------------------------------------------------------------
+# Targets nothing can see
+# -----------------------------------------------------------------------------
+
+
+@pytest.fixture
+def missed():
+    """Three targets that no camera observes."""
+    return np.array([[0.0, 0.0, 0.0], [1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+
+
+def drawn(flags: UnobservedTargets) -> vtk.vtkActor:
+    """The actor doing the flagging, once there is something to flag."""
+    actor = flags.actor
+    assert actor is not None, "nothing was flagged"
+
+    return actor
+
+
+def test_flagged_targets_are_drawn_where_they_are(missed):
+    flags = UnobservedTargets()
+    flags.show(vtk.vtkRenderer(), missed)
+
+    points = drawn(flags).GetMapper().GetInput()
+
+    assert points.GetNumberOfPoints() == len(missed)
+    assert np.allclose(points.GetPoint(1), missed[1])
+
+
+def test_flags_wear_one_flat_colour_of_their_own(missed):
+    """Whatever the cloud underneath is coloured by, a flag looks the same."""
+    flags = UnobservedTargets()
+    flags.show(vtk.vtkRenderer(), missed)
+
+    assert drawn(flags).GetProperty().GetColor() == pytest.approx(UNOBSERVED_COLOUR)
+    assert not drawn(flags).GetMapper().GetScalarVisibility()
+
+
+def test_a_flag_is_drawn_larger_than_the_target_it_marks(missed):
+    """One flagged target among well covered ones still has to be findable."""
+    flags = UnobservedTargets(point_size=2.0)
+    flags.show(vtk.vtkRenderer(), missed)
+
+    assert drawn(flags).GetProperty().GetPointSize() == pytest.approx(2.0 + UNOBSERVED_POINT_GROWTH)
+
+
+def test_flags_follow_the_point_size_of_the_cloud(missed):
+    flags = UnobservedTargets(point_size=2.0)
+    flags.show(vtk.vtkRenderer(), missed)
+    flags.set_point_size(7.0)
+
+    assert drawn(flags).GetProperty().GetPointSize() == pytest.approx(7.0 + UNOBSERVED_POINT_GROWTH)
+
+
+def test_nothing_is_drawn_when_every_target_has_an_observer():
+    """The good case draws no actor at all, rather than an empty one."""
+    flags = UnobservedTargets()
+    flags.show(vtk.vtkRenderer(), np.zeros((0, 3)))
+
+    assert flags.actor is None
+
+
+def test_flags_can_be_hidden_with_the_target_cloud_and_shown_again(missed):
+    """A mode that draws no targets draws no flags floating in front of it."""
+    renderer = vtk.vtkRenderer()
+    flags = UnobservedTargets()
+    flags.show(renderer, missed)
+
+    flags.set_visible(False)
+    assert drawn(flags).GetVisibility() == 0
+
+    flags.set_visible(True)
+    assert drawn(flags).GetVisibility() == 1
+
+
+def test_hiding_before_anything_is_flagged_is_remembered(missed):
+    """The switch is state, not a call: what is drawn next has to obey it."""
+    flags = UnobservedTargets()
+    flags.set_visible(False)
+    flags.show(vtk.vtkRenderer(), missed)
+
+    assert drawn(flags).GetVisibility() == 0
+
+
+def test_flagging_again_replaces_what_was_flagged_before(missed):
+    """Otherwise every route change would leave its flags behind on the scene."""
+    renderer = vtk.vtkRenderer()
+    flags = UnobservedTargets()
+    flags.show(renderer, missed)
+    first = drawn(flags)
+
+    flags.show(renderer, missed[:1])
+
+    assert drawn(flags) is not first
+    assert drawn(flags).GetMapper().GetInput().GetNumberOfPoints() == 1
+    assert renderer.HasViewProp(first) == 0
+
+
+def test_taking_the_flags_off_leaves_nothing_behind(missed):
+    renderer = vtk.vtkRenderer()
+    flags = UnobservedTargets()
+    flags.show(renderer, missed)
+    actor = drawn(flags)
+
+    flags.remove_from(renderer)
+
+    assert flags.actor is None
+    assert renderer.HasViewProp(actor) == 0
+
+
+def test_the_flag_colour_is_one_the_score_ramp_cannot_produce():
+    """The cloud runs blue to red through green and yellow; magenta is not on it."""
+    red, green, blue = UNOBSERVED_COLOUR
+
+    assert red > 0.5 and blue > 0.5, "magenta is red and blue together"
+    assert green < 0.3, "with no green, which the ramp is full of"

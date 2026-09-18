@@ -107,6 +107,20 @@ ROUTE_UNSELECTED_COLOUR = (0.34, 0.35, 0.39)
 #: What a saved route is called, before the user renames it.
 ROUTE_FILENAME = "route.json"
 
+# -- targets nothing can see -----------------------------------------------
+
+# Magenta, and magenta for a reason: the score colouring is a hue ramp from
+# blue through green and yellow to red, so magenta is the one hue it can
+# never produce. These are the only targets on screen while they are up, but
+# they are up against the model behind them, and nothing on it is this colour.
+UNOBSERVED_COLOUR = (1.00, 0.10, 0.80)
+
+# Drawn larger than the cloud they were picked out of. With the rest of the
+# targets gone what is left can be sparse and far off, and a gap worth seeing
+# should not come down to a single pixel.
+UNOBSERVED_POINT_GROWTH = 3.0
+
+
 # -- camera glyphs ---------------------------------------------------------
 
 # How solid a frustum is drawn when it is not the one being looked at and not

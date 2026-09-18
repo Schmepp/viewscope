@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 from PySide6.QtCore import QByteArray, QSettings, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
@@ -94,6 +95,13 @@ class MainWindow(QMainWindow):
         # path asked for and kept for the life of the scene.
         self.obstacle = None
 
+        # Whether the targets nothing can see are flagged, and what the whole
+        # plan can see between it - which is what "nothing" means outside
+        # route planning. Counted once and kept, because it only moves when
+        # the plan does.
+        self.unobserved_on = False
+        self.plan_mask = None
+
         # What the whole route can see, while planning is on. Recounted on
         # every route change, because both the coverage line and the
         # occlusion colouring read it.
@@ -178,6 +186,7 @@ class MainWindow(QMainWindow):
         self.display_panel.grid_toggled.connect(self.viewport.set_grid_visible)
         self.display_panel.glyphs_toggled.connect(self.viewport.set_glyphs_visible)
         self.display_panel.glyph_wireframe_toggled.connect(self.viewport.toggle_glyph_wireframe)
+        self.display_panel.unobserved_toggled.connect(self._on_unobserved_toggled)
 
         # This updates the camera in FPV viewport
         # TODO(Adam): In future, I would prefer if camera_picked
@@ -307,8 +316,10 @@ class MainWindow(QMainWindow):
         SCENE_STORE.set_scene(scene)
         self.visibility = TargetVisibility(scene)
         self.reports = TargetReports(scene, self.visibility)
-        # A new model is a new shape to fly around.
+        # A new model is a new shape to fly around, and a new plan is a new
+        # answer to what nothing can see.
         self.obstacle = None
+        self.plan_mask = None
 
         self.viewport.set_scene(scene)
         self.camera_viewport.set_scene(scene)
@@ -364,6 +375,10 @@ class MainWindow(QMainWindow):
         if self.reports is not None:
             self.reports.forget()
         self._rebuild_target()
+
+        # A camera added to the plan can see things nothing could see before,
+        # so what the whole plan covers has to be counted again.
+        self.plan_mask = None
 
         # on_plan_changed built fresh glyphs, which know nothing of the route.
         self.route.forget_beyond(SCENE_STORE.camera_count)
@@ -658,6 +673,53 @@ class MainWindow(QMainWindow):
         self.route.clear()
         self._refresh_route()
 
+    # -- targets nothing can see ---------------------------------------
+
+    def _on_unobserved_toggled(self, flagged: bool):
+        self.unobserved_on = flagged
+        self._refresh_unobserved()
+
+    def _observed_mask(self):
+        """What can be seen, and by what, or None when nothing can say.
+
+        While a route is being planned the question is what the route covers,
+        so that taking a camera out shows the gap it leaves. Outside planning
+        it is the whole plan: the targets flagged are then the ones the
+        survey never covers, however it is flown.
+        """
+        if self.route.planning:
+            return self.route_mask
+
+        if self.plan_mask is None and self.visibility is not None:
+            try:
+                self.plan_mask = self.visibility.union_mask(range(SCENE_STORE.camera_count))
+            except Exception as exc:
+                self.statusBar().showMessage(f"Coverage unavailable: {exc}", 5000)
+                return None
+
+        return self.plan_mask
+
+    def _refresh_unobserved(self):
+        """Re-flag the targets nothing can see, after anything that moves them."""
+        scene = SCENE_STORE.scene
+        if not self.unobserved_on or scene is None:
+            self.viewport.clear_unobserved()
+            return
+
+        observed = self._observed_mask()
+        # Nothing to go on means nothing is known to be covered, so every
+        # target is flagged. That is the honest answer, not a blank screen.
+        missed = (
+            np.ones(len(scene.targets), dtype=bool) if observed is None else ~np.asarray(observed)
+        )
+
+        self.viewport.show_unobserved(scene.targets[missed])
+        self.statusBar().showMessage(
+            f"{int(missed.sum()):,} of {missed.size:,} targets have no observer"
+            f"{' in the route' if self.route.planning else ' in the plan'}",
+            5000,
+        )
+
     # -- flight path ---------------------------------------------------
 
     def _on_flight_path_toggled(self, shown: bool):
@@ -757,6 +819,7 @@ class MainWindow(QMainWindow):
             self.route.status(scene.plan, observed, len(scene.targets), scene.centre)
         )
         self._refresh_flight_path()
+        self._refresh_unobserved()
 
         # Occlusion follows the route while planning, so every camera in it
         # paints at once rather than only the one last clicked.

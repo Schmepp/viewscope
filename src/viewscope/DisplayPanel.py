@@ -29,6 +29,7 @@ class DisplayPanel(QWidget):
     glyphs_toggled = Signal(bool)
     glyph_wireframe_toggled = Signal(bool)
     occlusion_toggled = Signal(bool)
+    unobserved_toggled = Signal(bool)
     grid_toggled = Signal(bool)
 
     def __init__(self):
@@ -69,6 +70,15 @@ class DisplayPanel(QWidget):
         self.glyph_wireframe.setChecked(False)
         self.glyph_wireframe.toggled.connect(self.glyph_wireframe_toggled)
         form.addRow(self.glyph_wireframe)
+
+        self.unobserved = QCheckBox("Flag targets with no observers")
+        self.unobserved.setToolTip(
+            "Show only the targets no camera can see, in magenta, and hide the rest.\n"
+            "While a route is being planned that means no camera in the route; "
+            "otherwise, none in the whole plan."
+        )
+        self.unobserved.toggled.connect(self.unobserved_toggled)
+        form.addRow(self.unobserved)
 
         # Press to paint the targets the selected camera can see; press again
         # to go back to the scalar field colouring.
