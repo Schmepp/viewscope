@@ -50,6 +50,45 @@ COLOUR_BY_WEIGHT = "Weight"
 COLOUR_BY_SECTOR = "Sector"
 TARGET_COLOUR_MODES = [COLOUR_BY_WEIGHT, COLOUR_BY_SECTOR]
 
+# The hue the weight ramp is built on, as an HSV fraction, and the saturation
+# and value it runs between. Weight is a magnitude, so it is read as depth of
+# one blue rather than as a walk around the wheel: a weak camera is a wash, a
+# strong one is ink. The dark end stops where it does because below that it
+# sinks into BACKGROUND (3.0:1 against it, measured, not guessed).
+WEIGHT_HUE = 0.59
+WEIGHT_SATURATION_RANGE = (0.10, 0.82)
+WEIGHT_VALUE_RANGE = (0.98, 0.655)
+
+# One colour per sector, worn by the ray and by the camera glyph it runs to:
+# four shades of blue and four of orange. Sector is an identity, not a
+# magnitude, so these are a fixed set read in order and never generated, and
+# the colour a wedge wears does not move when a neighbour appears or goes away.
+#
+# The order is not the order they were designed in, and not arbitrary either.
+# Neighbouring wedges sit side by side on screen, so every arrangement of these
+# eight was measured against this viewport's background and this is the one
+# that holds neighbours furthest apart: around the full eight-wedge cycle, and
+# among the first four on their own, which is what the coarser decomposition
+# uses. Running them pale-to-dark instead reads tidily in this list and costs
+# half the separation. Reordering by eye undoes it, so measure again if these
+# ever change.
+SECTOR_COLOURS = (
+    (0.678, 0.804, 0.969),  # pale blue
+    (0.173, 0.502, 0.882),  # blue
+    (0.957, 0.569, 0.431),  # light orange
+    (0.627, 0.259, 0.122),  # dark orange
+    (0.424, 0.655, 0.949),  # light blue
+    (0.847, 0.365, 0.176),  # orange
+    (0.976, 0.800, 0.737),  # pale orange
+    (0.118, 0.365, 0.655),  # dark blue
+)
+
+# The single heaviest observer of the picked target, in weight mode only. Red
+# is off the weight ramp on purpose: it is not a weight, it is one camera
+# singled out, so it must not read as another step of the blue. Measured 22.8
+# away from the nearest step of that ramp, and 6.2:1 against BACKGROUND.
+TOP_OBSERVER_COLOUR = (0.902, 0.404, 0.404)
+
 # The picked target itself. Its radius is a fraction of the scene diagonal,
 # because bundles differ in scale by an order of magnitude and a marker fixed
 # in metres would be a speck on one and a boulder on the next.

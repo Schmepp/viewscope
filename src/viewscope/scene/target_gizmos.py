@@ -10,8 +10,6 @@ target normal that the observers fall into.
 
 from __future__ import annotations
 
-import colorsys
-
 import numpy as np
 import vtk
 from vtkmodules.util import numpy_support as vtknp
@@ -19,7 +17,12 @@ from vtkmodules.util import numpy_support as vtknp
 from viewscope.config import (
     COLOUR_BY_SECTOR,
     COLOUR_BY_WEIGHT,
+    SECTOR_COLOURS,
     TARGET_MARKER_COLOUR,
+    TOP_OBSERVER_COLOUR,
+    WEIGHT_HUE,
+    WEIGHT_SATURATION_RANGE,
+    WEIGHT_VALUE_RANGE,
     OverlayOptions,
 )
 from viewscope.scene import transform
@@ -27,18 +30,53 @@ from viewscope.scene.target_report import TargetReport
 
 
 def weight_lut() -> vtk.vtkLookupTable:
-    """Blue for a weak camera through to red for a strong one, over [0, 1]."""
+    """One blue, light for a weak camera through to dark for a strong one, over [0, 1]."""
     lut = vtk.vtkLookupTable()
-    lut.SetHueRange(0.667, 0.0)
+    # VTK ramps on an S-curve unless told otherwise, which bunches the middle
+    # weights together and pulls the ends apart. Weight is linear, so the
+    # colour is too, and what is read off the bar is what was measured.
+    lut.SetRampToLinear()
+    lut.SetHueRange(WEIGHT_HUE, WEIGHT_HUE)
+    lut.SetSaturationRange(*WEIGHT_SATURATION_RANGE)
+    lut.SetValueRange(*WEIGHT_VALUE_RANGE)
     lut.SetTableRange(0.0, 1.0)
     lut.Build()
 
     return lut
 
 
-def sector_colour(sector: int, sector_count: int) -> tuple[float, float, float]:
-    """A hue per wedge, walking the colour wheel the way the wedges walk the compass."""
-    return colorsys.hsv_to_rgb((sector % sector_count) / sector_count, 0.72, 1.0)
+def sector_colour(sector: int) -> tuple[float, float, float]:
+    """The colour that belongs to one wedge, taken in order from the fixed set."""
+    return SECTOR_COLOURS[sector % len(SECTOR_COLOURS)]
+
+
+def weight_colour(lut: vtk.vtkLookupTable, weight: float) -> tuple[float, float, float]:
+    """Read one weight off the same table the scalar bar draws."""
+    rgb = [0.0, 0.0, 0.0]
+    lut.GetColor(float(np.clip(weight, 0.0, 1.0)), rgb)
+
+    return rgb[0], rgb[1], rgb[2]
+
+
+def observer_colour(
+    observer, colour_by: str, lut: vtk.vtkLookupTable, top_camera: int | None = None
+) -> tuple[float, float, float]:
+    """The one colour that stands for an observer, whatever is drawing it.
+
+    The ray out to a camera and the camera's own frustum are the same fact
+    twice over, so both read it off here and cannot drift apart.
+
+    `top_camera` is the target's heaviest observer, which weight mode takes off
+    the ramp and hands the one colour that is not a weight. Sector mode ignores
+    it: there the colour already answers a different question.
+    """
+    if colour_by == COLOUR_BY_SECTOR:
+        return sector_colour(observer.sector)
+
+    if observer.camera_index == top_camera:
+        return TOP_OBSERVER_COLOUR
+
+    return weight_colour(lut, observer.weight)
 
 
 class TargetOverlay:
@@ -121,12 +159,13 @@ class TargetOverlay:
         """A line out to every observing camera, the sector winners drawn heavier."""
         positions = np.asarray(camera_positions, dtype=np.float64)
         groups = {True: [], False: []}
+        top_camera = None if report.top_observer is None else report.top_observer.camera_index
 
         for observer in report.observers:
             if not 0 <= observer.camera_index < len(positions):
                 continue
 
-            colour = self._ray_colour(observer, report.sector_count, colour_by)
+            colour = self._ray_colour(observer, colour_by, top_camera)
             groups[observer.best].append((positions[observer.camera_index], colour))
 
         actors = []
@@ -144,18 +183,8 @@ class TargetOverlay:
 
         return actors
 
-    def _ray_colour(self, observer, sector_count, colour_by):
-        if colour_by == COLOUR_BY_SECTOR:
-            return sector_colour(observer.sector, sector_count)
-
-        return self._weight_colour(observer.weight)
-
-    def _weight_colour(self, weight: float) -> tuple[float, float, float]:
-        """Read one weight off the same table the scalar bar draws."""
-        rgb = [0.0, 0.0, 0.0]
-        self._lut.GetColor(float(np.clip(weight, 0.0, 1.0)), rgb)
-
-        return rgb[0], rgb[1], rgb[2]
+    def _ray_colour(self, observer, colour_by, top_camera):
+        return observer_colour(observer, colour_by, self._lut, top_camera)
 
     def _scalar_bar(self) -> vtk.vtkScalarBarActor:
         """Reads the ray colours back as weights."""

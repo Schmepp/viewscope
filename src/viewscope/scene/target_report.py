@@ -104,6 +104,15 @@ class TargetReport:
         """The sector winners, one per occupied sector."""
         return tuple(observer for observer in self.observers if observer.best)
 
+    @property
+    def top_observer(self) -> Observer | None:
+        """The one camera that sees this target best, or None if nothing does.
+
+        Not the same as a sector winner: there is one of these per target,
+        where `best_observers` holds one per occupied wedge.
+        """
+        return self.observers[0] if self.observers else None
+
     def weights(self) -> dict[int, float]:
         """Weight per camera index, for colouring things that are not rows."""
         return {observer.camera_index: observer.weight for observer in self.observers}

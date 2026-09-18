@@ -109,7 +109,9 @@ class TargetPanel(QWidget):
 
         self.colour_by = QComboBox()
         self.colour_by.addItems(TARGET_COLOUR_MODES)
-        self.colour_by.setToolTip("Colour the observer rays by camera weight, or by sector")
+        self.colour_by.setToolTip(
+            "Colour the observer rays, and the cameras they run to, by weight or by sector"
+        )
         self.colour_by.currentTextChanged.connect(lambda _text: self.overlay_changed.emit())
         form.addRow("Colour by", self.colour_by)
 
