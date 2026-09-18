@@ -1,12 +1,5 @@
 """
-The full-resolution textured model the camera view takes its photos from.
-The main viewport draws the simplified scene.obj, because that is the half of
-the application that has to stay interactive on a laptop without much GPU. A
-simulated photograph is worth looking at only for the detail in it, so the
-camera view draws the model the bundle was built from instead.
-Reading it is a file job, not a drawing one: VTK parses the OBJ and decodes
-the textures here, on a worker thread, and the interface thread only ever
-receives finished actors.
+The full-resolution textured model and its loader.
 """
 
 from __future__ import annotations
