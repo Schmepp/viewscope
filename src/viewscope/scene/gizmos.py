@@ -150,6 +150,8 @@ class CameraGlyphs:
         # self.new_camera_id = None
         self.wireframe_enabled: bool = True
 
+        self.new_ids: set[str] = set()  # Draw the new camera's in color: CYAN
+
     @property
     def actors(self) -> list[vtk.vtkActor]:
         return list(self.glyphs.keys())
@@ -197,6 +199,13 @@ class CameraGlyphs:
         self._route = None if selected is None else set(selected)
         self._shown = None if shown is None else set(shown)
         self._refresh()
+
+    def set_new_cameras(self, ids: set[str] | None):
+        """Place the given IDs in the set for the new camera IDs"""
+        if ids is None:
+            self.new_ids = set()  # Empty set
+            return
+        self.new_ids = set(ids)
 
     def show_only(self, ids: set[str] | None):
         """Switch off every camera the given plan ids do not name."""
@@ -261,8 +270,14 @@ class CameraGlyphs:
         if id in self._observers:
             return self._observers[id]
 
+        # if self.ids[id] in self.new_ids: # check if string ID is in new set
+        #     return self.COLOUR_NEW
+
         if self._route is not None:
             return ROUTE_SELECTED_COLOUR if id in self._route else ROUTE_UNSELECTED_COLOUR
+
+        if self.ids[id] in self.new_ids:  # check if string ID is in new set
+            return self.COLOUR_NEW
 
         return None
 

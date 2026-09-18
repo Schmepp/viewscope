@@ -21,15 +21,20 @@ class SceneStore(QObject):
     def __init__(self):
         super().__init__()
         self._scene: SceneData | None = None
+        self.new_camera_ids: set[str] = set()
 
     def set_scene(self, scene: SceneData) -> None:
         self._scene = scene
+        self.new_camera_ids.clear()
+
         self.scene_loaded.emit()
         self.scene_changed.emit()
         self.plan_changed.emit(None)
 
     def clear(self) -> None:
         self._scene = None
+        self.new_camera_ids.clear()
+
         self.scene_unloaded.emit()
         self.scene_changed.emit()
         self.plan_changed.emit(None)
@@ -60,6 +65,7 @@ class SceneStore(QObject):
             pitches_deg=np.concatenate((old_plan.pitches_deg, np.array([pitch]))),
         )
 
+        self.new_camera_ids.add(new_id)  # NOTE(Azaam): Adds new cameras to this set
         self.scene_changed.emit()
         self.plan_changed.emit(info)
 

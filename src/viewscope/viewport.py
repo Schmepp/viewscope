@@ -197,6 +197,7 @@ class Viewport(QVTKRenderWindowInteractor):
             view.add_to(self.renderer)
 
         self._rebuild_glyphs(data.plan)
+        self.glyphs.set_new_cameras(SCENE_STORE.new_camera_ids)
 
         self._targets = np.asarray(data.targets, dtype=np.float64)
         self._surface_picker.AddPickList(self.mesh.actor)
@@ -398,6 +399,7 @@ class Viewport(QVTKRenderWindowInteractor):
         #             when the plan changes are the camera glyphs. The mesh and
         #             cloud are unaffected by the plan.
         self._rebuild_glyphs(SCENE_STORE.scene.plan)
+        self.glyphs.set_new_cameras(SCENE_STORE.new_camera_ids)
         self.render()
 
     def _rebuild_glyphs(self, plan: vc.Plan):
