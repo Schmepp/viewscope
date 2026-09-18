@@ -198,6 +198,10 @@ class PhotoMeshLoader(QThread):
         except Exception as exc:
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
+    def finalize_window(self):
+        """Release the offscreen GL context. Must be called from the main thread!"""
+        self._window.Finalize()
+
     def _read(self) -> PhotoMesh:
         materials = find_materials(self.path)
 
@@ -268,7 +272,6 @@ class PhotoMeshLoader(QThread):
             cached_textures.append((actor.GetMapper().GetInput(), image_to_cache))
             self._renderer.RemoveActor(actor)
 
-        self._window.Finalize()
             # Reflects how many textures have been processed so far.
             done = i + 1
             pct = 40 + int(60 * done / len(actors))

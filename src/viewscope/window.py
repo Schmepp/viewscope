@@ -427,6 +427,8 @@ class MainWindow(QMainWindow):
             f"Full-resolution model ready ({photo.cells:,} triangles).", 5000
         )
 
+        if self.photo_loader is not None:
+            self.photo_loader.finalize_window()
 
         self.photo_mesh_finished.emit(True)
 
@@ -435,6 +437,8 @@ class MainWindow(QMainWindow):
         print(f"photo mesh unavailable: {message}")
         self.statusBar().showMessage("Full-resolution model unavailable!", 5000)
 
+        if self.photo_loader is not None:
+            self.photo_loader.finalize_window()
 
         self.photo_mesh_finished.emit(False)
 
