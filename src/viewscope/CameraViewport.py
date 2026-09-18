@@ -46,9 +46,6 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.mesh = None
         self.camera = None
 
-        # The mesh starts as the bundle's simplified one, so the panel has a
-        # picture immediately, and is swapped for the full-resolution model
-        # once that has been read. mesh is whichever is on screen.
         self._simple_mesh = None
         self._photo_mesh = None
 

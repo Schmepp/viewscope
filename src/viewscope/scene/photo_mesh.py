@@ -29,7 +29,6 @@ def find_photo_mesh(data_dir) -> Path | None:
         return None
 
     meshes = sorted(folder.glob("*.obj"))
-
     return meshes[0] if meshes else None
 
 
@@ -46,7 +45,6 @@ def find_materials(mesh_path: Path) -> Path | None:
         return named
 
     materials = sorted(mesh_path.parent.glob("*.mtl"))
-
     return materials[0] if materials else None
 
 
