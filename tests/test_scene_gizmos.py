@@ -1,4 +1,4 @@
-"""Unit tests for the camera frustums in src/viewscope/scene/gizmos.py.
+"""Unit tests for the frustums and the flight path line drawn in the scene.
 
 Actors only: building a CameraGlyphs needs no render window, so what each
 frustum is told to wear can be read straight off its properties.
@@ -6,6 +6,7 @@ frustum is told to wear can be read straight off its properties.
 
 import numpy as np
 import pytest
+import vtk
 
 import viewscope_core as vc
 from viewscope.config import (
@@ -14,6 +15,7 @@ from viewscope.config import (
     ROUTE_SELECTED_COLOUR,
     ROUTE_UNSELECTED_COLOUR,
 )
+from viewscope.scene.flight_path import FlightPathLine
 from viewscope.scene.gizmos import CameraGlyphs
 
 
@@ -131,3 +133,43 @@ def test_the_camera_being_looked_at_outranks_the_route(plan):
     _, _, colour = worn(glyphs, 0)
 
     assert colour == pytest.approx(CameraGlyphs.COLOUR_ACTIVE)
+
+
+# -----------------------------------------------------------------------------
+# What the flight path line does to everything else
+# -----------------------------------------------------------------------------
+
+
+def test_drawing_a_flight_path_leaves_every_other_mapper_alone():
+    """Coincident-topology resolution is static on vtkMapper, not per mapper.
+
+    One mapper asking for it turns it on for every mapper in the process, and
+    the floor grid then draws over the ground the model stands on rather than
+    being hidden by it - the grid lines come up through the building.
+    """
+    before = vtk.vtkMapper.GetResolveCoincidentTopology()
+
+    FlightPathLine().show(
+        vtk.vtkRenderer(), np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 0.0, 1.0]])
+    )
+
+    assert vtk.vtkMapper.GetResolveCoincidentTopology() == before
+    assert vtk.vtkPolyDataMapper().GetResolveCoincidentTopology() == before
+
+
+def test_the_flight_path_is_drawn_as_one_line_through_its_points():
+    line = FlightPathLine()
+    line.show(vtk.vtkRenderer(), np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 1.0, 0.0]]))
+
+    assert line.actor is not None
+    drawn = line.actor.GetMapper().GetInput()
+    assert drawn.GetNumberOfPoints() == 3
+    assert drawn.GetNumberOfLines() == 1
+
+
+def test_a_path_of_one_point_draws_nothing():
+    """One viewpoint is not a path, and half a line is worse than none."""
+    line = FlightPathLine()
+    line.show(vtk.vtkRenderer(), np.array([[1.0, 2.0, 3.0]]))
+
+    assert line.actor is None

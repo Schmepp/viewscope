@@ -81,8 +81,15 @@ class FlightPathLine:
         # Lighting would shade the line by its direction, so a path that turns
         # would fade in and out along its own length.
         prop.LightingOff()
-        # Pull it towards the viewer so the mesh does not swallow it.
-        mapper.SetResolveCoincidentTopologyToPolygonOffset()
-        mapper.SetRelativeCoincidentTopologyLineOffsetParameters(0.0, -66000)
+
+        # The line is left to the depth buffer like everything else, so it
+        # goes behind the model when it passes behind it. Pulling it forward
+        # with a coincident-topology offset is not worth what it costs: that
+        # setting is static on vtkMapper, so one mapper asking for it turns
+        # it on for every mapper in the process, and the floor grid - which
+        # lies in the same plane as the ground the model sits on - starts
+        # drawing over the model instead of being hidden by it. Nor is there
+        # anything to gain: the path is kept a clearance away from the model
+        # by the planner, so there is no coincident geometry to resolve.
 
         return actor
