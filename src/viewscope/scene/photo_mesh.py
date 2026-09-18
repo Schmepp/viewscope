@@ -17,8 +17,8 @@ import vtk
 from PySide6.QtCore import QThread, Signal
 from vtkmodules.vtkIOImport import vtkOBJImporter
 
-from viewscope.config import GEOMETRY_COLOUR, PHOTO_MESH_DIR
 import viewscope.data.cache as cache
+from viewscope.config import GEOMETRY_COLOUR, PHOTO_MESH_DIR
 
 
 def find_photo_mesh(data_dir) -> Path | None:
@@ -237,7 +237,7 @@ class PhotoMeshLoader(QThread):
         cached_textures: list[tuple[vtk.vtkPolyData, vtk.vtkImageData | None]] = []
         for i, actor in enumerate(actors):
             image: vtk.vtkImageData | None = None
-            image_to_cache: vtk.vtkImageData | None = None # We cache the downscaled texture
+            image_to_cache: vtk.vtkImageData | None = None  # We cache the downscaled texture
 
             actor.GetMapper().Update()
             texture = actor.GetTexture()

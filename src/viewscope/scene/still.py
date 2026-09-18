@@ -15,7 +15,6 @@ import numpy as np
 from trimesh import Geometry
 
 from viewscope_core.render import SceneRenderer
-import viewscope_core as vc
 
 
 class StillRenderer:
@@ -31,7 +30,9 @@ class StillRenderer:
         self._mesh = None
         self._shape = None
 
-    def render(self, mesh: Geometry, pose: np.ndarray, width: int, height: int, yfov_deg: float) -> np.ndarray:
+    def render(
+        self, mesh: Geometry, pose: np.ndarray, width: int, height: int, yfov_deg: float
+    ) -> np.ndarray:
         """The scene as seen from `pose`, as height x width x 3 uint8."""
         self._ensure(mesh, int(width), int(height), float(yfov_deg))
 

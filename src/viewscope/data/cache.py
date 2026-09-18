@@ -7,10 +7,10 @@ ASCII parsing entirely.
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
-import json
 import vtk
 
 
@@ -46,8 +46,10 @@ def _meta_path(obj_path: Path, fingerprint: str) -> Path:
 def _geometry_path(obj_path: Path, fingerprint: str, index: int) -> Path:
     return _cache_dir(obj_path) / f"{obj_path.stem}.{fingerprint}.{index}.vtp"
 
+
 def _texture_path(obj_path: Path, fingerprint: str, index: int) -> Path:
     return _cache_dir(obj_path) / f"{obj_path.stem}.{fingerprint}.{index}.vti"
+
 
 def texture_source_path(texture: vtk.vtkTexture | None) -> Path | None:
     """The file an already-loaded vtkTexture was read from, if any."""
@@ -78,7 +80,7 @@ def cached_actors(obj_path: Path, mtl_path: Path | None) -> list[CachedActor] | 
 
     try:
         entries = json.loads(meta_path.read_text())
-    except (OSError, json.JSONDecodeError):
+    except OSError, json.JSONDecodeError:
         return None
 
     actors = []
@@ -92,7 +94,12 @@ def cached_actors(obj_path: Path, mtl_path: Path | None) -> list[CachedActor] | 
 
     return actors
 
-def write_cache(obj_path: Path, mtl_path: Path | None, textured_actors: list[tuple[vtk.vtkPolyData, vtk.vtkImageData | None]]):
+
+def write_cache(
+    obj_path: Path,
+    mtl_path: Path | None,
+    textured_actors: list[tuple[vtk.vtkPolyData, vtk.vtkImageData | None]],
+):
     """
     Write each actor's polydata as binary .vtp, plus a manifest recording
     how many actors there were and which texture (if any) each one wore.
@@ -127,6 +134,7 @@ def write_cache(obj_path: Path, mtl_path: Path | None, textured_actors: list[tup
         )
 
     _meta_path(obj_path, fingerprint).write_text(json.dumps(manifest))
+
 
 def read_geometry_cache(cached: list[CachedActor]) -> list[vtk.vtkActor]:
     """Rebuild actors straight from cached geometry & texture files."""

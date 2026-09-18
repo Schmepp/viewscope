@@ -17,6 +17,7 @@ from vtkmodules.vtkInteractionWidgets import (
 )
 
 import viewscope.qt  # noqa: F401
+import viewscope_core as vc
 from viewscope.camera.structs import CameraInfo
 from viewscope.config import (
     BACKGROUND,
@@ -31,17 +32,15 @@ from viewscope.config import (
 )
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
+from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode, SceneCameraController
 from viewscope.scene.gizmos import CameraGlyphs, CameraModeGizmo, CameraOutline, FloorGrid
 from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.stats import FieldStats
-from viewscope.scene.target_gizmos import TargetOverlay, observer_colour, weight_lut
 from viewscope.scene.still import StillRenderer
+from viewscope.scene.target_gizmos import TargetOverlay, observer_colour, weight_lut
 from viewscope.scene.target_report import TargetReport
-from viewscope.scene import transform
 from viewscope.scene.views import MeshView, TargetCloudView
-
-import viewscope_core as vc
 
 
 class Viewport(QVTKRenderWindowInteractor):
