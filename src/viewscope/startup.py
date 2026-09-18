@@ -38,18 +38,23 @@ from viewscope.config import APP_NAME, ORG_NAME, Project
 from viewscope.data.loader import STAGE_COUNT
 from viewscope.data.validate import validate_required_files
 from viewscope.dialogs.build_dialog import BuildBundleDialog
+from viewscope.scene.photo_mesh import PhotoMeshLoader
 
 CARD_SPACING = 10
 
-# The memory budgets the page offers. LIGHT stops at the simplified mesh,
-# which is what the great bulk of a bundle's footprint is spent on. FULL adds
-# the full-resolution model, with its textures capped on the way in. MAX takes
-# that model exactly as it was shipped, textures at their own size. FULL and
-# MAX are both cached, each under its own variant, so the slow parse is paid
-# once per budget rather than once per open.
-QUALITY_LIGHT = "400MB"
-QUALITY_FULL = "6G"
-QUALITY_MAX = "10G"
+# The memory budgets the page offers. LOW stops at the simplified mesh, which
+# is what the great bulk of a bundle's footprint is spent on. MEDIUM adds the
+# photographed model, with its textures capped on the way in. HIGH takes that
+# model exactly as it was shipped, textures at their own size. MEDIUM and HIGH
+# are both cached, each under its own variant, so the slow parse is paid once
+# per budget rather than once per open.
+#
+# The labels name the experience rather than the number of gigabytes behind it;
+# what each one actually costs is on the button's tooltip, where it can be said
+# in a full sentence.
+QUALITY_LOW = "Low"
+QUALITY_MEDIUM = "Medium"
+QUALITY_HIGH = "High"
 
 STYLESHEET = f"""
 #startupPage {{
@@ -367,15 +372,30 @@ class StartupWindow(QWidget):
         self.quality_group.setExclusive(True)
         self.quality_buttons = {}
 
+        cap = PhotoMeshLoader.MAX_TEXTURE_DIM
         tips = {
-            QUALITY_LIGHT: "Open projects on the simplified mesh only, for about 400MB of memory.",
-            QUALITY_FULL: "Open projects with the full-resolution model, which needs about 6GB.",
-            QUALITY_MAX: (
-                "Open projects with the model exactly as it was shipped: full-size textures, "
-                "for about 10GB. The first open pays the slow parse and caches it."
+            QUALITY_LOW: config.tooltip(
+                "Requires around 400MB",
+                "The simplified planning mesh on its own. "
+                "every panel draws the shape of the site rather than the "
+                "surface the survey photographed.",
+            ),
+            QUALITY_MEDIUM: config.tooltip(
+                "Requires around 6GB",
+                "Adds the photographed model and its textures capped at "
+                f"{cap}px. The first open of a project parses it; every open "
+                "after that reads it back from the cache. Indistingusable from High setting"
+                "This is ideal for laptops with 8GB RAM",
+            ),
+            QUALITY_HIGH: config.tooltip(
+                "Requires around 10GB",
+                "The photographed model exactly as it was shipped, textures at "
+                "their own full size. The sharpest picture and the heaviest on "
+                "the GPU. "
+                "Ideal for high end computers",
             ),
         }
-        for label in (QUALITY_LIGHT, QUALITY_FULL, QUALITY_MAX):
+        for label in (QUALITY_LOW, QUALITY_MEDIUM, QUALITY_HIGH):
             button = QPushButton(label)
             button.setObjectName("qualityButton")
             button.setCheckable(True)
@@ -385,18 +405,18 @@ class StartupWindow(QWidget):
             self.quality_buttons[label] = button
             row.addWidget(button)
 
-        self.quality_buttons[QUALITY_FULL].setChecked(True)
+        self.quality_buttons[QUALITY_MEDIUM].setChecked(True)
         return row
 
     @property
     def load_photo_mesh(self) -> bool:
         """Whether a project opened now should read the full-resolution model."""
-        return not self.quality_buttons[QUALITY_LIGHT].isChecked()
+        return not self.quality_buttons[QUALITY_LOW].isChecked()
 
     @property
     def full_resolution_mesh(self) -> bool:
         """Whether that model should come in uncapped and uncached."""
-        return self.quality_buttons[QUALITY_MAX].isChecked()
+        return self.quality_buttons[QUALITY_HIGH].isChecked()
 
     def _project_list(self) -> QScrollArea:
         """The cards, in a scroller so a long list cannot push the page apart."""

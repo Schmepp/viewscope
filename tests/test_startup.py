@@ -15,9 +15,9 @@ from viewscope.config import Project  # noqa: E402
 from viewscope.data.loader import STAGE_COUNT  # noqa: E402
 from viewscope.dialogs.build_dialog import BuildBundleDialog  # noqa: E402
 from viewscope.startup import (  # noqa: E402
-    QUALITY_FULL,
-    QUALITY_LIGHT,
-    QUALITY_MAX,
+    QUALITY_HIGH,
+    QUALITY_LOW,
+    QUALITY_MEDIUM,
     ProjectCard,
     StartupWindow,
     _Build,
@@ -85,37 +85,37 @@ def test_opening_shows_the_bar_and_marks_the_card_busy(page):
 
 def test_the_full_budget_is_the_default(page):
     """6G is picked when the page opens, so a project loads everything it ships."""
-    assert page.quality_buttons[QUALITY_FULL].isChecked()
-    assert not page.quality_buttons[QUALITY_LIGHT].isChecked()
-    assert not page.quality_buttons[QUALITY_MAX].isChecked()
+    assert page.quality_buttons[QUALITY_MEDIUM].isChecked()
+    assert not page.quality_buttons[QUALITY_LOW].isChecked()
+    assert not page.quality_buttons[QUALITY_HIGH].isChecked()
     assert page.load_photo_mesh is True
     assert page.full_resolution_mesh is False
 
 
 def test_the_three_budgets_are_offered_in_order(page):
     """400MB, 6G, 10G, left to right in the corner."""
-    assert list(page.quality_buttons) == [QUALITY_LIGHT, QUALITY_FULL, QUALITY_MAX]
+    assert list(page.quality_buttons) == [QUALITY_LOW, QUALITY_MEDIUM, QUALITY_HIGH]
 
 
 def test_the_max_budget_reads_the_model_whole(page):
     """Picking 10G still loads the model, but uncapped and uncached."""
-    page.quality_buttons[QUALITY_MAX].click()
+    page.quality_buttons[QUALITY_HIGH].click()
 
     assert page.load_photo_mesh is True
     assert page.full_resolution_mesh is True
-    assert not page.quality_buttons[QUALITY_FULL].isChecked()
+    assert not page.quality_buttons[QUALITY_MEDIUM].isChecked()
 
 
 def test_only_the_max_budget_asks_for_full_resolution(page):
     """The other two leave the loader on its capped, cached path."""
-    for label in (QUALITY_LIGHT, QUALITY_FULL):
+    for label in (QUALITY_LOW, QUALITY_MEDIUM):
         page.quality_buttons[label].click()
         assert page.full_resolution_mesh is False, label
 
 
 def test_the_max_budget_still_has_a_second_phase(page):
     """10G reads the same model as 6G, so the bar switches over just the same."""
-    page.quality_buttons[QUALITY_MAX].click()
+    page.quality_buttons[QUALITY_HIGH].click()
     page.open_project(PROJECTS[0])
 
     page._on_scene_loaded(None)
@@ -126,15 +126,15 @@ def test_the_max_budget_still_has_a_second_phase(page):
 
 def test_the_light_budget_drops_the_full_resolution_model(page):
     """Picking 400MB unpicks 6G, and the viewer is told to stay on the simplified mesh."""
-    page.quality_buttons[QUALITY_LIGHT].click()
+    page.quality_buttons[QUALITY_LOW].click()
 
-    assert not page.quality_buttons[QUALITY_FULL].isChecked()
+    assert not page.quality_buttons[QUALITY_MEDIUM].isChecked()
     assert page.load_photo_mesh is False
 
 
 def test_the_light_budget_leaves_the_bar_on_stages(page):
     """There is no second, full-resolution phase to switch the bar over to."""
-    page.quality_buttons[QUALITY_LIGHT].click()
+    page.quality_buttons[QUALITY_LOW].click()
     page.open_project(PROJECTS[0])
 
     page._on_scene_loaded(None)
