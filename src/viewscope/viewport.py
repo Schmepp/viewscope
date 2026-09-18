@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import cast
 
 import numpy as np
@@ -133,6 +134,10 @@ class Viewport(QVTKRenderWindowInteractor):
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
 
+        # Nesting depth of held(): while it is above nought, render() only
+        # notes that a draw is owed.
+        self._held = 0
+
         self.flight_path = FlightPathLine()
         self.unobserved = UnobservedTargets()
         # While the targets nothing can see are flagged, they are the only
@@ -202,7 +207,28 @@ class Viewport(QVTKRenderWindowInteractor):
         self.Finalize()
 
     def render(self):
+        if self._held:
+            return
+
         self.GetRenderWindow().Render()
+
+    @contextmanager
+    def held(self):
+        """Draw once at the end of a change, rather than after every part of it.
+
+        Each thing the viewport is told draws the scene again, which is right
+        for one change and wasteful for a dozen. Route planning makes a dozen
+        on every click - the glyph colours, the flight path, the flagged
+        targets, the heat map, the occlusion - and a draw of this scene costs
+        more than all of them put together.
+        """
+        self._held += 1
+        try:
+            yield
+        finally:
+            self._held -= 1
+            if not self._held:
+                self.render()
 
     # -- Scene ---------------------------------------------------------
 
@@ -338,6 +364,16 @@ class Viewport(QVTKRenderWindowInteractor):
         self.render()
         return stats
 
+    def set_scalar_values(self, field: str, values, value_range) -> FieldStats | None:
+        """Colour the cloud by values worked out here, on a scale held fixed."""
+        if not self.has_scene or self.cloud is None:
+            return None
+
+        stats = self.cloud.set_values(field, values, value_range)
+        self.render()
+
+        return stats
+
     def set_point_size(self, size: int):
         if self.has_scene and self.cloud is not None:
             self.cloud.set_point_size(size)
@@ -379,14 +415,10 @@ class Viewport(QVTKRenderWindowInteractor):
             self.cloud.set_occlusion(mask)
             self.render()
 
-    def set_route_selection(self, selected: set[int] | None, shown: set[str] | None = None):
-        """Paint the route on the camera glyphs; None gives their colours back.
-
-        `shown`, when given, is the plan ids of the only cameras drawn at all:
-        every other one in the scene is switched off rather than dimmed.
-        """
+    def set_route_selection(self, selected: set[int] | None):
+        """Paint the route on the camera glyphs; None gives their colours back."""
         if self.has_scene and self.glyphs is not None:
-            self.glyphs.set_route(selected, shown)
+            self.glyphs.set_route(selected)
             self.render()
 
     def show_flight_path(self, positions):

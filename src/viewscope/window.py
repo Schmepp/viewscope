@@ -36,6 +36,7 @@ from viewscope.panels.plan_route_panel import PlanRoutePanel
 from viewscope.panels.target_panel import TargetPanel
 from viewscope.panels.viewpoints_panel import ViewpointsPanel
 from viewscope.scene.photo_mesh import PhotoMesh, PhotoMeshLoader, find_photo_mesh
+from viewscope.scene.subset_scores import SubsetScores
 from viewscope.scene.target_report import TargetReport, TargetReports
 from viewscope.scene.visibility import TargetVisibility
 from viewscope.viewport import Viewport
@@ -102,17 +103,15 @@ class MainWindow(QMainWindow):
         self.unobserved_on = False
         self.plan_mask = None
 
+        # Rescores the targets for the cameras in the route, so the heat map
+        # answers what the route covers rather than what the plan does. None
+        # until a scene with a score table arrives.
+        self.subset_scores = None
+
         # What the whole route can see, while planning is on. Recounted on
         # every route change, because both the coverage line and the
         # occlusion colouring read it.
         self.route_mask = None
-
-        # When a plan was loaded from a file, the viewpoint ids it named.
-        # Every camera in the scene whose id is not one of them is switched
-        # off, so the scene holds that plan and nothing else, until another
-        # is loaded or the whole plan is asked for back. None while every
-        # viewpoint is on show.
-        self.route_shown: set[str] | None = None
 
         self.selected_camera = None
         self.selected_target: TargetReport | None = None
@@ -320,6 +319,11 @@ class MainWindow(QMainWindow):
         # answer to what nothing can see.
         self.obstacle = None
         self.plan_mask = None
+        self.subset_scores = (
+            None
+            if scene.scores is None
+            else SubsetScores(scene.scores, len(scene.targets), len(scene.plan.ids))
+        )
 
         self.viewport.set_scene(scene)
         self.camera_viewport.set_scene(scene)
@@ -343,7 +347,40 @@ class MainWindow(QMainWindow):
             self._load_photo_mesh(scene.data_dir)
 
     def _on_field_changed(self, field):
-        self.metrics_panel.show_field(self.viewport.set_scalar_field(field))
+        self.metrics_panel.show_field(self._paint_field(field))
+
+    def _paint_field(self, field: str):
+        """Colour the targets by one field, for the route or for the plan.
+
+        While a route is being planned the heat map is worked out from the
+        cameras in it, on the plan's own scale: an empty route leaves every
+        target at the cold end, and each camera put back warms what it sees.
+        Outside planning, and for anything the rescorer cannot answer, the
+        column the bundle shipped is used as it always was.
+        """
+        if not self._rescoring(field):
+            return self.viewport.set_scalar_field(field)
+
+        assert self.subset_scores is not None  # _rescoring is the only route here
+
+        return self.viewport.set_scalar_values(
+            field,
+            self.subset_scores.values(field, self.route.selected),
+            self.subset_scores.full_range(field),
+        )
+
+    def _rescoring(self, field: str) -> bool:
+        """Whether the heat map should follow the route rather than the plan."""
+        return (
+            self.route.planning and self.subset_scores is not None and SubsetScores.handles(field)
+        )
+
+    def _refresh_heatmap(self):
+        """Repaint the targets, for when the route or the plan moves under them."""
+        if SCENE_STORE.scene is None or not self.display_panel.field.isEnabled():
+            return
+
+        self._on_field_changed(self.display_panel.field.currentText())
 
     def _on_camera_changed(self, info: CameraInfo | None):
         if SCENE_STORE.scene is None:
@@ -379,6 +416,12 @@ class MainWindow(QMainWindow):
         # A camera added to the plan can see things nothing could see before,
         # so what the whole plan covers has to be counted again.
         self.plan_mask = None
+
+        # The score table describes the plan the bundle shipped, and this is
+        # no longer that plan: there are no rows for the new camera to score
+        # by. The heat map goes back to the shipped columns, which is what it
+        # showed before any of this.
+        self.subset_scores = None
 
         # on_plan_changed built fresh glyphs, which know nothing of the route.
         self.route.forget_beyond(SCENE_STORE.camera_count)
@@ -568,7 +611,6 @@ class MainWindow(QMainWindow):
             return
 
         self.route.start(SCENE_STORE.camera_count)
-        self.route_shown = None
         self.plan_route_panel.show_saved(None)
         self._refresh_route()
         self.statusBar().showMessage(
@@ -600,11 +642,12 @@ class MainWindow(QMainWindow):
             [(entry.id, entry.position, entry.yaw_deg, entry.pitch_deg) for entry in entries]
         )
 
+        # The file names the route, not the scene: the viewpoints it lists go
+        # into the route and the rest of the plan stays where it is, out of
+        # the route and on screen. A viewpoint you cannot see is one you
+        # cannot click back in.
         self.route.select(rows)
         self.route.resume()
-        # The file names the plan on show: every other camera in the scene is
-        # switched off until the user asks for the rest back.
-        self.route_shown = {entry.id for entry in entries}
         self._refresh_route()
         self.plan_route_panel.show_loaded(path, added)
         self.statusBar().showMessage(f"Planning the {len(rows)} viewpoints of {path.name}", 6000)
@@ -664,9 +707,8 @@ class MainWindow(QMainWindow):
         )
 
     def _on_route_select_all(self):
-        """Put the whole plan in the route, and back on the screen with it."""
+        """Put the whole plan in the route."""
         self.route.select_all(SCENE_STORE.camera_count)
-        self.route_shown = None
         self._refresh_route()
 
     def _on_route_clear(self):
@@ -801,35 +843,38 @@ class MainWindow(QMainWindow):
         observed = 0 if self.route_mask is None else int(self.route_mask.sum())
 
         selected = set(self.route.selected)
-        if self.route_shown is not None:
-            # A camera put back into the route is drawn, whatever the file said.
-            ids = scene.plan.ids
-            self.route_shown |= {ids[i] for i in selected if i < len(ids)}
 
-        # The route colours are only worn while planning, but a loaded plan
-        # keeps the rest of the viewpoints off the screen either way: it is
-        # the plan on show until another one is loaded.
-        self.viewport.set_route_selection(
-            selected if self.route.planning else None, self.route_shown
-        )
-        # Quadrants are read about the model, not about the world origin: a
-        # bundle carrying a larger survey's coordinates would otherwise show
-        # its whole route standing in one quadrant.
-        self.plan_route_panel.show_route(
-            self.route.status(scene.plan, observed, len(scene.targets), scene.centre)
-        )
-        self._refresh_flight_path()
-        self._refresh_unobserved()
+        # Every part of this repaints the scene, and a repaint costs more
+        # than all of them together, so the whole route change is drawn once.
+        with self.viewport.held():
+            # The route colours are only worn while planning; outside it
+            # every frustum goes back to its own.
+            self.viewport.set_route_selection(selected if self.route.planning else None)
+            # Quadrants are read about the model, not about the world origin:
+            # a bundle carrying a larger survey's coordinates would otherwise
+            # show its whole route standing in one quadrant.
+            self.plan_route_panel.show_route(
+                self.route.status(scene.plan, observed, len(scene.targets), scene.centre)
+            )
+            self._refresh_flight_path()
+            self._refresh_unobserved()
+            self._refresh_heatmap()
 
-        # Occlusion follows the route while planning, so every camera in it
-        # paints at once rather than only the one last clicked.
-        self._apply_occlusion()
+            # Occlusion follows the route while planning, so every camera in
+            # it paints at once rather than only the one last clicked.
+            self._apply_occlusion()
 
     # -- occlusion -----------------------------------------------------
 
     def _on_occlusion_toggled(self, enabled: bool):
         self.occlusion_on = enabled
         self._apply_occlusion()
+
+        # Occlusion owns the target colours while it is on and gives them
+        # back as the bundle shipped them, which is not what the route was
+        # showing. Repaint, so leaving occlusion returns what you left.
+        if not enabled:
+            self._refresh_heatmap()
 
     def _apply_occlusion(self):
         """

@@ -136,6 +136,11 @@ class TargetCloudView:
         self.lut = None
         self.scalar_bar = None
         self._field = None
+        # What was last painted, so that occlusion can hand the cloud back
+        # exactly as it took it. Reading the field off the bundle again would
+        # undo a route's own colouring every time a camera was clicked.
+        self._values = None
+        self._range = None
         self._occluding = False
         self._occlusion_lut = self._build_occlusion_lut()
         if scores is not None:
@@ -182,11 +187,28 @@ class TargetCloudView:
         if self.scores is None:
             return None
 
+        return self.set_values(field, getattr(self.scores, field))
+
+    def set_values(self, field: str, values, value_range: tuple[float, float] | None = None):
+        """Colour by these values, which need not be the ones the bundle shipped.
+
+        `value_range` pins the scale. Left out, the values colour themselves,
+        which is right for a field that covers the whole plan and wrong for
+        one worked out from part of it: rescaled to whatever a few cameras
+        reach, the first camera in a route would paint its own patch the
+        colour of full coverage. Passed a fixed range, a colour means the
+        same thing however much of the route is in.
+        """
         self._field = field
-        values = np.ascontiguousarray(getattr(self.scores, field), dtype=np.float32)
+        values = np.ascontiguousarray(values, dtype=np.float32)
 
         if self.scalar_bar is not None:
             self.scalar_bar.SetTitle(field)
+
+        low, high = (
+            (float(values.min()), float(values.max())) if value_range is None else value_range
+        )
+        self._values, self._range = values, (float(low), float(high))
 
         # Occlusion colouring owns the scalars while it is on; remember the
         # field so switching back picks up the one the panel is showing.
@@ -196,7 +218,9 @@ class TargetCloudView:
             self.polydata.GetPointData().SetScalars(array)
 
             mapper = self.actor.GetMapper()
-            mapper.SetScalarRange(float(values.min()), float(values.max()))
+            # A zero width range leaves the colours undefined, so an empty
+            # route still gets a scale - every target at the cold end of it.
+            mapper.SetScalarRange(float(low), float(max(high, low + 1e-6)))
             mapper.ScalarVisibilityOn()
 
         return FieldStats(field, float(values.min()), float(values.mean()), float(values.max()))
@@ -207,16 +231,27 @@ class TargetCloudView:
 
         Pass None to go back to the scalar field colouring.
         """
+        was_occluding = self._occluding
         self._occluding = mask is not None
         mapper = self.actor.GetMapper()
+
+        if mask is None and not was_occluding:
+            # Nothing to give back: the cloud is already wearing whatever it
+            # was painted with. Route planning asks for this on every click,
+            # and pushing sixty thousand values back at the renderer to end
+            # up where it started is the slowest thing a click could do.
+            return
 
         if mask is None:
             if self.scalar_bar is not None:
                 self.scalar_bar.SetVisibility(self.actor.GetVisibility())
             if self.lut is not None:
                 mapper.SetLookupTable(self.lut)
-            if self._field is not None:
-                self.set_field(self._field)
+            if self._field is not None and self._values is not None:
+                # Back to what was on the cloud before, values and scale
+                # alike - not to the column the bundle shipped, which may be
+                # about a different set of cameras entirely.
+                self.set_values(self._field, self._values, self._range)
             else:
                 mapper.ScalarVisibilityOff()
             return

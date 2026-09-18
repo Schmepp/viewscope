@@ -127,6 +127,39 @@ def test_the_route_colours_tell_each_other_apart(plan):
     assert apart.max() > 0.5
 
 
+def test_a_camera_out_of_the_route_is_dimmed_never_hidden(plan):
+    """Out of the route is a colour, not an absence.
+
+    A loaded route used to switch off every viewpoint its file did not name,
+    which left the rest of the plan unclickable: you cannot put a camera back
+    into a route when it is not on screen to be clicked.
+    """
+    glyphs = CameraGlyphs(plan)
+    glyphs.set_route({0, 2})
+
+    assert all(glyph(glyphs, index).GetVisibility() == 1 for index in range(4))
+    assert worn(glyphs, 1)[2] == pytest.approx(ROUTE_UNSELECTED_COLOUR)
+
+
+def test_the_only_frustum_hidden_is_the_one_you_are_sitting_inside(plan):
+    """That one fills the view; every other camera stays drawn."""
+    glyphs = CameraGlyphs(plan)
+    glyphs.set_route({0})
+    glyphs.set_active(3)
+
+    assert glyph(glyphs, 3).GetVisibility() == 0
+    assert all(glyph(glyphs, index).GetVisibility() == 1 for index in (0, 1, 2))
+
+
+def test_switching_the_glyphs_off_still_hides_them_all(plan):
+    """The one deliberate way to clear the frustums out has to keep working."""
+    glyphs = CameraGlyphs(plan)
+    glyphs.set_route({0, 2})
+    glyphs.set_visible(False)
+
+    assert all(glyph(glyphs, index).GetVisibility() == 0 for index in range(4))
+
+
 def test_the_camera_being_looked_at_outranks_the_route(plan):
     """Gold wins: it says where you are, which the route colour does not."""
     glyphs = CameraGlyphs(plan)

@@ -213,8 +213,8 @@ class PlanRoutePanel(QWidget):
         if added:
             appended = f", adding {added} viewpoint{'' if added == 1 else 's'} to the plan"
         self.note.setText(
-            f"Loaded from {path}{appended}. Only its viewpoints are drawn; "
-            "Select all puts the rest of the plan back on screen."
+            f"Loaded from {path}{appended}. Its viewpoints are the route; "
+            "the rest of the plan is still on screen, out of it."
         )
 
     # -- internals -----------------------------------------------------
