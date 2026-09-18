@@ -213,15 +213,21 @@ class Project:
 
 PROJECTS = (
     Project(
-        name="Kiri Building",
+        name="Kiri Vehara",
         subtitle="Kiri Vehera mesh, targets and viewpoint plan",
         data_dir=DATA_DIR,
         expected_viewpoints=185,
     ),
     Project(
-        name="SeaHawk",
+        name="SeaHawk Helicopter",
         subtitle="SH-60 airframe, targets and viewpoint plan",
         data_dir=Path("data/SeaHawk"),
         expected_viewpoints=120,
     ),
+    Project(
+        name="Formula One",
+        subtitle="Formula One car mesh, targets and viewpoint plan",
+        data_dir=Path("data/Formula1"),
+        expected_viewpoints=120
+    )
 )
