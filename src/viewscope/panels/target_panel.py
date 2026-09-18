@@ -33,9 +33,8 @@ from viewscope.config import (
     TARGET_COLOUR_MODES,
     OverlayOptions,
 )
-from viewscope.scene.target_report import TargetReport
-
 from viewscope.panels.sector_barchart import SectorBarChart  # Bar Chart
+from viewscope.scene.target_report import TargetReport
 
 HINT = "Click a target in the 3D view to break it down."
 
