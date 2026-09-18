@@ -54,6 +54,7 @@ class MainWindow(QMainWindow):
         *,
         expected_viewpoints: int | None = None,
         defer_load: bool = False,
+        load_photo_mesh: bool = True,
     ):
         """
         Build the shell and, unless the load is deferred, start reading the bundle.
@@ -62,6 +63,10 @@ class MainWindow(QMainWindow):
         checked while loading. Pass defer_load=True to leave the loader idle:
         the startup screen uses that to connect to its signals before the first
         one is emitted, then calls self.loader.start() itself.
+
+        Pass load_photo_mesh=False to stay on the simplified mesh: the
+        full-resolution model is the bulk of a bundle's memory, and the startup
+        screen offers it as a choice for machines that cannot hold it.
         """
         super().__init__()
         self.setWindowTitle("ViewScope")
@@ -92,6 +97,7 @@ class MainWindow(QMainWindow):
 
         # Reads the full-resolution model, once, for every panel that draws it.
         self.photo_loader = None
+        self.load_photo_mesh = load_photo_mesh
 
         self.camera_viewport = CameraViewport(self)
         self.display_panel = DisplayPanel()
@@ -397,6 +403,10 @@ class MainWindow(QMainWindow):
         """
         # Don't run the loader if it's already running
         if self.photo_loader is not None and self.photo_loader.isRunning():
+            return
+
+        if not self.load_photo_mesh:
+            self.photo_mesh_finished.emit(False)
             return
 
         path = find_photo_mesh(data_dir)

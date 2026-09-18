@@ -14,7 +14,13 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 from viewscope.config import Project  # noqa: E402
 from viewscope.data.loader import STAGE_COUNT  # noqa: E402
 from viewscope.dialogs.build_dialog import BuildBundleDialog  # noqa: E402
-from viewscope.startup import ProjectCard, StartupWindow, _Build  # noqa: E402
+from viewscope.startup import (  # noqa: E402
+    QUALITY_FULL,
+    QUALITY_LIGHT,
+    ProjectCard,
+    StartupWindow,
+    _Build,
+)
 
 PROJECTS = (Project(name="Kiri Building", subtitle="A test bundle", data_dir=Path("data/kiri")),)
 
@@ -74,6 +80,50 @@ def test_opening_shows_the_bar_and_marks_the_card_busy(page):
     assert page.bar.value() == 0
     assert page.bar.maximum() == STAGE_COUNT
     assert "Kiri Building" in page.status.text()
+
+
+def test_the_full_budget_is_the_default(page):
+    """6G is picked when the page opens, so a project loads everything it ships."""
+    assert page.quality_buttons[QUALITY_FULL].isChecked()
+    assert not page.quality_buttons[QUALITY_LIGHT].isChecked()
+    assert page.load_photo_mesh is True
+
+
+def test_the_light_budget_drops_the_full_resolution_model(page):
+    """Picking 400MB unpicks 6G, and the viewer is told to stay on the simplified mesh."""
+    page.quality_buttons[QUALITY_LIGHT].click()
+
+    assert not page.quality_buttons[QUALITY_FULL].isChecked()
+    assert page.load_photo_mesh is False
+
+
+def test_the_light_budget_leaves_the_bar_on_stages(page):
+    """There is no second, full-resolution phase to switch the bar over to."""
+    page.quality_buttons[QUALITY_LIGHT].click()
+    page.open_project(PROJECTS[0])
+
+    page._on_scene_loaded(None)
+
+    assert page.bar.maximum() == STAGE_COUNT
+    assert "full-resolution" not in page.status.text()
+
+
+def test_the_full_budget_switches_the_bar_to_the_second_phase(page):
+    page.open_project(PROJECTS[0])
+
+    page._on_scene_loaded(None)
+
+    assert page.bar.maximum() == 100
+    assert "full-resolution" in page.status.text()
+
+
+def test_the_budget_is_frozen_while_a_project_opens(page):
+    """It is read once, when the project opens, so it must not be moved after that."""
+    page.open_project(PROJECTS[0])
+    assert not any(b.isEnabled() for b in page.quality_buttons.values())
+
+    page._on_failed("no such bundle")
+    assert all(b.isEnabled() for b in page.quality_buttons.values())
 
 
 def test_stages_advance_the_bar(page):
