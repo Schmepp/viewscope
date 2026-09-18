@@ -205,6 +205,12 @@ class CameraGlyphs:
     def camera_id_of_actor(self, actor: vtk.vtkActor) -> int | None:
         return self.glyphs.get(actor)
 
+    def actor_of_id(self, camera_id: int) -> vtk.vtkActor | None:
+        for actor, i in self.glyphs.items():
+            if i == camera_id:
+                return actor
+        return None
+
     @staticmethod
     def _build(polydata: vtk.vtkPolyData):
         mapper = vtk.vtkPolyDataMapper()
@@ -435,3 +441,293 @@ class CameraModeGizmo(QFrame):
         """Update the visual state without emitting mode_changed."""
         for button_mode, button in self._buttons.items():
             button.setChecked(button_mode == mode)
+
+
+# from __future__ import annotations
+
+import math
+
+import numpy as np
+import vtk
+
+class AxisHandleWidget:
+    """Three arrow handles (X/Y/Z) that translate an attached actor."""
+
+    # direction (in world space) -> handle colour
+    _AXES: dict[str, tuple[tuple[float, float, float], tuple[float, float, float]]] = {
+        "x": ((1.0, 0.0, 0.0), (0.85, 0.20, 0.20)),
+        "y": ((0.0, 1.0, 0.0), (0.20, 0.85, 0.20)),
+        "z": ((0.0, 0.0, 1.0), (0.20, 0.45, 0.90)),
+    }
+
+    def __init__(self, renderer: vtk.vtkRenderer):
+        self.renderer = renderer
+
+        # A picker of its own, restricted to just the handle actors, so a
+        # click on a handle is never confused with a click on scene geometry.
+        self.picker = vtk.vtkCellPicker()
+        self.picker.SetTolerance(0.005)
+        self.picker.PickFromListOn()
+
+        self._axis_of: dict[vtk.vtkActor, np.ndarray] = {}
+        self._actors: list[vtk.vtkActor] = []
+        self._target: vtk.vtkActor | None = None
+
+        self._build_handles()
+
+        # True for the duration of a drag. Callers gate their own camera
+        # navigation on this the same way they'd gate on a vtkWidget's
+        # GetEnabled()/interaction state.
+        self.active: bool = False
+        self._drag_axis = np.zeros(3)
+        self._drag_plane_origin = np.zeros(3)
+        self._drag_plane_normal = np.zeros(3)
+        self._drag_last_t = 0.0
+
+        self.set_visible(False)
+
+    # -- construction --------------------------------------------------
+
+    def _build_handles(self):
+        for direction, colour in self._AXES.values():
+            arrow = vtk.vtkArrowSource()
+            arrow.SetTipResolution(16)
+            arrow.SetShaftResolution(16)
+
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(arrow.GetOutputPort())
+
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+            actor.GetProperty().SetColor(*colour)
+            actor.GetProperty().SetLighting(False)  # flat: reads as a UI control, not scene geometry
+
+            self._axis_of[actor] = np.array(direction, dtype=np.float64)
+            self._actors.append(actor)
+            self.renderer.AddActor(actor)
+            self.picker.AddPickList(actor)
+
+    # -- attach / detach -------------------------------------------------
+
+    def attach(self, actor: vtk.vtkActor):
+        """Point the gizmo at an actor: place the arrows at its centre, sized to it."""
+        self._target = actor
+        self._place_handles()
+        self.set_visible(True)
+
+    def detach(self):
+        self._target = None
+        self.set_visible(False)
+
+    def refresh(self):
+        """Re-place the handles after something else has moved the target."""
+        if self._target is not None:
+            self._place_handles()
+
+    def set_visible(self, visible: bool):
+        for actor in self._actors:
+            actor.SetVisibility(visible)
+
+    def remove_from(self, renderer: vtk.vtkRenderer):
+        for actor in self._actors:
+            renderer.RemoveActor(actor)
+
+    def _place_handles(self):
+        assert self._target is not None
+
+        bounds = self._target.GetBounds()
+        centre = np.array(
+            [(bounds[0] + bounds[1]) / 2, (bounds[2] + bounds[3]) / 2, (bounds[4] + bounds[5]) / 2]
+        )
+        # Sized off the target's own bounding-box diagonal, so a handle set
+        # scales with whatever it's attached to. NOTE: this does *not* keep
+        # a constant on-screen size as the camera dollies in and out - if you
+        # want that, rescale each render by distance-to-camera instead.
+        diag = math.sqrt(
+            (bounds[1] - bounds[0]) ** 2 + (bounds[3] - bounds[2]) ** 2 + (bounds[5] - bounds[4]) ** 2
+        )
+        length = max(diag, 1e-3)
+
+        for actor, direction in self._axis_of.items():
+            actor.SetUserTransform(self._handle_transform(centre, direction, length))
+
+    @staticmethod
+    def _handle_transform(centre: np.ndarray, direction: np.ndarray, length: float) -> vtk.vtkTransform:
+        """vtkArrowSource points along +X by default; rotate it onto `direction`."""
+        transform = vtk.vtkTransform()
+        transform.Translate(*centre)
+
+        x_axis = np.array([1.0, 0.0, 0.0])
+        dot = float(np.clip(np.dot(x_axis, direction), -1.0, 1.0))
+        if dot < -0.9999:
+            transform.RotateWXYZ(180.0, 0.0, 0.0, 1.0)
+        elif dot < 0.9999:
+            rot_axis = np.cross(x_axis, direction)
+            rot_axis /= np.linalg.norm(rot_axis)
+            transform.RotateWXYZ(math.degrees(math.acos(dot)), *rot_axis)
+
+        transform.Scale(length, length, length)
+        return transform
+
+    # -- dragging, driven by the caller's own mouse events ----------------
+
+    def try_start_drag(self, x: int, y: int) -> bool:
+        """Pick a handle under (x, y). Returns whether a drag started."""
+        if self._target is None:
+            return False
+
+        self.picker.Pick(x, y, 0, self.renderer)
+        actor = self.picker.GetActor()
+        if actor not in self._axis_of:
+            return False
+
+        axis_world = self._axis_of[actor]
+        bounds = self._target.GetBounds()
+        origin = np.array(
+            [(bounds[0] + bounds[1]) / 2, (bounds[2] + bounds[3]) / 2, (bounds[4] + bounds[5]) / 2]
+        )
+
+        # A plane containing the axis line, tilted to face the camera as
+        # much as possible - this is what makes dragging along an axis that
+        # is nearly edge-on to the screen still feel stable.
+        camera = self.renderer.GetActiveCamera()
+        view_vec = np.array(camera.GetPosition()) - origin
+        normal = np.cross(np.cross(axis_world, view_vec), axis_world)
+        normal_len = np.linalg.norm(normal)
+        if normal_len < 1e-6:
+            # The axis points straight at the camera: no well-defined plane.
+            return False
+        normal /= normal_len
+
+        self._drag_axis = axis_world
+        self._drag_plane_origin = origin
+        self._drag_plane_normal = normal
+
+        t = self._ray_axis_t(x, y)
+        if t is None:
+            return False
+
+        self._drag_last_t = t
+        self.active = True
+        return True
+
+    def drag(self, x: int, y: int):
+        if not self.active or self._target is None:
+            return
+
+        t = self._ray_axis_t(x, y)
+        if t is None:
+            return
+
+        delta = (t - self._drag_last_t) * self._drag_axis
+        self._drag_last_t = t
+        self._translate_target(delta)
+        self._place_handles()
+
+    def end_drag(self):
+        self.active = False
+
+    def _ray_axis_t(self, x: int, y: int) -> float | None:
+        """Where the mouse ray crosses the drag axis, as a distance along it."""
+        self.renderer.SetDisplayPoint(x, y, 0.0)
+        self.renderer.DisplayToWorld()
+        near = np.array(self.renderer.GetWorldPoint())
+        near = near[:3] / near[3]
+
+        self.renderer.SetDisplayPoint(x, y, 1.0)
+        self.renderer.DisplayToWorld()
+        far = np.array(self.renderer.GetWorldPoint())
+        far = far[:3] / far[3]
+
+        intersection = [0.0, 0.0, 0.0]
+        t_line = vtk.reference(0.0)
+        hit = vtk.vtkPlane.IntersectWithLine(
+            near, far, self._drag_plane_normal, self._drag_plane_origin, t_line, intersection
+        )
+        if not hit:
+            return None
+
+        return float(np.dot(np.array(intersection) - self._drag_plane_origin, self._drag_axis))
+
+    def _translate_target(self, delta: np.ndarray):
+        """
+        Apply a world-space translation on top of whatever transform is
+        already there. Adding `delta` straight onto the matrix's
+        translation column is only valid because it's a *world-space*
+        translate: it works regardless of whatever rotation/scale the
+        existing transform carries, without needing to decompose it.
+        """
+        matrix = vtk.vtkMatrix4x4()
+        existing = self._target.GetUserTransform()
+        if existing is not None:
+            matrix.DeepCopy(existing.GetMatrix())
+
+        for i in range(3):
+            matrix.SetElement(i, 3, matrix.GetElement(i, 3) + delta[i])
+
+        transform = vtk.vtkTransform()
+        transform.SetMatrix(matrix)
+        self._target.SetUserTransform(transform)
+
+
+# ---------------------------------------------------------------------------
+# Wiring into Viewport (viewport.py) - shown here rather than applied
+# directly, since it touches methods you already have logic in.
+# ---------------------------------------------------------------------------
+#
+# 1. In Viewport.__init__, next to orientation_widget / affine_gizmo / box_gizmo:
+#
+#     self.axis_gizmo = AxisHandleWidget(self.renderer)
+#
+# 2. Attach/detach it the same place you attach the other gizmos, e.g. in
+#    on_camera_changed:
+#
+#     if info is not None:
+#         ...
+#         self.axis_gizmo.attach(actor)
+#     else:
+#         self.axis_gizmo.detach()
+#
+# 3. In mousePressEvent, check it *before* _pick_camera_glyph, so a handle
+#    sitting over a glyph wins:
+#
+#     def mousePressEvent(self, ev: QMouseEvent):
+#         self._press_position = ev.position()
+#         self._drag_px = 0.0
+#         self._picked_glyph = False
+#
+#         if ev.button() == Qt.MouseButton.LeftButton:
+#             x, y = self._display_position(ev.position())
+#             if self.axis_gizmo.try_start_drag(x, y):
+#                 super().mousePressEvent(ev)
+#                 return
+#             if self._pick_camera_glyph(ev):
+#                 self._picked_glyph = True
+#                 super().mousePressEvent(ev)
+#                 return
+#
+#         if (ev.button() in (...) and not self._mouse_locked):
+#             self._mouse_lock_enter(ev)
+#         super().mousePressEvent(ev)
+#
+# 4. In mouseMoveEvent, handle an active drag before anything mouse-lock
+#    related runs:
+#
+#     def mouseMoveEvent(self, ev: QMouseEvent):
+#         if self.axis_gizmo.active:
+#             x, y = self._display_position(ev.position())
+#             self.axis_gizmo.drag(x, y)
+#             self.render()
+#             return
+#         if not self._mouse_locked:
+#             ...
+#
+# 5. In mouseReleaseEvent, end the drag before the existing release logic
+#    (no mouse lock was ever entered for this path, so nothing else to undo):
+#
+#     def mouseReleaseEvent(self, ev: QMouseEvent):
+#         if self.axis_gizmo.active:
+#             self.axis_gizmo.end_drag()
+#             return
+#         super().mouseReleaseEvent(ev)
+#         ...

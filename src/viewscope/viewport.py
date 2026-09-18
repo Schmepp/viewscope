@@ -34,7 +34,7 @@ from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
 from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode, SceneCameraController
-from viewscope.scene.gizmos import CameraGlyphs, CameraModeGizmo, CameraOutline, FloorGrid
+from viewscope.scene.gizmos import CameraGlyphs, CameraModeGizmo, CameraOutline, FloorGrid, AxisHandleWidget
 from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.stats import FieldStats
 from viewscope.scene.still import StillRenderer
@@ -139,6 +139,8 @@ class Viewport(QVTKRenderWindowInteractor):
         representation.AnchorToUpperLeft()
 
         self.set_camera_orientation_visible(True)
+
+        self.axis_gizmo = AxisHandleWidget(self.renderer) #NEW
 
         # CameraMode gizmo configuration
         self.camera_mode_gizmo = CameraModeGizmo(self)
@@ -387,6 +389,13 @@ class Viewport(QVTKRenderWindowInteractor):
             if self.selected_camera_pos != (0, 0, 0):
                 self.selected_outline.build(self.renderer, self.selected_camera_pos)
 
+                actor = self.glyphs.actor_of_id(info.index)
+                if actor is not None:
+                    self.axis_gizmo.attach(actor)
+            # self.axis_gizmo.attach(self.actor)
+        else:
+            self.axis_gizmo.detach()
+
         self.render()
 
     def on_plan_changed(self):
@@ -559,6 +568,20 @@ class Viewport(QVTKRenderWindowInteractor):
         self._drag_px = 0.0
         self._picked_glyph = False
 
+        if ev.button() == Qt.MouseButton.LeftButton:
+            x, y = self._display_position(ev.position())
+            if self.axis_gizmo.try_start_drag(x, y):
+                super().mousePressEvent(ev)
+                return
+            if self._pick_camera_glyph(ev):
+                self._picked_glyph = True
+                super().mousePressEvent(ev)
+                return
+
+        if (ev.button() in (...) and not self._mouse_locked):
+            self._mouse_lock_enter(ev)
+        # super().mousePressEvent(ev)
+
         # NOTE(Adam): Early-return here handles camera-click vs viewport manip on left-click
         if (ev.button() == Qt.MouseButton.LeftButton) and self._pick_camera_glyph(ev):
             self._picked_glyph = True
@@ -576,6 +599,11 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def mouseReleaseEvent(self, ev: QMouseEvent):
         """Unlock the mouse when all tracked mouse buttons have been released."""
+
+        if self.axis_gizmo.active:
+            self.axis_gizmo.end_drag()
+            return
+#         super().mouseReleaseEvent(ev)
         super().mouseReleaseEvent(ev)
 
         if self._mouse_locked and not (
@@ -601,6 +629,11 @@ class Viewport(QVTKRenderWindowInteractor):
         is reset back to its initial anchor position to allow infinite range-of-motion
         without running off-screen.
         """
+        if self.axis_gizmo.active:
+            x, y = self._display_position(ev.position())
+            self.axis_gizmo.drag(x, y)
+            self.render()
+            return
         if not self._mouse_locked:
             super().mouseMoveEvent(ev)
             return
