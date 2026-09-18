@@ -6,8 +6,10 @@ puts every camera in and turns them blue in the 3D view; clicking a camera
 there takes it out again, or puts it back. "Load route" starts from a route
 saved earlier, or from another plan's json, instead of from the whole plan,
 and hides every viewpoint that file did not name.
-The coverage line answers the question the whole exercise is about: how many
-targets the cameras still in the route can see between them.
+Two charts answer the questions the whole exercise is about: how many targets
+the cameras still in the route can see between them, and whether those cameras
+stand all around the model or bunched in one quadrant of it. Below them,
+"Plan flight path" draws the order the route would be flown in.
 
 Like the other panels it reports intent through signals and takes state
 through `show_*`. It touches neither VTK nor the scene.
@@ -17,21 +19,23 @@ from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QAbstractItemView,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
+from viewscope.data.flight_path import FlightPath
 from viewscope.data.route import RouteStatus
+from viewscope.panels.route_charts import CoverageBar, QuadrantPie
 
 IDLE_HINT = "Plan a route to choose which viewpoints get flown."
 PLANNING_HINT = "Click a camera in the 3D view to take it out of the route, or put it back."
+
+PATH_IDLE = "Plan flight path"
+PATH_SHOWN = "Hide flight path"
 
 
 class PlanRoutePanel(QWidget):
@@ -45,14 +49,11 @@ class PlanRoutePanel(QWidget):
     load_requested = Signal()
     select_all_requested = Signal()
     clear_requested = Signal()
-    #: A row of the route list was chosen; jump to that camera.
-    camera_picked = Signal(int)
+    #: Show the flight path through the route, or take it off the scene.
+    path_requested = Signal(bool)
 
     def __init__(self):
         super().__init__()
-
-        self._selected: tuple[int, ...] = ()
-        self._suppress = False
 
         layout = QVBoxLayout(self)
 
@@ -87,11 +88,13 @@ class PlanRoutePanel(QWidget):
         buttons.addWidget(self.clear_button)
         layout.addLayout(buttons)
 
-        layout.addWidget(QLabel("In the route"))
-        self.list = QListWidget()
-        self.list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.list.itemSelectionChanged.connect(self._on_row_selected)
-        layout.addWidget(self.list)
+        self.coverage_bar = CoverageBar()
+        layout.addWidget(self.coverage_bar)
+
+        self.quadrant_pie = QuadrantPie()
+        layout.addWidget(self.quadrant_pie)
+
+        layout.addWidget(self._build_path())
 
         self.stop_button = QPushButton("Stop planning")
         self.stop_button.setToolTip("Save the route to a JSON file and stop choosing")
@@ -105,6 +108,25 @@ class PlanRoutePanel(QWidget):
         self.show_route(None)
 
     # -- construction --------------------------------------------------
+
+    def _build_path(self) -> QGroupBox:
+        box = QGroupBox("Flight path")
+        form = QVBoxLayout(box)
+
+        self.path_button = QPushButton(PATH_IDLE)
+        self.path_button.setCheckable(True)
+        self.path_button.setToolTip(
+            "Join the viewpoints of the route into the shortest flight path "
+            "found, and draw it from frustum to frustum"
+        )
+        self.path_button.toggled.connect(self._on_path_toggled)
+        form.addWidget(self.path_button)
+
+        self.path_note = QLabel("--")
+        self.path_note.setWordWrap(True)
+        form.addWidget(self.path_note)
+
+        return box
 
     def _build_summary(self) -> QGroupBox:
         box = QGroupBox("Route")
@@ -132,24 +154,54 @@ class PlanRoutePanel(QWidget):
         for button in (self.select_all_button, self.clear_button, self.stop_button):
             button.setEnabled(planning)
 
+        # The path can be drawn through a plan as readily as through a route,
+        # so it needs a scene and nothing more.
+        self.path_button.setEnabled(status is not None)
+        if status is None and self.path_button.isChecked():
+            self.path_button.setChecked(False)
+
+        self.coverage_bar.update_chart(status)
+        self.quadrant_pie.update_chart(status)
+
         if status is None:
-            self._selected = ()
             self.cameras.setText("--")
             self.coverage.setText("--")
-            self._fill([])
             return
 
-        self._selected = status.selected
         self.cameras.setText(f"Cameras: {len(status.selected)} of {status.camera_count} selected")
         self.coverage.setText(
             f"Targets observed: {status.observed:,} of {status.targets:,} ({status.coverage:.1%})"
         )
-        self._fill(
-            [
-                f"{label}  (camera {index + 1})"
-                for index, label in zip(status.selected, status.labels, strict=False)
-            ]
-        )
+
+    def show_path(self, path: FlightPath | None):
+        """Say how far the planned path runs, and how it keeps off the model."""
+        if path is None:
+            self.path_note.setText("--")
+            return
+
+        stops = len(path.order)
+        lines = [f"{path.length:,.0f} m through {stops} viewpoint{'' if stops == 1 else 's'}"]
+
+        if path.avoidances:
+            went = []
+            if path.detours:
+                went.append(f"{path.detours} round")
+            if path.climbs:
+                went.append(f"{path.climbs} over")
+            lines.append(f"Keeping off the model: {', '.join(went)}.")
+
+        # Said plainly, because it is the one thing the path promises.
+        if path.clear:
+            lines.append("Nothing flies through the model.")
+        elif path.checked:
+            lines.append(
+                f"{path.crossings} hop{'' if path.crossings == 1 else 's'} cross the model: "
+                "no way round or over was found."
+            )
+        else:
+            lines.append("The model was not measured, so nothing was kept off it.")
+
+        self.path_note.setText(" ".join(lines))
 
     def show_saved(self, path):
         """Say where the route went, or clear the line when given None."""
@@ -165,33 +217,11 @@ class PlanRoutePanel(QWidget):
             "Select all puts the rest of the plan back on screen."
         )
 
-    def select_camera(self, index: int | None):
-        """Highlight one camera's row, without re-emitting."""
-        self._suppress = True
-        try:
-            if index is None or index not in self._selected:
-                self.list.clearSelection()
-                return
-
-            self.list.setCurrentRow(self._selected.index(index))
-        finally:
-            self._suppress = False
-
     # -- internals -----------------------------------------------------
 
-    def _fill(self, rows: list[str]):
-        self._suppress = True
-        try:
-            self.list.clear()
-            for text in rows:
-                self.list.addItem(QListWidgetItem(text))
-        finally:
-            self._suppress = False
+    def _on_path_toggled(self, shown: bool):
+        self.path_button.setText(PATH_SHOWN if shown else PATH_IDLE)
+        if not shown:
+            self.path_note.setText("--")
 
-    def _on_row_selected(self):
-        if self._suppress:
-            return
-
-        row = self.list.currentRow()
-        if 0 <= row < len(self._selected):
-            self.camera_picked.emit(self._selected[row])
+        self.path_requested.emit(shown)

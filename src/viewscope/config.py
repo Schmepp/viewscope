@@ -99,11 +99,34 @@ TARGET_MARKER_FRACTION = 0.0024
 
 # A viewpoint in the route, and one the user has taken out of it. Only ever
 # worn while planning is on; outside it the glyphs keep their own colours.
-ROUTE_SELECTED_COLOUR = (0.16, 0.50, 0.95)
+# Cyan reads off the model at a glance where a blue sat against the shadowed
+# side of it; the one taken out stays grey and out of the way.
+ROUTE_SELECTED_COLOUR = (0.15, 0.85, 1.00)
 ROUTE_UNSELECTED_COLOUR = (0.34, 0.35, 0.39)
 
 #: What a saved route is called, before the user renames it.
 ROUTE_FILENAME = "route.json"
+
+# -- camera glyphs ---------------------------------------------------------
+
+# How solid a frustum is drawn when it is not the one being looked at and not
+# an observer of the picked target - which is to say, nearly all of them.
+#
+# The two representations want different numbers for the same result. A
+# wireframe is a few thin lines and already reads clearly when it is faint;
+# filling one in at the same strength leaves a smudge with no edge to it,
+# which is what made the solid frustums so hard to make out.
+GLYPH_SOLID_OPACITY = 0.85
+GLYPH_WIREFRAME_OPACITY = 0.2
+
+
+# -- flight path -----------------------------------------------------------
+
+#: The line drawn from frustum to frustum through the route, in the order it
+#: would be flown. Red, to sit apart from everything else in the scene: the
+#: route blues, the gold of the selected camera and the target colours.
+FLIGHT_PATH_COLOUR = (0.94, 0.15, 0.18)
+FLIGHT_PATH_WIDTH = 3.0
 
 
 # How far a click may travel, in total, before it counts as a drag of the

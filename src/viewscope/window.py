@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 from viewscope.camera.structs import CameraInfo
 from viewscope.CameraViewport import CameraViewport
 from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME, ROUTE_FILENAME
+from viewscope.data.flight_path import Obstacle, plan_path
 from viewscope.data.loader import SceneLoader
 from viewscope.data.route import RoutePlan, load_route
 from viewscope.data.scene import SceneData
@@ -83,6 +84,15 @@ class MainWindow(QMainWindow):
         self.visibility = None  # TargetVisibility, once a scene is loaded
         self.reports = None  # TargetReports, likewise
         self.route = RoutePlan()
+
+        # Whether the flight path is drawn. It follows the route while it is
+        # up, so it is recomputed on every change rather than only on the
+        # click that switched it on.
+        self.flight_path_on = False
+
+        # The model as space the path has to stay out of. Built on the first
+        # path asked for and kept for the life of the scene.
+        self.obstacle = None
 
         # What the whole route can see, while planning is on. Recounted on
         # every route change, because both the coverage line and the
@@ -194,8 +204,7 @@ class MainWindow(QMainWindow):
         self.plan_route_panel.load_requested.connect(self.load_route_file)
         self.plan_route_panel.select_all_requested.connect(self._on_route_select_all)
         self.plan_route_panel.clear_requested.connect(self._on_route_clear)
-        self.plan_route_panel.camera_picked.connect(self.camera_viewport.show_camera)
-        self.plan_route_panel.camera_picked.connect(self.viewpoints_panel.select_row)
+        self.plan_route_panel.path_requested.connect(self._on_flight_path_toggled)
 
         SCENE_STORE.plan_changed.connect(self._on_plan_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
@@ -298,6 +307,8 @@ class MainWindow(QMainWindow):
         SCENE_STORE.set_scene(scene)
         self.visibility = TargetVisibility(scene)
         self.reports = TargetReports(scene, self.visibility)
+        # A new model is a new shape to fly around.
+        self.obstacle = None
 
         self.viewport.set_scene(scene)
         self.camera_viewport.set_scene(scene)
@@ -334,7 +345,6 @@ class MainWindow(QMainWindow):
         if info is not None:
             self.viewpoints_panel.select_row(info.index)
         self.target_panel.select_camera(None if info is None else info.index)
-        self.plan_route_panel.select_camera(None if info is None else info.index)
 
         camera_count = SCENE_STORE.camera_count
         self.statusBar().showMessage(
@@ -648,6 +658,65 @@ class MainWindow(QMainWindow):
         self.route.clear()
         self._refresh_route()
 
+    # -- flight path ---------------------------------------------------
+
+    def _on_flight_path_toggled(self, shown: bool):
+        self.flight_path_on = shown
+        self._refresh_flight_path()
+
+    def _flight_path_rows(self) -> tuple[int, ...]:
+        """Which viewpoints the path runs through.
+
+        The route, once there is one worth flying. Before that - a scene just
+        opened, or every camera taken out again - the whole plan, so the
+        button says something the moment it is pressed rather than drawing
+        nothing and looking broken.
+        """
+        selected = self.route.selected
+        if len(selected) >= 2:
+            return selected
+
+        return tuple(range(SCENE_STORE.camera_count))
+
+    def _obstacle(self) -> Obstacle | None:
+        """The model as space to stay out of, built once and kept.
+
+        Voxelising costs a fraction of a second, which is worth paying to
+        keep a path off the building but not worth paying on a load nobody
+        asked a path of, so it waits until the first one is wanted.
+        """
+        scene = SCENE_STORE.scene
+        if scene is None:
+            return None
+
+        if self.obstacle is None:
+            self.statusBar().showMessage("Measuring the model to fly around it...")
+            try:
+                self.obstacle = Obstacle.from_mesh(scene.mesh)
+            except Exception as exc:
+                # Better a path that is only short than no path at all, but
+                # the user has to be told it is not being kept off the model.
+                self.statusBar().showMessage(f"Cannot fly around the model: {exc}", 8000)
+                return None
+
+        return self.obstacle
+
+    def _refresh_flight_path(self):
+        """Replan and redraw the path, after anything that could move it."""
+        scene = SCENE_STORE.scene
+        if not self.flight_path_on or scene is None:
+            self.viewport.clear_flight_path()
+            self.plan_route_panel.show_path(None)
+            return
+
+        rows = self._flight_path_rows()
+        positions = scene.plan.positions[list(rows)]
+
+        path = plan_path(positions, self._obstacle())
+
+        self.viewport.show_flight_path(path.points)
+        self.plan_route_panel.show_path(path)
+
     def _route_coverage(self):
         """The targets the route can see between them, or None when it sees none."""
         if self.visibility is None or not len(self.route):
@@ -681,9 +750,13 @@ class MainWindow(QMainWindow):
         self.viewport.set_route_selection(
             selected if self.route.planning else None, self.route_shown
         )
+        # Quadrants are read about the model, not about the world origin: a
+        # bundle carrying a larger survey's coordinates would otherwise show
+        # its whole route standing in one quadrant.
         self.plan_route_panel.show_route(
-            self.route.status(scene.plan, observed, len(scene.targets))
+            self.route.status(scene.plan, observed, len(scene.targets), scene.centre)
         )
+        self._refresh_flight_path()
 
         # Occlusion follows the route while planning, so every camera in it
         # paints at once rather than only the one last clicked.

@@ -34,6 +34,7 @@ from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
 from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode, SceneCameraController
+<<<<<<< HEAD
 from viewscope.scene.gizmos import (
     CameraGlyphs,
     CameraModeGizmo,
@@ -41,6 +42,9 @@ from viewscope.scene.gizmos import (
     FloorGrid,
     TranslationGizmo,
 )
+
+from viewscope.scene.flight_path import FlightPathLine
+
 from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.stats import FieldStats
 from viewscope.scene.still import StillRenderer
@@ -128,6 +132,8 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
+
+        self.flight_path = FlightPathLine()
 
         # Camera Orientation Widget configuration
         self.orientation_widget = vtkCameraOrientationWidget()
@@ -337,6 +343,19 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.has_scene and self.glyphs is not None:
             self.glyphs.set_route(selected, shown)
             self.render()
+
+    def show_flight_path(self, positions):
+        """Draw the red line through these viewpoints, in this order."""
+        if not self.has_scene:
+            return
+
+        self.flight_path.show(self.renderer, positions)
+        self.render()
+
+    def clear_flight_path(self):
+        """Take the flight path off the scene."""
+        self.flight_path.remove_from(self.renderer)
+        self.render()
 
     # -- Target inspection ---------------------------------------------
 

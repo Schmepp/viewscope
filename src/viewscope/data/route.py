@@ -22,6 +22,14 @@ from viewscope_core.loaders import PLAN_FRAME
 
 ROUTE_VERSION = 1
 
+#: The quadrants of the ground plane the model sits on, numbered the way a
+#: Cartesian plane numbers them: 1 is +x +y, and they go round anticlockwise.
+QUADRANTS = 4
+
+#: Where the quadrant axes cross when nobody says otherwise. Callers holding a
+#: scene pass its centre instead, because a bundle need not sit at 0, 0.
+WORLD_ORIGIN = (0.0, 0.0)
+
 #: Past this a pitch has no defined roll, which is where camera_pose gives up.
 PITCH_LIMIT_DEG = 89.9
 
@@ -49,11 +57,27 @@ class RouteStatus:
     #: Targets at least one selected camera can see, of the targets there are.
     observed: int = 0
     targets: int = 0
+    #: How many cameras of the route stand in each quadrant of the ground
+    #: plane, quadrant 1 first. Empty when there was no plan to measure.
+    quadrants: tuple[int, ...] = ()
 
     @property
     def coverage(self) -> float:
         """The observed fraction, in [0, 1]. Zero when there is nothing to see."""
         return self.observed / self.targets if self.targets else 0.0
+
+    @property
+    def quadrant_shares(self) -> tuple[float, ...]:
+        """The fraction of the route standing in each quadrant, summing to one.
+
+        All zeros while the route is empty, which is a pie with nothing to
+        draw rather than four equal slices.
+        """
+        total = sum(self.quadrants)
+        if not total:
+            return tuple(0.0 for _ in self.quadrants)
+
+        return tuple(count / total for count in self.quadrants)
 
 
 class RoutePlan:
@@ -116,9 +140,17 @@ class RoutePlan:
 
     # -- reporting -----------------------------------------------------
 
-    def status(self, plan, observed: int = 0, targets: int = 0) -> RouteStatus:
+    def status(
+        self,
+        plan,
+        observed: int = 0,
+        targets: int = 0,
+        origin=WORLD_ORIGIN,
+    ) -> RouteStatus:
+        """`origin` is where the quadrant axes cross: the model's centre."""
         selected = self.selected
         ids = () if plan is None else plan.ids
+        rows = [i for i in selected if i < len(ids)]
 
         return RouteStatus(
             planning=self.planning,
@@ -127,6 +159,7 @@ class RoutePlan:
             camera_count=len(ids),
             observed=int(observed),
             targets=int(targets),
+            quadrants=() if plan is None else count_quadrants(plan.positions[rows], origin),
         )
 
     def document(self, plan, observed: int = 0, targets: int = 0) -> dict:
@@ -164,6 +197,40 @@ class RoutePlan:
         path.write_text(json.dumps(self.document(plan, observed, targets), indent=2))
 
         return path
+
+
+def count_quadrants(positions, origin=WORLD_ORIGIN) -> tuple[int, ...]:
+    """How many of these cameras stand in each quadrant of the ground plane.
+
+    The plan frame is z-up, so the plane the model sits on is x against y and
+    a camera's quadrant is the sign of its x and y: quadrant 1 is +x +y, and
+    2, 3 and 4 follow anticlockwise, exactly as a Cartesian plane numbers
+    them. Height plays no part - a camera above the model is still east of it.
+
+    The signs are taken about `origin`, which is where the model sits rather
+    than where the world begins. A bundle cut out of a larger survey carries
+    that survey's coordinates, so measuring from 0, 0 would put every camera
+    of it in one quadrant and say nothing about how the route surrounds the
+    model. Pass `SceneData.centre`; the default is for callers with no scene.
+
+    A camera on an axis belongs to the quadrant that axis opens: +x and the
+    centre itself to 1, +y to 2, -x to 3, -y to 4. Quadrant 1 comes first.
+    """
+    counts = [0] * QUADRANTS
+
+    points = np.asarray(positions, dtype=np.float64).reshape(-1, 3)
+    if len(points):
+        ground = points[:, :2] - np.asarray(origin, dtype=np.float64).reshape(-1)[:2]
+        # Anticlockwise from +x, which is what numbering the quadrants means.
+        bearing = np.mod(np.arctan2(ground[:, 1], ground[:, 0]), 2.0 * np.pi)
+        quadrants = np.minimum(
+            np.floor(bearing * QUADRANTS / (2.0 * np.pi)).astype(np.int64),
+            QUADRANTS - 1,
+        )
+        for quadrant in quadrants:
+            counts[int(quadrant)] += 1
+
+    return tuple(counts)
 
 
 def load_route(path) -> tuple[RouteEntry, ...]:

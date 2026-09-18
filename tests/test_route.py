@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import viewscope_core as vc
-from viewscope.data.route import ROUTE_VERSION, RoutePlan, load_route
+from viewscope.data.route import ROUTE_VERSION, RoutePlan, count_quadrants, load_route
 
 
 @pytest.fixture
@@ -121,6 +121,148 @@ def test_coverage_of_a_scene_with_no_targets_is_zero(route, plan):
     route.start(4)
 
     assert route.status(plan, observed=0, targets=0).coverage == 0.0
+
+
+# -----------------------------------------------------------------------------
+# Quadrants of the ground plane
+# -----------------------------------------------------------------------------
+
+
+@pytest.fixture
+def quadrant_plan():
+    """Four viewpoints, one squarely in each quadrant of the ground plane."""
+    return vc.Plan(
+        camera={"width": 1368, "height": 912, "yfov_deg": 53.13},
+        ids=("q1", "q2", "q3", "q4"),
+        positions=np.array(
+            [[5.0, 5.0, 5.0], [-5.0, 5.0, 9.0], [-5.0, -5.0, 2.0], [5.0, -5.0, 5.0]]
+        ),
+        yaws_deg=np.zeros(4),
+        pitches_deg=np.full(4, -20.0),
+    )
+
+
+def test_each_quadrant_of_the_plane_takes_the_camera_standing_in_it(quadrant_plan):
+    assert count_quadrants(quadrant_plan.positions) == (1, 1, 1, 1)
+
+
+def test_a_camera_high_above_the_plane_is_still_in_its_own_quadrant():
+    """Quadrants are read off x and y; height has nothing to say about them."""
+    low = count_quadrants(np.array([[3.0, 4.0, 0.0]]))
+    high = count_quadrants(np.array([[3.0, 4.0, 500.0]]))
+
+    assert low == high == (1, 0, 0, 0)
+
+
+def test_the_signs_of_x_and_y_are_what_pick_the_quadrant():
+    positions = np.array(
+        [
+            [2.0, 7.0, 1.0],  # + + -> 1
+            [-9.0, 1.0, 1.0],  # - + -> 2
+            [-1.0, -1.0, 1.0],  # - - -> 3
+            [8.0, -3.0, 1.0],  # + - -> 4
+            [1.0, 1.0, 1.0],  # + + -> 1 again
+        ]
+    )
+
+    assert count_quadrants(positions) == (2, 1, 1, 1)
+
+
+def test_a_camera_on_an_axis_falls_in_the_quadrant_that_axis_opens():
+    axes = np.array(
+        [
+            [5.0, 0.0, 1.0],  # +x opens quadrant 1
+            [0.0, 5.0, 1.0],  # +y opens quadrant 2
+            [-5.0, 0.0, 1.0],  # -x opens quadrant 3
+            [0.0, -5.0, 1.0],  # -y opens quadrant 4
+        ]
+    )
+
+    assert count_quadrants(axes) == (1, 1, 1, 1)
+
+
+def test_a_camera_on_the_origin_counts_in_the_first_quadrant():
+    assert count_quadrants(np.array([[0.0, 0.0, 5.0]])) == (1, 0, 0, 0)
+
+
+def test_no_cameras_leaves_every_quadrant_empty():
+    assert count_quadrants(np.zeros((0, 3))) == (0, 0, 0, 0)
+
+
+def test_quadrants_are_measured_about_the_model_not_about_the_world():
+    """A bundle carrying a larger survey's coordinates sits nowhere near 0, 0.
+
+    Read from the world origin every one of these cameras is +x +y, which says
+    only that the model is north east of it. Read from the model they surround
+    it, which is the thing route planning is asking about.
+    """
+    ring = np.array(
+        [
+            [205.0, 125.0, 5.0],
+            [165.0, 125.0, 5.0],
+            [165.0, 95.0, 5.0],
+            [205.0, 95.0, 5.0],
+        ]
+    )
+
+    assert count_quadrants(ring) == (4, 0, 0, 0)
+    assert count_quadrants(ring, (185.0, 110.0)) == (1, 1, 1, 1)
+
+
+def test_a_three_component_centre_is_taken_as_its_ground_plane_part():
+    """`SceneData.centre` is a point in space; only its x and y matter here."""
+    camera = np.array([[9.0, 9.0, 1.0]])
+
+    assert count_quadrants(camera, np.array([10.0, 10.0, 500.0])) == (0, 0, 1, 0)
+
+
+def test_a_camera_at_the_centre_counts_in_the_first_quadrant():
+    assert count_quadrants(np.array([[7.0, 3.0, 5.0]]), (7.0, 3.0)) == (1, 0, 0, 0)
+
+
+def test_status_measures_from_the_origin_it_is_given(route, quadrant_plan):
+    """The same plan, read from outside itself rather than from its middle.
+
+    This is the shape of the bug it guards: seen from far enough away every
+    camera falls in one quadrant, however well the route surrounds the model.
+    """
+    route.start(4)
+
+    assert route.status(quadrant_plan).quadrants == (1, 1, 1, 1)
+    assert route.status(quadrant_plan, origin=(-6.0, -6.0)).quadrants == (4, 0, 0, 0)
+
+
+def test_status_counts_only_the_cameras_left_in_the_route(route, quadrant_plan):
+    route.start(4)
+    route.toggle(1)
+    route.toggle(3)
+
+    status = route.status(quadrant_plan)
+
+    assert status.quadrants == (1, 0, 1, 0)
+    assert status.quadrant_shares == (0.5, 0.0, 0.5, 0.0)
+
+
+def test_shares_of_an_empty_route_are_zero_rather_than_four_equal_slices(route, quadrant_plan):
+    status = route.status(quadrant_plan)
+
+    assert status.quadrants == (0, 0, 0, 0)
+    assert status.quadrant_shares == (0.0, 0.0, 0.0, 0.0)
+
+
+def test_a_route_with_no_plan_behind_it_has_no_quadrants(route):
+    assert route.status(None).quadrants == ()
+    assert route.status(None).quadrant_shares == ()
+
+
+def test_rows_beyond_the_plan_are_left_out_of_the_quadrants(route, quadrant_plan):
+    """A route carried over from a longer plan still counts what it can."""
+    route.start(6)
+
+    status = route.status(quadrant_plan)
+
+    assert status.selected == (0, 1, 2, 3, 4, 5)
+    assert sum(status.quadrants) == 4
 
 
 # -----------------------------------------------------------------------------

@@ -41,3 +41,14 @@ class SceneData:
     def diagonal(self) -> float:
         bounds = self.mesh.bounds
         return float(np.linalg.norm(bounds[1] - bounds[0]))
+
+    @property
+    def centre(self) -> np.ndarray:
+        """Where the model sits, as the middle of its bounding box.
+
+        Not every bundle is built about the world origin - a model cut out of
+        a larger survey keeps that survey's coordinates - so anything asking
+        where a camera stands relative to the model has to ask from here.
+        This is the same centre `build_bundle` plans the viewpoints around.
+        """
+        return np.asarray(self.mesh.bounds, dtype=float).mean(axis=0)
