@@ -391,7 +391,10 @@ class Viewport(QVTKRenderWindowInteractor):
 
                 actor = self.glyphs.actor_of_id(info.index)
                 if actor is not None:
-                    self.axis_gizmo.attach(actor)
+                    self.axis_gizmo.attach(
+                        actor, on_move=lambda pos, idx=info.index: SCENE_STORE.move_camera(idx, pos)
+                    )
+
             # self.axis_gizmo.attach(self.actor)
         else:
             self.axis_gizmo.detach()
@@ -578,8 +581,8 @@ class Viewport(QVTKRenderWindowInteractor):
                 super().mousePressEvent(ev)
                 return
 
-        if (ev.button() in (...) and not self._mouse_locked):
-            self._mouse_lock_enter(ev)
+        # if (ev.button() in (...) and not self._mouse_locked):
+        #     self._mouse_lock_enter(ev)
         # super().mousePressEvent(ev)
 
         # NOTE(Adam): Early-return here handles camera-click vs viewport manip on left-click

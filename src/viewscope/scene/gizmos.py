@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Callable
 
 import vtk
 from PySide6.QtCore import Qt, Signal
@@ -509,9 +510,10 @@ class AxisHandleWidget:
 
     # -- attach / detach -------------------------------------------------
 
-    def attach(self, actor: vtk.vtkActor):
+    def attach(self, actor: vtk.vtkActor, on_move: Callable[[np.ndarray], None] | None = None):
         """Point the gizmo at an actor: place the arrows at its centre, sized to it."""
         self._target = actor
+        self._on_move = on_move
         self._place_handles()
         self.set_visible(True)
 
@@ -623,6 +625,13 @@ class AxisHandleWidget:
         self._drag_last_t = t
         self._translate_target(delta)
         self._place_handles()
+
+        if self._on_move is not None:
+            bounds = self._target.GetBounds()
+            centre = np.array(
+                [(bounds[0] + bounds[1]) / 2, (bounds[2] + bounds[3]) / 2, (bounds[4] + bounds[5]) / 2]
+            )
+            self._on_move(centre)
 
     def end_drag(self):
         self.active = False

@@ -17,6 +17,7 @@ class SceneStore(QObject):
     scene_unloaded = Signal()
     scene_changed = Signal()
     plan_changed = Signal(CameraInfo)
+    camera_moved = Signal(int)  # one camera's position changed; nothing else did
 
     def __init__(self):
         super().__init__()
@@ -62,6 +63,29 @@ class SceneStore(QObject):
 
         self.scene_changed.emit()
         self.plan_changed.emit(info)
+
+    def move_camera(self, index: int, position: tuple[float, float, float]) -> None:
+        """
+        Update one camera's position in place. Doesn't touch yaw/pitch or ids,
+        and deliberately doesn't emit plan_changed - see the note above about
+        why a per-tick rebuild of every glyph would be far too expensive here.
+        """
+        if self.scene is None:
+            return
+
+        old_plan = self.scene.plan
+        new_positions = old_plan.positions.copy()
+        new_positions[index] = np.asarray(position, dtype=float)
+
+        self.scene.plan = Plan(
+            camera=old_plan.camera,
+            ids=old_plan.ids,
+            positions=new_positions,
+            yaws_deg=old_plan.yaws_deg,
+            pitches_deg=old_plan.pitches_deg,
+        )
+
+        self.camera_moved.emit(index)
 
     def ensure_cameras(self, entries) -> tuple[tuple[int, ...], int]:
         """
