@@ -41,11 +41,14 @@ from viewscope.dialogs.build_dialog import BuildBundleDialog
 
 CARD_SPACING = 10
 
-# The two memory budgets the page offers. FULL loads everything a bundle
-# ships; LIGHT stops at the simplified mesh, which is what the great bulk of
-# a bundle's footprint is spent on.
+# The memory budgets the page offers. LIGHT stops at the simplified mesh,
+# which is what the great bulk of a bundle's footprint is spent on. FULL adds
+# the full-resolution model, with its textures capped and cached on the way in.
+# MAX takes that model exactly as it was shipped: textures at their own size,
+# and no cache read or written.
 QUALITY_LIGHT = "400MB"
 QUALITY_FULL = "6G"
+QUALITY_MAX = "10G"
 
 STYLESHEET = f"""
 #startupPage {{
@@ -366,8 +369,12 @@ class StartupWindow(QWidget):
         tips = {
             QUALITY_LIGHT: "Open projects on the simplified mesh only, for about 400MB of memory.",
             QUALITY_FULL: "Open projects with the full-resolution model, which needs about 6GB.",
+            QUALITY_MAX: (
+                "Open projects with the model exactly as it was shipped: full-size textures "
+                "and no cache, for about 10GB. Every load pays the slow parse."
+            ),
         }
-        for label in (QUALITY_LIGHT, QUALITY_FULL):
+        for label in (QUALITY_LIGHT, QUALITY_FULL, QUALITY_MAX):
             button = QPushButton(label)
             button.setObjectName("qualityButton")
             button.setCheckable(True)
@@ -383,7 +390,12 @@ class StartupWindow(QWidget):
     @property
     def load_photo_mesh(self) -> bool:
         """Whether a project opened now should read the full-resolution model."""
-        return self.quality_buttons[QUALITY_FULL].isChecked()
+        return not self.quality_buttons[QUALITY_LIGHT].isChecked()
+
+    @property
+    def full_resolution_mesh(self) -> bool:
+        """Whether that model should come in uncapped and uncached."""
+        return self.quality_buttons[QUALITY_MAX].isChecked()
 
     def _project_list(self) -> QScrollArea:
         """The cards, in a scroller so a long list cannot push the page apart."""
@@ -710,6 +722,7 @@ class StartupWindow(QWidget):
             expected_viewpoints=project.expected_viewpoints,
             defer_load=True,
             load_photo_mesh=self.load_photo_mesh,
+            full_resolution_mesh=self.full_resolution_mesh,
         )
         self.viewer = viewer
 

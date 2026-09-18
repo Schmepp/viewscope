@@ -170,9 +170,17 @@ class PhotoMeshLoader(QThread):
     failed = Signal(str)
     progress = Signal(str, int)
 
-    def __init__(self, path: Path, parent=None):
+    def __init__(self, path: Path, parent=None, *, full_resolution: bool = False):
+        """
+        full_resolution reads the model exactly as it was shipped: textures at
+        their own size rather than capped at MAX_TEXTURE_DIM, and the disk
+        cache left alone in both directions. The cache only ever holds the
+        capped textures, so it has nothing to offer this path and must not be
+        handed the uncapped ones in return.
+        """
         super().__init__(parent)
         self.path = Path(path)
+        self.full_resolution = full_resolution
 
         # Built here on the interface thread, and only filled by run(). The
         # importer wants a render window to hang its actors on, and a render
@@ -199,11 +207,12 @@ class PhotoMeshLoader(QThread):
         # A previous load already paid the ASCII-parse cost once; skip
         # vtkOBJImporter entirely and read the cached geometry back in,
         # reapplying whatever textures the importer would have assigned.
-        self.progress.emit("Checking cache...", 0)
-        cached_mesh = self._try_read_cache(materials)
-        if cached_mesh is not None:
-            self.progress.emit("Loaded from cache", 100)
-            return cached_mesh
+        if not self.full_resolution:
+            self.progress.emit("Checking cache...", 0)
+            cached_mesh = self._try_read_cache(materials)
+            if cached_mesh is not None:
+                self.progress.emit("Loaded from cache", 100)
+                return cached_mesh
 
         self.progress.emit("Parsing model geometry...", 1)
 
@@ -240,7 +249,7 @@ class PhotoMeshLoader(QThread):
                 # NOTE(Adam): We limit the max resolution of loaded textures here
                 #             to avoid exorbitant RAM usage and to reduce GPU load.
                 image = texture.GetInput()
-                if image is not None:
+                if image is not None and not self.full_resolution:
                     max_dim = max(image.GetDimensions()[:2])
                     if max_dim > self.MAX_TEXTURE_DIM:
                         scale = self.MAX_TEXTURE_DIM / max_dim
@@ -270,7 +279,8 @@ class PhotoMeshLoader(QThread):
 
         # Pay the price of the slow ASCII parse forward: every load of this exact OBJ/MTL
         # after this one skips vtkOBJImporter entirely.
-        cache.write_cache(self.path, materials, cached_textures)
+        if not self.full_resolution:
+            cache.write_cache(self.path, materials, cached_textures)
         return PhotoMesh(actors)
 
     def _try_read_cache(self, materials: Path | None = None) -> PhotoMesh | None:

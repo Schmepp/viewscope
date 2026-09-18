@@ -17,6 +17,7 @@ from viewscope.dialogs.build_dialog import BuildBundleDialog  # noqa: E402
 from viewscope.startup import (  # noqa: E402
     QUALITY_FULL,
     QUALITY_LIGHT,
+    QUALITY_MAX,
     ProjectCard,
     StartupWindow,
     _Build,
@@ -86,7 +87,41 @@ def test_the_full_budget_is_the_default(page):
     """6G is picked when the page opens, so a project loads everything it ships."""
     assert page.quality_buttons[QUALITY_FULL].isChecked()
     assert not page.quality_buttons[QUALITY_LIGHT].isChecked()
+    assert not page.quality_buttons[QUALITY_MAX].isChecked()
     assert page.load_photo_mesh is True
+    assert page.full_resolution_mesh is False
+
+
+def test_the_three_budgets_are_offered_in_order(page):
+    """400MB, 6G, 10G, left to right in the corner."""
+    assert list(page.quality_buttons) == [QUALITY_LIGHT, QUALITY_FULL, QUALITY_MAX]
+
+
+def test_the_max_budget_reads_the_model_whole(page):
+    """Picking 10G still loads the model, but uncapped and uncached."""
+    page.quality_buttons[QUALITY_MAX].click()
+
+    assert page.load_photo_mesh is True
+    assert page.full_resolution_mesh is True
+    assert not page.quality_buttons[QUALITY_FULL].isChecked()
+
+
+def test_only_the_max_budget_asks_for_full_resolution(page):
+    """The other two leave the loader on its capped, cached path."""
+    for label in (QUALITY_LIGHT, QUALITY_FULL):
+        page.quality_buttons[label].click()
+        assert page.full_resolution_mesh is False, label
+
+
+def test_the_max_budget_still_has_a_second_phase(page):
+    """10G reads the same model as 6G, so the bar switches over just the same."""
+    page.quality_buttons[QUALITY_MAX].click()
+    page.open_project(PROJECTS[0])
+
+    page._on_scene_loaded(None)
+
+    assert page.bar.maximum() == 100
+    assert "full-resolution" in page.status.text()
 
 
 def test_the_light_budget_drops_the_full_resolution_model(page):
@@ -121,6 +156,7 @@ def test_the_budget_is_frozen_while_a_project_opens(page):
     """It is read once, when the project opens, so it must not be moved after that."""
     page.open_project(PROJECTS[0])
     assert not any(b.isEnabled() for b in page.quality_buttons.values())
+    assert len(page.quality_buttons) == 3
 
     page._on_failed("no such bundle")
     assert all(b.isEnabled() for b in page.quality_buttons.values())
