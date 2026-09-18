@@ -617,7 +617,7 @@ class StartupWindow(QWidget):
         added = [p.as_dict() for p in self.projects if p not in self.shipped]
         self.settings.setValue("projects", json.dumps(added))
 
-    # -- opening a project ---------------------------------------------
+    # -- Opening a project ---------------------------------------------
 
     def open_project(self, project: Project):
         if self.viewer is not None:
@@ -630,6 +630,7 @@ class StartupWindow(QWidget):
 
         self.cards[str(project.data_dir)].set_busy(True)
         self.status.setText(f"Opening {project.name}...")
+
         self.bar.setRange(0, STAGE_COUNT)
         self.bar.setValue(0)
         self.bar.show()
@@ -657,16 +658,38 @@ class StartupWindow(QWidget):
         loader.progress.connect(self.status.setText)
         loader.stage.connect(self._on_stage)
         loader.failed.connect(self._on_failed)
-        # Connected after the viewer's own handler, so by the time this runs the
-        # scene is already built and the window is worth showing.
-        loader.loaded.connect(self._on_loaded)
+        loader.loaded.connect(self._on_scene_loaded)
+
+        # The photo-mesh load starts itself from inside the viewer's own
+        # scene-loaded handler.
+        viewer.photo_mesh_progress.connect(self._on_photo_mesh_progress)
+        viewer.photo_mesh_finished.connect(self._on_photo_mesh_finished)
+
         loader.start()
 
     def _on_stage(self, started: int, total: int):
         self.bar.setRange(0, total)
         self.bar.setValue(started)
 
-    def _on_loaded(self, _scene):
+    def _on_scene_loaded(self, _scene: object | None = None):
+        """
+        The scene itself is ready, but the window stays hidden: a
+        full-resolution model may still be streaming in behind it. Switch the
+        bar to percentage mode for that second phase rather than reveal the
+        viewer while it's still loading textures.
+        """
+        self.status.setText("Loading full-resolution model...")
+        self.bar.setRange(0, 100)
+        self.bar.setValue(0)
+
+    def _on_photo_mesh_progress(self, message: str, percent: int):
+        self.status.setText(message)
+        self.bar.setValue(percent)
+
+    def _on_photo_mesh_finished(self, _loaded: bool):
+        self._run_viewer(None)
+
+    def _run_viewer(self, _scene):
         viewer = self.viewer
         if viewer is None:
             return
@@ -678,7 +701,7 @@ class StartupWindow(QWidget):
         viewer.raise_()
         viewer.activateWindow()
         viewer.start()
-        self.hide()  # after the viewer is up, so the application keeps a window
+        self.hide()  # After the viewer is up, so the application keeps a window
 
     def show_projects(self):
         """Come back from the viewer to the project list, and let the bundle go."""

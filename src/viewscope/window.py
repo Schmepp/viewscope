@@ -40,8 +40,13 @@ from viewscope.viewport import Viewport
 
 
 class MainWindow(QMainWindow):
-    #: Asked for the project list back. The startup screen is what answers it.
+    # Asked for the project list back. The startup screen is what answers it.
     back_requested = Signal()
+
+    # The scene loader's own loaded signal has already fired by the time
+    # the photo-mesh load starts, so we need to manually track these.
+    photo_mesh_progress = Signal(str, int)  # (message, percent 0-100)
+    photo_mesh_finished = Signal(bool)  # Whether a model was actually loaded
 
     def __init__(
         self,
@@ -395,6 +400,7 @@ class MainWindow(QMainWindow):
 
         path = find_photo_mesh(data_dir)
         if path is None:
+            self.photo_mesh_finished.emit(False)
             return
 
         self._stop_photo_loader()
@@ -402,6 +408,7 @@ class MainWindow(QMainWindow):
         self.photo_loader = PhotoMeshLoader(path, self)
         self.photo_loader.loaded.connect(self._on_photo_mesh)
         self.photo_loader.failed.connect(self._on_photo_mesh_failed)
+        self.photo_loader.progress.connect(self.photo_mesh_progress)
 
         self.statusBar().showMessage(f"Reading {path.name}...")
         self.photo_loader.start()
@@ -417,13 +424,19 @@ class MainWindow(QMainWindow):
         self.viewport.set_photo_mesh(photo.clone())
 
         self.statusBar().showMessage(
-            f"Full-resolution model ready ({photo.cells:,} triangles)", 5000
+            f"Full-resolution model ready ({photo.cells:,} triangles).", 5000
         )
+
+
+        self.photo_mesh_finished.emit(True)
 
     def _on_photo_mesh_failed(self, message: str):
         """Fail loudly and leave both viewports on the simplified mesh."""
         print(f"photo mesh unavailable: {message}")
-        self.statusBar().showMessage("Full-resolution model unavailable", 5000)
+        self.statusBar().showMessage("Full-resolution model unavailable!", 5000)
+
+
+        self.photo_mesh_finished.emit(False)
 
     def _stop_photo_loader(self):
         """

@@ -11,8 +11,6 @@ receives finished actors.
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-
 from pathlib import Path
 
 import vtk
@@ -179,6 +177,7 @@ class PhotoMeshLoader(QThread):
 
     loaded = Signal(object)
     failed = Signal(str)
+    progress = Signal(str, int)
 
     def __init__(self, path: Path, parent=None):
         super().__init__(parent)
@@ -205,9 +204,13 @@ class PhotoMeshLoader(QThread):
         # A previous load already paid the ASCII-parse cost once; skip
         # vtkOBJImporter entirely and read the cached geometry back in,
         # reapplying whatever textures the importer would have assigned.
+        self.progress.emit("Checking cache...", 0)
         cached_mesh = self._try_read_cache(materials)
         if cached_mesh is not None:
+            self.progress.emit("Loaded from cache", 100)
             return cached_mesh
+
+        self.progress.emit("Parsing model geometry...", 0)
 
         importer = vtkOBJImporter()
         importer.SetFileName(str(self.path))
@@ -225,8 +228,10 @@ class PhotoMeshLoader(QThread):
         if not actors:
             raise ValueError(f"{self.path.name} imported no geometry!")
 
+        self.progress.emit(f"Decoding {len(actors)} textures...", 40)
+
         cached_textures: list[tuple[vtk.vtkPolyData, vtk.vtkImageData | None]] = []
-        for actor in actors:
+        for i, actor in enumerate(actors):
             image: vtk.vtkImageData | None = None
             image_to_cache: vtk.vtkImageData | None = None # We cache the downscaled texture
 
@@ -264,8 +269,12 @@ class PhotoMeshLoader(QThread):
             self._renderer.RemoveActor(actor)
 
         self._window.Finalize()
+            # Reflects how many textures have been processed so far.
+            done = i + 1
+            pct = 40 + int(60 * done / len(actors))
+            self.progress.emit(f"Decoding textures ({done}/{len(actors)})...", pct)
 
-        # Pay the slow ASCII parse forward: every load of this exact OBJ/MTL
+        # Pay the price of the slow ASCII parse forward: every load of this exact OBJ/MTL
         # after this one skips vtkOBJImporter entirely.
         cache.write_cache(self.path, materials, cached_textures)
         return PhotoMesh(actors)
@@ -279,6 +288,8 @@ class PhotoMeshLoader(QThread):
         if cached is None:
             return None
 
+
+        self.progress.emit("Reading cache...", 5)
         actors = cache.read_geometry_cache(cached)
         return PhotoMesh(actors)
 
