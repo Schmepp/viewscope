@@ -291,7 +291,6 @@ class PhotoMeshLoader(QThread):
         if cached is None:
             return None
 
-
         self.progress.emit("Reading cache...", 5)
         actors = cache.read_geometry_cache(cached)
         return PhotoMesh(actors)

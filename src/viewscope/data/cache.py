@@ -68,6 +68,9 @@ def cached_actors(obj_path: Path, mtl_path: Path | None) -> list[CachedActor] | 
     The cached actor list for this exact source, or None if there isn't a
     valid one (missing, stale, or a geometry file has since gone missing).
     """
+    if not _cache_dir(obj_path).exists():
+        return None
+
     fingerprint = _fingerprint(obj_path, mtl_path)
     meta_path = _meta_path(obj_path, fingerprint)
     if not meta_path.exists():
