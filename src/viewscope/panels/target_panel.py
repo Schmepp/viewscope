@@ -82,6 +82,9 @@ class TargetPanel(QWidget):
         self.observer_table.itemSelectionChanged.connect(self._on_observer_selected)
         layout.addWidget(self.observer_table)
 
+        self.sector_bar_chart = SectorBarChart()  # Show Barchart first
+        layout.addWidget(self.sector_bar_chart)
+
         self.clear_button = QPushButton("Clear selection")
         self.clear_button.clicked.connect(self.cleared)
         layout.addWidget(self.clear_button)
@@ -172,7 +175,6 @@ class TargetPanel(QWidget):
         """Fill the panel in for one target, or empty it out when given None."""
         self._report = report
 
-        # Update barchart asap
         self.sector_bar_chart.update_chart(report)
 
         self.hint.setText(HINT if report is None else f"Target {report.index}")

@@ -25,6 +25,11 @@ def main() -> int:
     app.setOrganizationName(config.ORG_NAME)
     app.setApplicationName(config.APP_NAME)
 
+    # Set on the application rather than on a window: a tooltip is a top-level
+    # window of its own and never inherits the stylesheet of whatever it is
+    # describing.
+    app.setStyleSheet(config.TOOLTIP_STYLE)
+
     # Wayland doesn't allow clients to warp the global cursor for
     # security reasons - which is done by the viewport.
     # To work around this, we force the application into X11 compatibility mode

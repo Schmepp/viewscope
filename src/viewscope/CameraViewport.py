@@ -19,6 +19,7 @@ from viewscope.config import (
     YFOV_DEG,
 )
 from viewscope.data.scene import SceneData
+from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.views import MeshView
 
 
@@ -44,6 +45,10 @@ class CameraViewport(QVTKRenderWindowInteractor):
 
         self.mesh = None
         self.camera = None
+
+        self._simple_mesh = None
+        self._photo_mesh = None
+
         self._render_mode = MODE_TEXTURED
         self._finalized = False
 
@@ -77,10 +82,15 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.mesh = MeshView(data.mesh)
         self.mesh.add_to(self.renderer)
 
+        self._simple_mesh = self.mesh
+        self._photo_mesh = None
+
         self.camera = CameraController(self.renderer, YFOV_DEG)
         self.renderer.ResetCamera()
         self.camera.save_overview()
+
         self.set_render_mode(self._render_mode)
+        self._apply_render_mode()
 
     @property
     def has_scene(self) -> bool:
@@ -96,17 +106,50 @@ class CameraViewport(QVTKRenderWindowInteractor):
             return
 
         self._render_mode = mode
+        self._apply_render_mode()
+
+    def _apply_render_mode(self):
+        """
+        Dress whichever mesh is on screen in the current mode.
+        Separate from set_mode because the mode outlives the mesh: the
+        full-resolution model arrives seconds after the scene does and has to
+        come up wearing what the simplified one was wearing.
+        """
+        mode = self._render_mode
         show_mesh = mode in (MODE_TEXTURED, MODE_GEOMETRY, MODE_ALL)
 
         if self.mesh is not None:
             self.mesh.set_visible(show_mesh)
-
             if mode == MODE_GEOMETRY:
                 self.mesh.show_geometry()
             elif show_mesh:
                 self.mesh.show_textured()
 
         self.render()
+
+    # -- Photo Mesh ------------------------------------------------------
+
+    def set_photo_mesh(self, photo: PhotoMesh):
+        """
+        Swap the simplified mesh for the model the photos are taken from.
+        The camera does not move: the pose it holds is a viewpoint out of the
+        plan, and both meshes are in the same frame, so the same pose frames
+        the same shot in more detail. The window reads the model once and
+        hands it to whichever panels want it.
+        """
+        if not self.has_scene:
+            return
+
+        if self.mesh is not None:
+            self.mesh.remove_from(self.renderer)
+
+        self._photo_mesh = photo
+        self.mesh = photo
+        photo.add_to(self.renderer)
+
+        # This first frame carries the textures up to the GPU and is the slow
+        # one; every frame after it is drawn at the usual rate.
+        self._apply_render_mode()
 
     # -- Camera --------------------------------------------------------
 

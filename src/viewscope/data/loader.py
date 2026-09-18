@@ -117,7 +117,9 @@ class SceneLoader(QThread):
         # before handing the bundle over.
         self._step("Preparing the viewer...")
 
-        return SceneData(mesh, targets, normals, plan, scores, scores_error, visibility)
+        return SceneData(
+            mesh, targets, normals, plan, scores, scores_error, visibility, self.data_dir
+        )
 
     def _read_visibility(self, target_count: int):
         """The shipped camera-by-target visibility matrix, or None.

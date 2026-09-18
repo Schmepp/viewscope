@@ -64,7 +64,8 @@ class SceneStore(QObject):
         self.plan_changed.emit(info)
 
     def ensure_cameras(self, entries) -> tuple[tuple[int, ...], int]:
-        """Make sure the plan holds every one of these viewpoints.
+        """
+        Make sure the plan holds every one of these viewpoints.
 
         `entries` are (id, position, yaw_deg, pitch_deg). Viewpoints the plan
         already has are left exactly as they are; the rest are appended,

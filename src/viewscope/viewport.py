@@ -17,6 +17,7 @@ from vtkmodules.vtkInteractionWidgets import (
 )
 
 import viewscope.qt  # noqa: F401
+import viewscope_core as vc
 from viewscope.camera.structs import CameraInfo
 from viewscope.config import (
     BACKGROUND,
@@ -31,9 +32,12 @@ from viewscope.config import (
 )
 from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
+from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode, SceneCameraController
 from viewscope.scene.gizmos import CameraGlyphs, CameraModeGizmo, CameraOutline, FloorGrid
+from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.stats import FieldStats
+from viewscope.scene.still import StillRenderer
 from viewscope.scene.target_gizmos import TargetOverlay, observer_colour, weight_lut
 from viewscope.scene.target_report import TargetReport
 from viewscope.scene.views import MeshView, TargetCloudView
@@ -54,9 +58,11 @@ class Viewport(QVTKRenderWindowInteractor):
 
     camera_changed = Signal(CameraInfo)
     camera_picked = Signal(int)
-    #: A surface target was clicked, by its row in the target cloud.
+
+    # A surface target was clicked, by its row in the target cloud.
     target_picked = Signal(int)
-    #: A click landed on nothing, so whatever was picked should be let go.
+
+    # A click landed on nothing, so whatever was picked should be let go.
     target_cleared = Signal()
 
     def __init__(self, parent=None):
@@ -85,13 +91,17 @@ class Viewport(QVTKRenderWindowInteractor):
         self.glyphs = None
         self.camera = None
 
-        self._camera_mode = CameraMode.LOOK_AT
-        self._render_mode = MODE_ALL
-
         self._targets = None
         self._overlay = TargetOverlay()
-        #: The same table the overlay's rays and scalar bar read, so a camera
-        #: glyph and the ray out to it land on one colour.
+        self._still = StillRenderer()
+
+        # The bundle's own mesh, kept when the full-resolution model takes
+        # its place on screen. `mesh` is whichever is being drawn.
+        self._simple_mesh = None
+        self._photo_mesh = None
+
+        # The same table the overlay's rays and scalar bar read, so a camera
+        # glyph and the ray out to it land on one colour.
         self._weight_lut = weight_lut()
         self._mode = MODE_ALL
 
@@ -107,17 +117,6 @@ class Viewport(QVTKRenderWindowInteractor):
         self._press_position = QPointF()
         self._picked_glyph = False
         self._drag_px = 0.0
-
-        # TODO(Azaam): Enable the two lines, when resuming Grid optimization
-        # Adding observer only on active camera, for zoom-scale calculation.
-        # local_camera = self.renderer.GetActiveCamera()
-        # local_camera.AddObserver(vtk.vtkCommand.ModifiedEvent, self._on_camera_modified)
-
-        # TODO(Azaam): Enable when resuming Grid optimization
-        # self.initial_camera_distance = self.renderer.GetActiveCamera().GetDistance()
-        # self.zoom_distance = 1.0  # The zoom distance from cam to focal point.
-        # self.grid_scale = 1.0  # The scale factor for the grid, based on zoom distance.
-        # self.grid_visible = True  # Tracking visibility locally to hide grid properly.
 
         self.selected_outline = CameraOutline()
         self.selected_camera_pos = (0, 0, 0)
@@ -179,6 +178,7 @@ class Viewport(QVTKRenderWindowInteractor):
             return
 
         self._finalized = True
+        self._still.close()
         self.Finalize()
 
     def render(self):
@@ -188,6 +188,9 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def set_scene(self, data: SceneData):
         self.mesh = MeshView(data.mesh)
+        self._simple_mesh = self.mesh
+        self._photo_mesh = None
+
         self.cloud = TargetCloudView(data.targets, data.scores)
 
         for view in (self.mesh, self.cloud):
@@ -199,8 +202,10 @@ class Viewport(QVTKRenderWindowInteractor):
         self._surface_picker.AddPickList(self.mesh.actor)
         self._point_picker.AddPickList(self.cloud.actor)
         self._mouse_picker.AddPickList(self.mesh.actor)
-        for glyph_actor in self.glyphs.actors:
-            self._mouse_picker.AddPickList(glyph_actor)
+
+        # NOTE(Adam): This is already done in _rebuild_glyphs(), so lets not do it again
+        # for glyph_actor in self.glyphs.actors:
+        #     self._mouse_picker.AddPickList(glyph_actor)
 
         self.grid_origin_point = self._ground_centre(data)
         self.floor_grid.move_to(self.grid_origin_point)
@@ -230,20 +235,58 @@ class Viewport(QVTKRenderWindowInteractor):
             return
 
         self._render_mode = mode
-        show_mesh = mode in (MODE_TEXTURED, MODE_GEOMETRY, MODE_ALL)
+        self._apply_render_mode()
+
+    def _apply_render_mode(self):
+        """
+        Dress whichever mesh is on screen in the current mode.
+        Separate from set_render_mode because the mode outlives the mesh: the
+        full-resolution model arrives seconds after the scene does, and has to
+        come up wearing what the simplified one was wearing.
+        """
+        mode = self._render_mode
 
         if self.mesh is not None:
-            self.mesh.set_visible(show_mesh)
+            self.mesh.set_visible(self._mesh_visible)
 
             if mode == MODE_GEOMETRY:
                 self.mesh.show_geometry()
-            elif show_mesh:
+            elif self._mesh_visible:
                 self.mesh.show_textured()
 
         if self.cloud is not None:
             self.cloud.set_visible(mode in (MODE_TARGETS, MODE_ALL))
 
         self.render()
+
+    @property
+    def _mesh_visible(self) -> bool:
+        """
+        Whether the current mode draws the mesh at all.
+
+        The surface ray reads this rather than an actor: with the mesh
+        switched off there is nothing for a click to land on, and the cloud
+        is picked directly, which is the behaviour whichever mesh is loaded.
+        """
+        return self._render_mode in (MODE_TEXTURED, MODE_GEOMETRY, MODE_ALL)
+
+    def set_photo_mesh(self, photo: PhotoMesh):
+        """
+        Draw the full-resolution textured model in place of the simplified one.
+        Only what is drawn changes. Targets are still picked against the
+        simplified geometry, the cloud and the glyphs are untouched, and the
+        camera does not move: the two meshes are in the same frame.
+        """
+        if not self.has_scene:
+            return
+
+        if self.mesh is not None:
+            self.mesh.remove_from(self.renderer)
+
+        self._photo_mesh = photo
+        self.mesh = photo
+        photo.add_to(self.renderer)
+        self._apply_render_mode()
 
     def set_scalar_field(self, field: str) -> FieldStats | None:
         """Returns FieldStats, or None when the bundle has no scores."""
@@ -302,6 +345,9 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def clear_target_overlay(self):
         """Take the target overlay down, leaving the rest of the scene alone."""
+        # INVARIANT: The glyphs cannot be uninitialized at this stage!
+        assert self.glyphs is not None
+
         self._overlay.clear()
         self.glyphs.set_observer_colours(None)
         self.render()
@@ -354,8 +400,9 @@ class Viewport(QVTKRenderWindowInteractor):
         self._rebuild_glyphs(SCENE_STORE.scene.plan)
         self.render()
 
-    def _rebuild_glyphs(self, plan):
-        """Put one frustum per viewpoint in the scene, and only one.
+    def _rebuild_glyphs(self, plan: vc.Plan):
+        """
+        Put one frustum per viewpoint in the scene, and only one.
 
         The old actors come off the renderer first. Both the scene load and a
         plan change come through here, and they overlap: the store announces
@@ -416,6 +463,28 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.camera_mode_gizmo.set_current_mode(mode)
         self.render()
+
+    def render_still(self, width: int | None = None, height: int | None = None):
+        """
+        A pyrender image of the shot the viewport is holding.
+        The same pose the window is drawing, rendered offscreen by pyrender
+        and handed back as pixels: height x width x 3 uint8, or None when
+        there is no scene to shoot. Sized to the window unless asked
+        otherwise, so what comes back is what is on screen.
+        """
+        scene = SCENE_STORE.scene
+        if scene is None or scene.mesh is None:
+            return None
+
+        if width is None or height is None:
+            width, height = self.GetRenderWindow().GetSize()
+
+        # Off the live camera rather than the plan: free-look is a shot too,
+        # and the view angle is the one the user is looking through.
+        camera = self.renderer.GetActiveCamera()
+        pose = transform.pose_from_camera(camera)
+
+        return self._still.render(scene.mesh, pose, width, height, camera.GetViewAngle())
 
     def _moved(self, info: CameraInfo | None):
         if self.glyphs is not None:
@@ -694,18 +763,24 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def _nearest_target(self, world_position) -> int:
         """The target closest to a point on the surface."""
-        offsets = self._targets - np.asarray(world_position, dtype=np.float64)
+        # INVARIANT: Targets cannot be uninitialized at this stage!
+        assert self._targets is not None
 
+        offsets = self._targets - np.asarray(world_position, dtype=np.float64)
         return int(np.argmin(np.einsum("ij,ij->i", offsets, offsets)))
 
     def _within_reach(self, index: int, x: int, y: int) -> int | None:
-        """The target, unless the click landed too far away to have meant it.
+        """
+        The target, unless the click landed too far away to have meant it.
 
         Picking off the surface hands back whichever target is nearest the
         point that was hit, and on bare mesh the nearest one can be metres
         off. Held to a radius around the cursor, a click on nothing stays
         nothing, and the selection is let go instead of jumping.
         """
+        # INVARIANT: Targets cannot be uninitialized at this stage!
+        assert self._targets is not None
+
         target_x, target_y = self._display_of_world(self._targets[index])
         reach = PICK_TARGET_RADIUS_PX * self.devicePixelRatioF()
 
@@ -731,8 +806,10 @@ class Viewport(QVTKRenderWindowInteractor):
         colour, the frustum out in the scene says where that camera is
         without the eye having to follow the line back.
         """
-        top_camera = None if report.top_observer is None else report.top_observer.camera_index
+        # INVARIANT: The glyphs cannot be uninitialized at this stage!
+        assert self.glyphs is not None
 
+        top_camera = None if report.top_observer is None else report.top_observer.camera_index
         self.glyphs.set_observer_colours(
             {
                 observer.camera_index: observer_colour(
@@ -745,6 +822,9 @@ class Viewport(QVTKRenderWindowInteractor):
     def toggle_glyph_wireframe(self, bool):
         """Toggle between the solid and wireframe representation for CameraGlyph.
         Render scene as soon as bool updates."""
+        # INVARIANT: The glyphs cannot be uninitialized at this stage!
+        assert self.glyphs is not None
+
         self.glyphs.wireframe_enabled = bool
         self.glyphs._refresh()
         self.render()

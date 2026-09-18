@@ -103,3 +103,6 @@ $RECYCLE.BIN/
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# Viewscope cache
+.viewscope_cache/

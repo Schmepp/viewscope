@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PIL import Image
 from PySide6.QtCore import QByteArray, QSettings, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
@@ -32,14 +33,20 @@ from viewscope.MetricsPanel import MetricsPanel
 from viewscope.panels.plan_route_panel import PlanRoutePanel
 from viewscope.panels.target_panel import TargetPanel
 from viewscope.panels.viewpoints_panel import ViewpointsPanel
+from viewscope.scene.photo_mesh import PhotoMesh, PhotoMeshLoader, find_photo_mesh
 from viewscope.scene.target_report import TargetReport, TargetReports
 from viewscope.scene.visibility import TargetVisibility
 from viewscope.viewport import Viewport
 
 
 class MainWindow(QMainWindow):
-    #: Asked for the project list back. The startup screen is what answers it.
+    # Asked for the project list back. The startup screen is what answers it.
     back_requested = Signal()
+
+    # The scene loader's own loaded signal has already fired by the time
+    # the photo-mesh load starts, so we need to manually track these.
+    photo_mesh_progress = Signal(str, int)  # (message, percent 0-100)
+    photo_mesh_finished = Signal(bool)  # Whether a model was actually loaded
 
     def __init__(
         self,
@@ -47,6 +54,8 @@ class MainWindow(QMainWindow):
         *,
         expected_viewpoints: int | None = None,
         defer_load: bool = False,
+        load_photo_mesh: bool = True,
+        full_resolution_mesh: bool = False,
     ):
         """
         Build the shell and, unless the load is deferred, start reading the bundle.
@@ -55,6 +64,14 @@ class MainWindow(QMainWindow):
         checked while loading. Pass defer_load=True to leave the loader idle:
         the startup screen uses that to connect to its signals before the first
         one is emitted, then calls self.loader.start() itself.
+
+        Pass load_photo_mesh=False to stay on the simplified mesh: the
+        full-resolution model is the bulk of a bundle's memory, and the startup
+        screen offers it as a choice for machines that cannot hold it.
+
+        Pass full_resolution_mesh=True to read that model as it was shipped,
+        with its textures at their own size and the disk cache untouched. It
+        costs a good deal more memory, and every load pays the slow parse.
         """
         super().__init__()
         self.setWindowTitle("ViewScope")
@@ -66,19 +83,27 @@ class MainWindow(QMainWindow):
         self.visibility = None  # TargetVisibility, once a scene is loaded
         self.reports = None  # TargetReports, likewise
         self.route = RoutePlan()
-        #: What the whole route can see, while planning is on. Recounted on
-        #: every route change, because both the coverage line and the
-        #: occlusion colouring read it.
+
+        # What the whole route can see, while planning is on. Recounted on
+        # every route change, because both the coverage line and the
+        # occlusion colouring read it.
         self.route_mask = None
-        #: When a plan was loaded from a file, the viewpoint ids it named.
-        #: Every camera in the scene whose id is not one of them is switched
-        #: off, so the scene holds that plan and nothing else, until another
-        #: is loaded or the whole plan is asked for back. None while every
-        #: viewpoint is on show.
+
+        # When a plan was loaded from a file, the viewpoint ids it named.
+        # Every camera in the scene whose id is not one of them is switched
+        # off, so the scene holds that plan and nothing else, until another
+        # is loaded or the whole plan is asked for back. None while every
+        # viewpoint is on show.
         self.route_shown: set[str] | None = None
+
         self.selected_camera = None
         self.selected_target: TargetReport | None = None
         self.occlusion_on = False
+
+        # Reads the full-resolution model, once, for every panel that draws it.
+        self.photo_loader = None
+        self.load_photo_mesh = load_photo_mesh
+        self.full_resolution_mesh = full_resolution_mesh
 
         self.camera_viewport = CameraViewport(self)
         self.display_panel = DisplayPanel()
@@ -114,6 +139,7 @@ class MainWindow(QMainWindow):
         self.loader.failed.connect(self._on_failed)
         self.loader.plan_validation_failed.connect(self.show_error_dialog)
         self.loader.filename_validation_failed.connect(self.show_error_dialog)
+
         if not defer_load:
             self.loader.start()
 
@@ -211,6 +237,11 @@ class MainWindow(QMainWindow):
         self.act_clear_target.triggered.connect(self.clear_target)
         self.act_clear_target.setEnabled(False)
 
+        self.act_still = QAction("Render Still", self)
+        self.act_still.setShortcut(QKeySequence("Ctrl+R"))
+        self.act_still.setToolTip("Render this view with pyrender and save it (Ctrl+R)")
+        self.act_still.triggered.connect(self.render_still)
+
         self.toggle_orientation = QAction("Toggle Orientation", self, checkable=True)
         self.toggle_orientation.triggered.connect(self.viewport.toggle_camera_orientation_visible)
         self.toggle_orientation.setChecked(True)
@@ -219,6 +250,8 @@ class MainWindow(QMainWindow):
             self.act_prev,
             self.act_next,
             self.act_overview,
+            self.act_clear_target,
+            self.act_still,
             self.act_clear_target,
             self.toggle_orientation,
         )
@@ -251,9 +284,7 @@ class MainWindow(QMainWindow):
         # -- camera ---
 
         self.act_prev.triggered.connect(self.camera_viewport.prev_camera)
-
         self.act_next.triggered.connect(self.camera_viewport.next_camera)
-
         self.act_overview.triggered.connect(self.camera_viewport.show_overview)
 
     # -- callbacks -----------------------------------------------------
@@ -284,6 +315,9 @@ class MainWindow(QMainWindow):
         self.viewport.show_overview()
         self.camera_viewport.show_overview()
         self.statusBar().showMessage("Ready", 3000)
+
+        if scene.data_dir is not None:
+            self._load_photo_mesh(scene.data_dir)
 
     def _on_field_changed(self, field):
         self.metrics_panel.show_field(self.viewport.set_scalar_field(field))
@@ -333,7 +367,114 @@ class MainWindow(QMainWindow):
             "Overview" if info is None else f"Camera {info.index + 1} of {camera_count}"
         )
 
-    # -- target inspection ---------------------------------------------
+    # -- The full-resolution model -------------------------------------
+
+    def render_still(self):
+        """
+        Save a pyrender image of the shot the viewport is holding.
+        The window draws with VTK; this is the same view handed to pyrender,
+        which renders it offscreen at the size the viewport is showing.
+        """
+        if SCENE_STORE.scene is None:
+            return
+
+        suggested = Path(self.loader.data_dir) / "still.png"
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Render Still", str(suggested), "PNG image (*.png)"
+        )
+        if not path:
+            return
+
+        self.statusBar().showMessage("Rendering...")
+        try:
+            colour = self.viewport.render_still()
+            if colour is None:
+                self.statusBar().showMessage("Nothing to render")
+                return
+
+            Image.fromarray(colour).save(path)
+        except Exception as exc:
+            self.statusBar().showMessage("Render failed")
+            QMessageBox.critical(self, "ViewScope", f"Could not render the still.\n\n{exc}")
+            return
+
+        self.statusBar().showMessage(f"Rendered {Path(path).name}", 5000)
+
+    def _load_photo_mesh(self, data_dir: Path):
+        """
+        Start reading the full-resolution model, if the bundle ships one.
+        Read here rather than in either viewport, because both of them draw
+        it: a gigabyte of triangles and eight textures are worth parsing once
+        and handing round.
+        """
+        # Don't run the loader if it's already running
+        if self.photo_loader is not None and self.photo_loader.isRunning():
+            return
+
+        if not self.load_photo_mesh:
+            self.photo_mesh_finished.emit(False)
+            return
+
+        path = find_photo_mesh(data_dir)
+        if path is None:
+            self.photo_mesh_finished.emit(False)
+            return
+
+        self._stop_photo_loader()
+
+        self.photo_loader = PhotoMeshLoader(path, self, full_resolution=self.full_resolution_mesh)
+        self.photo_loader.loaded.connect(self._on_photo_mesh)
+        self.photo_loader.failed.connect(self._on_photo_mesh_failed)
+        self.photo_loader.progress.connect(self.photo_mesh_progress)
+
+        self.statusBar().showMessage(f"Reading {path.name}...")
+        self.photo_loader.start()
+
+    def _on_photo_mesh(self, photo: PhotoMesh):
+        """
+        Put the model on screen in both viewports.
+        Each gets its own actors over the same triangles and images: two
+        renderers cannot share one set, and hiding the mesh in one panel
+        would otherwise hide it in the other.
+        """
+        self.camera_viewport.set_photo_mesh(photo)
+        self.viewport.set_photo_mesh(photo.clone())
+
+        self.statusBar().showMessage(
+            f"Full-resolution model ready ({photo.cells:,} triangles).", 5000
+        )
+
+        if self.photo_loader is not None:
+            self.photo_loader.finalize_window()
+
+        self.photo_mesh_finished.emit(True)
+
+    def _on_photo_mesh_failed(self, message: str):
+        """Fail loudly and leave both viewports on the simplified mesh."""
+        print(f"photo mesh unavailable: {message}")
+        self.statusBar().showMessage("Full-resolution model unavailable!", 5000)
+
+        if self.photo_loader is not None:
+            self.photo_loader.finalize_window()
+
+        self.photo_mesh_finished.emit(False)
+
+    def _stop_photo_loader(self):
+        """
+        Let go of a read still in flight, so nothing lands in a dead window.
+        Blocks until the thread actually finishes.
+        """
+        loader = self.photo_loader
+        self.photo_loader = None
+
+        if loader is None:
+            return
+
+        loader.blockSignals(True)
+        if loader.isRunning():
+            loader.wait()
+
+    # -- Target Inspection ---------------------------------------------
 
     def _on_target_picked(self, index: int):
         """Break down the target just clicked in the 3D view."""
@@ -393,7 +534,7 @@ class MainWindow(QMainWindow):
     def sector_count(self) -> int:
         return self.target_panel.sector_count
 
-    # -- route planning ------------------------------------------------
+    # -- Route Planning ------------------------------------------------
 
     def start_route_planning(self):
         """Put every viewpoint in the route and start choosing between them."""
@@ -554,7 +695,8 @@ class MainWindow(QMainWindow):
         self._apply_occlusion()
 
     def _apply_occlusion(self):
-        """Push a visibility mask into the viewport.
+        """
+        Push a visibility mask into the viewport.
 
         While a route is being planned that is everything the route sees
         between them, so taking a camera out shows what goes dark with it.
@@ -615,13 +757,16 @@ class MainWindow(QMainWindow):
         if self.visibility is not None:
             self.visibility.close()
             self.visibility = None
+
         if self.loader.isRunning():
             self.loader.wait(2000)
+
+        self._stop_photo_loader()
         self.viewport.shutdown()
         self.camera_viewport.shutdown()
         super().closeEvent(event)
 
-    # -- dialog window ---#
+    # -- Dialog Window -- #
     def show_error_dialog(self, error_title, error_message, action_message):
         self.statusBar().showMessage("Plan validation failed")
 

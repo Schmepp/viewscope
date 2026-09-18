@@ -10,6 +10,8 @@ target normal that the observers fall into.
 
 from __future__ import annotations
 
+import colorsys
+
 import numpy as np
 import vtk
 from vtkmodules.util import numpy_support as vtknp
@@ -45,9 +47,14 @@ def weight_lut() -> vtk.vtkLookupTable:
     return lut
 
 
-def sector_colour(sector: int) -> tuple[float, float, float]:
+def sector_colour_2(sector: int) -> tuple[float, float, float]:
     """The colour that belongs to one wedge, taken in order from the fixed set."""
     return SECTOR_COLOURS[sector % len(SECTOR_COLOURS)]
+
+
+def sector_colour(sector: int, sector_count: int) -> tuple[float, float, float]:
+    """A hue per wedge, walking the colour wheel the way the wedges walk the compass."""
+    return colorsys.hsv_to_rgb((sector % sector_count) / sector_count, 0.72, 1.0)
 
 
 def weight_colour(lut: vtk.vtkLookupTable, weight: float) -> tuple[float, float, float]:
@@ -71,7 +78,7 @@ def observer_colour(
     it: there the colour already answers a different question.
     """
     if colour_by == COLOUR_BY_SECTOR:
-        return sector_colour(observer.sector)
+        return sector_colour(observer.sector, 8)
 
     if observer.camera_index == top_camera:
         return TOP_OBSERVER_COLOUR

@@ -33,6 +33,12 @@ EDGE_COLOUR = (0.15, 0.16, 0.20)
 VISIBLE_COLOUR = (0.90, 0.11, 0.14)
 OCCLUDED_COLOUR = (0.42, 0.43, 0.47)
 
+# The camera view draws the full-resolution textured model, not the
+# simplified scene.obj the main viewport runs on: the viewport is the half
+# that has to animate on a laptop without much GPU, while a simulated
+# photograph is worth looking at only for the detail in it. Bundles that
+# carry one keep it in this subfolder, beside its .mtl and textures.
+PHOTO_MESH_DIR = "Mesh"
 
 # -- target inspection -----------------------------------------------------
 
@@ -138,6 +144,47 @@ CARD_BORDER = "#2A2831"
 CARD_BORDER_HOVER = "#4A4553"
 ACCENT = "#8FC5E8"
 TRACK = "#26242C"
+
+# Tooltips are top-level windows of their own, so they do not inherit a
+# window's stylesheet and come up in the platform's own colours - a pale slab
+# against a dark application. Applied once to the QApplication in main, this
+# puts them in the same palette as everything else.
+TOOLTIP_STYLE = f"""
+QToolTip {{
+    background: {CARD};
+    border: 1px solid {CARD_BORDER_HOVER};
+    border-radius: 6px;
+    color: {INK};
+    font-size: 11px;
+    padding: 7px 9px;
+}}
+"""
+
+
+TOOLTIP_WIDTH = 290
+
+
+def tooltip(headline: str, detail: str, width: int = TOOLTIP_WIDTH) -> str:
+    """
+    A two-part tooltip: what a setting costs, then what it gives you.
+
+    Rich text rather than plain, because Qt lays a long plain tooltip out as a
+    single wide slab - the longest of the quality tooltips measured 541px -
+    where the same words as rich text wrap to a readable column. The headline
+    carries the weight and the detail is dropped to MUTED, so a glance gets the
+    gist and a read gets the rest.
+
+    The table is what holds the width: Qt's rich text honours a width on a
+    table but not on a div, and without one each tooltip sizes itself to its
+    own longest line. Hovering along a row of them then means watching the box
+    jump from 255px to 402px and back.
+    """
+    return (
+        f"<table width='{width}' cellspacing='0' cellpadding='0'><tr><td>"
+        f"<p style='margin:0'><b>{headline}</b></p>"
+        f"<p style='margin:5px 0 0 0; color:{MUTED}'>{detail}</p>"
+        "</td></tr></table>"
+    )
 
 
 @dataclass(frozen=True)

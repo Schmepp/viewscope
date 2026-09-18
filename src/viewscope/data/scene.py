@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import trimesh
@@ -26,6 +27,11 @@ class SceneData:
     scores: vc.Scores | None = None
     scores_error: str | None = None
     visibility: np.ndarray | None = None
+
+    # NOTE(Adam): This is where the bundle was read from.
+    #             The camera view needs it to find the full-resolution model
+    #             that sits beside the simplified one.
+    data_dir: Path | None = None
 
     @property
     def has_scores(self) -> bool:
