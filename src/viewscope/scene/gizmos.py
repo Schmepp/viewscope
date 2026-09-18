@@ -323,6 +323,17 @@ class CameraModeGizmo(QFrame):
 
     mode_changed = Signal(CameraMode)
 
+    # The frame is sized from these rather than from sizeHint(). main.py sets
+    # an application-wide stylesheet, which switches Qt to QStyleSheetStyle,
+    # and under it the layout's QWidgetItems report each button 12px shorter
+    # than the button's own sizeHint(). The frame's hint comes out ~22px short,
+    # Viewport.resizeEvent's adjustSize() shrinks it to that, and the layout
+    # then crams both buttons into less room than they need - they overlap.
+    BUTTON_HEIGHT = 24
+    BUTTON_GAP = 6
+    FRAME_PADDING = 8
+    FRAME_BORDER = 1  # Matches the 1px border in the stylesheet below.
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -332,8 +343,14 @@ class CameraModeGizmo(QFrame):
         self._buttons: dict[CameraMode, QPushButton] = {}
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(2)
+        layout.setContentsMargins(
+            self.FRAME_PADDING, self.FRAME_PADDING, self.FRAME_PADDING, self.FRAME_PADDING
+        )
+
+        # Spacing is an explicit spacer item, not layout spacing: with the
+        # item hints under-reported, the layout drops its own spacing when it
+        # is short on room and leaves the buttons edge to edge.
+        layout.setSpacing(0)
 
         self._add_mode(
             layout,
@@ -341,6 +358,8 @@ class CameraModeGizmo(QFrame):
             "🖱",
             "Trackball Camera",
         )
+
+        layout.addSpacing(self.BUTTON_GAP)
 
         self._add_mode(
             layout,
@@ -377,12 +396,27 @@ class CameraModeGizmo(QFrame):
             }
         """)
 
+        self._apply_fixed_size()
         self.set_mode(CameraMode.LOOK_AT)
+
+    def _apply_fixed_size(self):
+        """
+        Pin the frame to what the buttons actually need, so a stylesheet-skewed
+        sizeHint can never squeeze them. See the note on BUTTON_HEIGHT.
+        """
+        count = len(self._buttons)
+        chrome = 2 * (self.FRAME_PADDING + self.FRAME_BORDER)
+
+        widest = max(button.sizeHint().width() for button in self._buttons.values())
+        height = self.BUTTON_HEIGHT * count + self.BUTTON_GAP * (count - 1)
+
+        self.setFixedSize(chrome + widest, chrome + height)
 
     def _add_mode(self, layout: QVBoxLayout, mode: CameraMode, icon: str, text: str):
         button = QPushButton(f"{icon}  {text}", self)
         button.setCheckable(True)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.setFixedHeight(self.BUTTON_HEIGHT)
 
         button.clicked.connect(lambda checked=False, m=mode: self.set_mode(m))
 
