@@ -20,6 +20,7 @@ from PySide6.QtCore import QThread, Signal
 from vtkmodules.vtkIOImport import vtkOBJImporter
 
 from viewscope.config import GEOMETRY_COLOUR, PHOTO_MESH_DIR
+import viewscope.data.cache as cache
 
 
 def find_photo_mesh(data_dir) -> Path | None:
@@ -165,6 +166,7 @@ class PhotoMesh:
             prop.EdgeVisibilityOff()
 
 
+# TODO(Adam): Ideally, this class should be moved to viewscope.data.loader.
 class PhotoMeshLoader(QThread):
     """
     Reads the full-resolution model off the interface thread.
@@ -198,11 +200,19 @@ class PhotoMeshLoader(QThread):
             self.failed.emit(f"{type(exc).__name__}: {exc}")
 
     def _read(self) -> PhotoMesh:
+        materials = find_materials(self.path)
+
+        # A previous load already paid the ASCII-parse cost once; skip
+        # vtkOBJImporter entirely and read the cached geometry back in,
+        # reapplying whatever textures the importer would have assigned.
+        cached_mesh = self._try_read_cache(materials)
+        if cached_mesh is not None:
+            return cached_mesh
+
         importer = vtkOBJImporter()
         importer.SetFileName(str(self.path))
         importer.SetRenderWindow(self._window)
 
-        materials = find_materials(self.path)
         if materials is not None:
             importer.SetFileNameMTL(str(materials))
             importer.SetTexturePath(str(self.path.parent))
@@ -213,42 +223,63 @@ class PhotoMeshLoader(QThread):
 
         actors = self._imported_actors()
         if not actors:
-            raise ValueError(f"{self.path.name} imported no geometry")
+            raise ValueError(f"{self.path.name} imported no geometry!")
 
-        # Texture preparation function to execute texture loads in parallel
-        def _prepare(actor: vtk.vtkActor):
+        cached_textures: list[tuple[vtk.vtkPolyData, vtk.vtkImageData | None]] = []
+        for actor in actors:
+            image: vtk.vtkImageData | None = None
+            image_to_cache: vtk.vtkImageData | None = None # We cache the downscaled texture
+
             actor.GetMapper().Update()
             texture = actor.GetTexture()
+
             if texture is not None:
                 texture.Update()
                 texture.InterpolateOn()
 
                 # NOTE(Adam): We limit the max resolution of loaded textures here
                 #             to avoid exorbitant RAM usage and to reduce GPU load.
-                image: vtk.vtkImageData = texture.GetInput()
-                max_dim = max(image.GetDimensions()[:2])
-                if max_dim > self.MAX_TEXTURE_DIM:
-                    scale = self.MAX_TEXTURE_DIM / max_dim
+                image = texture.GetInput()
+                if image is not None:
+                    max_dim = max(image.GetDimensions()[:2])
+                    if max_dim > self.MAX_TEXTURE_DIM:
+                        scale = self.MAX_TEXTURE_DIM / max_dim
 
-                    resize = vtk.vtkImageResize()
-                    resize.SetInputData(image)
-                    resize.SetOutputDimensions(
-                        int(image.GetDimensions()[0] * scale),
-                        int(image.GetDimensions()[1] * scale),
-                        1,
-                    )
-                    resize.Update()
-                    texture.SetInputData(resize.GetOutput())
+                        resize = vtk.vtkImageResize()
+                        resize.SetInputData(image)
+                        resize.SetOutputDimensions(
+                            int(image.GetDimensions()[0] * scale),
+                            int(image.GetDimensions()[1] * scale),
+                            1,
+                        )
+                        resize.Update()
 
-        # NOTE(Adam): Textures are independent files with no shared state between them, so
-        #             decoding them concurrently is safe and cuts time during scene loading.
-        with ThreadPoolExecutor(max_workers=min(8, len(actors))) as pool:
-            list(pool.map(_prepare, actors))
+                        resized = resize.GetOutput()
+                        texture.SetInputData(resized)
 
-        for actor in actors:
+                        # Cache the downscaled image
+                        image_to_cache = resized
+
+            cached_textures.append((actor.GetMapper().GetInput(), image_to_cache))
             self._renderer.RemoveActor(actor)
 
         self._window.Finalize()
+
+        # Pay the slow ASCII parse forward: every load of this exact OBJ/MTL
+        # after this one skips vtkOBJImporter entirely.
+        cache.write_cache(self.path, materials, cached_textures)
+        return PhotoMesh(actors)
+
+    def _try_read_cache(self, materials: Path | None = None) -> PhotoMesh | None:
+        """
+        A PhotoMesh rebuilt from a previous slow parse of this exact OBJ, or
+        None if there's no valid cache.
+        """
+        cached = cache.cached_actors(self.path, materials)
+        if cached is None:
+            return None
+
+        actors = cache.read_geometry_cache(cached)
         return PhotoMesh(actors)
 
     def _imported_actors(self) -> list[vtk.vtkActor]:
