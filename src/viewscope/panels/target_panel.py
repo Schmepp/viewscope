@@ -173,7 +173,10 @@ class TargetPanel(QWidget):
         """Fill the panel in for one target, or empty it out when given None."""
         self._report = report
 
-        self.sector_bar_chart.update_chart(report)
+        try:
+            self.sector_bar_chart.update_chart(report)
+        except Exception:
+            pass
 
         self.hint.setText(HINT if report is None else f"Target {report.index}")
         self.clear_button.setEnabled(report is not None)
