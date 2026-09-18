@@ -5,6 +5,8 @@ import os
 # Must be set before Qt picks a platform plugin, so these run without a display.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from dataclasses import dataclass, field  # noqa: E402
+
 import pytest  # noqa: E402
 import vtk  # noqa: E402
 
@@ -67,19 +69,27 @@ def model(tmp_path):
     return path
 
 
+@dataclass
+class CacheCalls:
+    """What one read asked of the disk cache."""
+
+    reads: int = 0
+    writes: list[list] = field(default_factory=list)
+
+
 @pytest.fixture
 def calls(monkeypatch):
     """Swap the importer and the disk cache out, and record what the read asked of them."""
-    seen = {"read": 0, "written": []}
+    seen = CacheCalls()
 
     monkeypatch.setattr(photo_mesh, "vtkOBJImporter", FakeImporter)
 
     def cached_actors(obj_path, mtl_path):
-        seen["read"] += 1
+        seen.reads += 1
         return None  # never a hit, so the read always goes on to the importer
 
     def write_cache(obj_path, mtl_path, textured_actors):
-        seen["written"].append(textured_actors)
+        seen.writes.append(textured_actors)
 
     monkeypatch.setattr(photo_mesh.cache, "cached_actors", cached_actors)
     monkeypatch.setattr(photo_mesh.cache, "write_cache", write_cache)
@@ -102,8 +112,8 @@ def test_the_capped_read_is_cached_both_ways(model, calls):
     """The 6G path: look in the cache, cap the textures, and put them back."""
     mesh = read(model, full_resolution=False)
 
-    assert calls["read"] == 1
-    assert len(calls["written"]) == 1
+    assert calls.reads == 1
+    assert len(calls.writes) == 1
     assert texture_dims(mesh) == [CAP]
 
 
@@ -111,8 +121,8 @@ def test_the_full_resolution_read_touches_no_cache(model, calls):
     """The 10G path: the cache is not read, and nothing is written back to it."""
     read(model, full_resolution=True)
 
-    assert calls["read"] == 0
-    assert calls["written"] == []
+    assert calls.reads == 0
+    assert calls.writes == []
 
 
 def test_the_full_resolution_read_keeps_the_textures_whole(model, calls):
