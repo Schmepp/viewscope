@@ -43,9 +43,10 @@ CARD_SPACING = 10
 
 # The memory budgets the page offers. LIGHT stops at the simplified mesh,
 # which is what the great bulk of a bundle's footprint is spent on. FULL adds
-# the full-resolution model, with its textures capped and cached on the way in.
-# MAX takes that model exactly as it was shipped: textures at their own size,
-# and no cache read or written.
+# the full-resolution model, with its textures capped on the way in. MAX takes
+# that model exactly as it was shipped, textures at their own size. FULL and
+# MAX are both cached, each under its own variant, so the slow parse is paid
+# once per budget rather than once per open.
 QUALITY_LIGHT = "400MB"
 QUALITY_FULL = "6G"
 QUALITY_MAX = "10G"
@@ -370,8 +371,8 @@ class StartupWindow(QWidget):
             QUALITY_LIGHT: "Open projects on the simplified mesh only, for about 400MB of memory.",
             QUALITY_FULL: "Open projects with the full-resolution model, which needs about 6GB.",
             QUALITY_MAX: (
-                "Open projects with the model exactly as it was shipped: full-size textures "
-                "and no cache, for about 10GB. Every load pays the slow parse."
+                "Open projects with the model exactly as it was shipped: full-size textures, "
+                "for about 10GB. The first open pays the slow parse and caches it."
             ),
         }
         for label in (QUALITY_LIGHT, QUALITY_FULL, QUALITY_MAX):

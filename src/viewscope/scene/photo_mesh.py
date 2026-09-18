@@ -173,10 +173,10 @@ class PhotoMeshLoader(QThread):
     def __init__(self, path: Path, parent=None, *, full_resolution: bool = False):
         """
         full_resolution reads the model exactly as it was shipped: textures at
-        their own size rather than capped at MAX_TEXTURE_DIM, and the disk
-        cache left alone in both directions. The cache only ever holds the
-        capped textures, so it has nothing to offer this path and must not be
-        handed the uncapped ones in return.
+        their own size rather than capped at MAX_TEXTURE_DIM. It is cached like
+        any other read, but under its own variant: the two hold different
+        pixels for the same OBJ, and a capped set handed to this path would
+        quietly give it the downscaled textures it was opened to avoid.
         """
         super().__init__(parent)
         self.path = Path(path)
@@ -190,6 +190,11 @@ class PhotoMeshLoader(QThread):
         self._window = vtk.vtkRenderWindow()
         self._window.SetOffScreenRendering(1)
         self._window.AddRenderer(self._renderer)
+
+    @property
+    def _variant(self) -> str:
+        """Which cached set this read belongs to."""
+        return cache.VARIANT_FULL if self.full_resolution else cache.VARIANT_CAPPED
 
     def run(self):
         try:
@@ -207,12 +212,11 @@ class PhotoMeshLoader(QThread):
         # A previous load already paid the ASCII-parse cost once; skip
         # vtkOBJImporter entirely and read the cached geometry back in,
         # reapplying whatever textures the importer would have assigned.
-        if not self.full_resolution:
-            self.progress.emit("Checking cache...", 0)
-            cached_mesh = self._try_read_cache(materials)
-            if cached_mesh is not None:
-                self.progress.emit("Loaded from cache", 100)
-                return cached_mesh
+        self.progress.emit("Checking cache...", 0)
+        cached_mesh = self._try_read_cache(materials)
+        if cached_mesh is not None:
+            self.progress.emit("Loaded from cache", 100)
+            return cached_mesh
 
         self.progress.emit("Parsing model geometry...", 1)
 
@@ -236,8 +240,7 @@ class PhotoMeshLoader(QThread):
 
         cached_textures: list[tuple[vtk.vtkPolyData, vtk.vtkImageData | None]] = []
         for i, actor in enumerate(actors):
-            image: vtk.vtkImageData | None = None
-            image_to_cache: vtk.vtkImageData | None = None  # We cache the downscaled texture
+            image_to_cache: vtk.vtkImageData | None = None
 
             actor.GetMapper().Update()
             texture = actor.GetTexture()
@@ -266,8 +269,12 @@ class PhotoMeshLoader(QThread):
                         resized = resize.GetOutput()
                         texture.SetInputData(resized)
 
-                        # Cache the downscaled image
-                        image_to_cache = resized
+                # Whatever the texture ended up wearing is what the cache has to
+                # hand back. Reading it off the texture here rather than only
+                # inside the resize branch is what keeps a texture already under
+                # the cap - and every texture on the full-resolution path - from
+                # being cached as no texture at all.
+                image_to_cache = texture.GetInput()
 
             cached_textures.append((actor.GetMapper().GetInput(), image_to_cache))
             self._renderer.RemoveActor(actor)
@@ -278,22 +285,27 @@ class PhotoMeshLoader(QThread):
             self.progress.emit(f"Decoding textures ({done}/{len(actors)})...", pct)
 
         # Pay the price of the slow ASCII parse forward: every load of this exact OBJ/MTL
-        # after this one skips vtkOBJImporter entirely.
-        if not self.full_resolution:
-            cache.write_cache(self.path, materials, cached_textures)
+        # after this one, read the same way, skips vtkOBJImporter entirely.
+        cache.write_cache(self.path, materials, cached_textures, self._variant)
         return PhotoMesh(actors)
 
     def _try_read_cache(self, materials: Path | None = None) -> PhotoMesh | None:
         """
-        A PhotoMesh rebuilt from a previous slow parse of this exact OBJ, or
-        None if there's no valid cache.
+        A PhotoMesh rebuilt from a previous slow parse of this exact OBJ read
+        this same way, or None if there's no valid cache.
         """
-        cached = cache.cached_actors(self.path, materials)
+        cached = cache.cached_actors(self.path, materials, self._variant)
         if cached is None:
             return None
 
         self.progress.emit("Reading cache...", 5)
-        actors = cache.read_geometry_cache(cached)
+
+        def report(done: int, total: int):
+            # Spans the same 5-100 the importer's own pass reports over, so the
+            # bar moves at a steady rate whichever way the model arrives.
+            self.progress.emit(f"Reading cache ({done}/{total})...", 5 + int(95 * done / total))
+
+        actors = cache.read_geometry_cache(cached, report)
         return PhotoMesh(actors)
 
     def _imported_actors(self) -> list[vtk.vtkActor]:

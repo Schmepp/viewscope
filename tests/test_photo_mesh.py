@@ -10,6 +10,7 @@ from dataclasses import dataclass, field  # noqa: E402
 import pytest  # noqa: E402
 import vtk  # noqa: E402
 
+from viewscope.data import cache  # noqa: E402
 from viewscope.scene import photo_mesh  # noqa: E402
 from viewscope.scene.photo_mesh import PhotoMeshLoader  # noqa: E402
 
@@ -71,10 +72,11 @@ def model(tmp_path):
 
 @dataclass
 class CacheCalls:
-    """What one read asked of the disk cache."""
+    """What one read asked of the disk cache, and under which variant."""
 
-    reads: int = 0
-    writes: list[list] = field(default_factory=list)
+    reads: list[str] = field(default_factory=list)
+    writes: list[str] = field(default_factory=list)
+    written_textures: list[list] = field(default_factory=list)
 
 
 @pytest.fixture
@@ -84,12 +86,13 @@ def calls(monkeypatch):
 
     monkeypatch.setattr(photo_mesh, "vtkOBJImporter", FakeImporter)
 
-    def cached_actors(obj_path, mtl_path):
-        seen.reads += 1
+    def cached_actors(obj_path, mtl_path, variant=cache.VARIANT_CAPPED):
+        seen.reads.append(variant)
         return None  # never a hit, so the read always goes on to the importer
 
-    def write_cache(obj_path, mtl_path, textured_actors):
-        seen.writes.append(textured_actors)
+    def write_cache(obj_path, mtl_path, textured_actors, variant=cache.VARIANT_CAPPED):
+        seen.writes.append(variant)
+        seen.written_textures.append(textured_actors)
 
     monkeypatch.setattr(photo_mesh.cache, "cached_actors", cached_actors)
     monkeypatch.setattr(photo_mesh.cache, "write_cache", write_cache)
@@ -112,17 +115,44 @@ def test_the_capped_read_is_cached_both_ways(model, calls):
     """The 6G path: look in the cache, cap the textures, and put them back."""
     mesh = read(model, full_resolution=False)
 
-    assert calls.reads == 1
-    assert len(calls.writes) == 1
+    assert calls.reads == [cache.VARIANT_CAPPED]
+    assert calls.writes == [cache.VARIANT_CAPPED]
     assert texture_dims(mesh) == [CAP]
 
 
-def test_the_full_resolution_read_touches_no_cache(model, calls):
-    """The 10G path: the cache is not read, and nothing is written back to it."""
+def test_the_full_resolution_read_is_cached_both_ways(model, calls):
+    """The 10G path is cached too, under its own variant rather than the capped one."""
     read(model, full_resolution=True)
 
-    assert calls.reads == 0
-    assert calls.writes == []
+    assert calls.reads == [cache.VARIANT_FULL]
+    assert calls.writes == [cache.VARIANT_FULL]
+
+
+def test_the_two_budgets_never_share_a_cached_set(model, calls):
+    """
+    The whole point of the variant: 10G must not be handed 6G's capped pixels,
+    which is the one way caching it could make it quietly wrong.
+    """
+    read(model, full_resolution=False)
+    read(model, full_resolution=True)
+
+    assert calls.reads == [cache.VARIANT_CAPPED, cache.VARIANT_FULL]
+    assert cache.VARIANT_CAPPED != cache.VARIANT_FULL
+
+
+def test_every_read_caches_the_texture_it_ended_up_wearing(model, calls):
+    """
+    Both budgets hand the cache a real image, at the size that read produced.
+    A texture was previously only cached when it had been downscaled, so one
+    already under the cap - and every full-resolution texture - came back from
+    the cache wearing nothing at all.
+    """
+    read(model, full_resolution=False)
+    read(model, full_resolution=True)
+
+    capped, full = calls.written_textures
+    assert max(capped[0][1].GetDimensions()[:2]) == CAP
+    assert max(full[0][1].GetDimensions()[:2]) == TEXTURE_DIM
 
 
 def test_the_full_resolution_read_keeps_the_textures_whole(model, calls):
