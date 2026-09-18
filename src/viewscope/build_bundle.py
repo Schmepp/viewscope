@@ -31,9 +31,8 @@ import trimesh.visual
 from scipy.ndimage import distance_transform_edt
 from trimesh.visual.color import uv_to_color
 
-from viewscope.config import PHOTO_MESH_DIR
-
 import viewscope_core as vc
+from viewscope.config import PHOTO_MESH_DIR
 from viewscope_core import constants
 
 # The one camera every viewpoint uses, from the project brief.
@@ -150,7 +149,9 @@ def _swap_up_axis(vertices, up: str):
     return np.array(vertices, dtype=np.float64)
 
 
-def to_world_frame(mesh: trimesh.Trimesh, length_m: float, up: str) -> tuple[trimesh.Trimesh, tuple[float, np.ndarray]]:
+def to_world_frame(
+    mesh: trimesh.Trimesh, length_m: float, up: str
+) -> tuple[trimesh.Trimesh, tuple[float, np.ndarray]]:
     """Right handed, +Z up, metres, longest axis along +X, standing on z = 0."""
     scale, translate = compute_world_transform(mesh.vertices, length_m, up)
     mesh.vertices = apply_world_transform(mesh.vertices, up, scale, translate)
@@ -158,7 +159,9 @@ def to_world_frame(mesh: trimesh.Trimesh, length_m: float, up: str) -> tuple[tri
     return mesh, (scale, translate)
 
 
-def export_full_resolution_mesh(source: Path, out_dir: Path, up: str, world_transform: tuple[float, np.ndarray]):
+def export_full_resolution_mesh(
+    source: Path, out_dir: Path, up: str, world_transform: tuple[float, np.ndarray]
+):
     """
     A full-quality copy of the source model, reoriented and rescaled into
     the same frame as scene.obj - but with none of load_coloured's lossy
