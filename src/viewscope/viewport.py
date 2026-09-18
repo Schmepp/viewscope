@@ -94,8 +94,15 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self._targets = None
         self._overlay = TargetOverlay()
-        #: The same table the overlay's rays and scalar bar read, so a camera
-        #: glyph and the ray out to it land on one colour.
+        self._still = StillRenderer()
+
+        # The bundle's own mesh, kept when the full-resolution model takes
+        # its place on screen. `mesh` is whichever is being drawn.
+        self._simple_mesh = None
+        self._photo_mesh = None
+
+        # The same table the overlay's rays and scalar bar read, so a camera
+        # glyph and the ray out to it land on one colour.
         self._weight_lut = weight_lut()
         self._mode = MODE_ALL
 
@@ -339,6 +346,9 @@ class Viewport(QVTKRenderWindowInteractor):
 
     def clear_target_overlay(self):
         """Take the target overlay down, leaving the rest of the scene alone."""
+        # INVARIANT: The glyphs cannot be uninitialized at this stage!
+        assert self.glyphs is not None
+
         self._overlay.clear()
         self.glyphs.set_observer_colours(None)
         self.render()
@@ -797,8 +807,10 @@ class Viewport(QVTKRenderWindowInteractor):
         colour, the frustum out in the scene says where that camera is
         without the eye having to follow the line back.
         """
-        top_camera = None if report.top_observer is None else report.top_observer.camera_index
+        # INVARIANT: The glyphs cannot be uninitialized at this stage!
+        assert self.glyphs is not None
 
+        top_camera = None if report.top_observer is None else report.top_observer.camera_index
         self.glyphs.set_observer_colours(
             {
                 observer.camera_index: observer_colour(
@@ -811,6 +823,9 @@ class Viewport(QVTKRenderWindowInteractor):
     def toggle_glyph_wireframe(self, bool):
         """Toggle between the solid and wireframe representation for CameraGlyph.
         Render scene as soon as bool updates."""
+        # INVARIANT: The glyphs cannot be uninitialized at this stage!
+        assert self.glyphs is not None
+
         self.glyphs.wireframe_enabled = bool
         self.glyphs._refresh()
         self.render()
