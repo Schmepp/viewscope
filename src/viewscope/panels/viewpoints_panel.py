@@ -44,8 +44,9 @@ class ViewpointsPanel(QWidget):
         self._suppress = False
 
         # Add new camera button
-        self.button = QPushButton("Add Camera")
-        self.button.clicked.connect(self._on_button_add_camera_clicked)
+        self.button = QPushButton("Duplicate Camera")
+        # self.button.clicked.connect(self._on_button_add_camera_clicked)
+        self.button.clicked.connect(self._on_button_duplicate_camera_clicked)
 
         # Layout
         layout = QVBoxLayout(self)
@@ -124,3 +125,24 @@ class ViewpointsPanel(QWidget):
 
         SCENE_STORE.add_camera(position, yaw, pitch)
         print(f"Adding camera: position={position}, yaw={yaw}, pitch={pitch}.")
+
+    def _on_button_duplicate_camera_clicked(self):
+        if SCENE_STORE.scene is None:
+            return
+
+        rows = self.table.selectionModel().selectedRows()
+        if not rows:
+            # Indicate that no camera was selected
+            return
+
+        index = rows[0].row()  # get index of current selected row
+        plan = SCENE_STORE.scene.plan
+
+        position = np.asarray(plan.positions[index], dtype=float)
+        yaw = float(plan.yaws_deg[index])
+        pitch = float(plan.pitches_deg[index])
+
+        new_position = position + np.array([0, 0, 1.0])  # shift new camera above existing
+
+        SCENE_STORE.add_camera(tuple(new_position), yaw, pitch)
+        print(f"Duplicating camera: position={position}, yaw={yaw}, pitch={pitch}.")

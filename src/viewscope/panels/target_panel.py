@@ -70,6 +70,8 @@ class TargetPanel(QWidget):
         layout.addWidget(self._build_summary())
 
         layout.addWidget(QLabel("Sectors"))
+        self.sector_bar_chart = SectorBarChart()  # Show Barchart first
+        layout.addWidget(self.sector_bar_chart)
         self.sector_table = self._build_table(["Sector", "Cameras", "Best weight", "Best camera"])
         layout.addWidget(self.sector_table)
 
