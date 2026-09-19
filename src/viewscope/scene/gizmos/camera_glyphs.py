@@ -3,7 +3,12 @@ from __future__ import annotations
 import vtk
 
 import viewscope_core as vc
-from viewscope.config import ROUTE_SELECTED_COLOUR, ROUTE_UNSELECTED_COLOUR
+from viewscope.config import (
+    GLYPH_SOLID_OPACITY,
+    GLYPH_WIREFRAME_OPACITY,
+    ROUTE_SELECTED_COLOUR,
+    ROUTE_UNSELECTED_COLOUR,
+)
 from viewscope.scene import transform
 
 from .camera_outline import CameraOutline
@@ -57,6 +62,21 @@ class CameraGlyphs:
 
     def set_visible(self, visible: bool):
         self._visible = visible
+        self._refresh()
+
+    def adopt_display(self, other: CameraGlyphs):
+        """Take on how another set was being shown, when replacing it.
+
+        A plan that grows is drawn by a whole new set of frustums, built from
+        scratch and so wearing the defaults. Anything the user had said about
+        how they are drawn - solid or wireframe, on or off - belongs to the
+        viewer rather than to the plan, and would otherwise be thrown away
+        with the set that was told it. Colours are not carried: the route
+        repaints them itself the moment the plan changes.
+        """
+        self._visible = other._visible
+        self._active = other._active
+        self.wireframe_enabled = other.wireframe_enabled
         self._refresh()
 
     def set_active(self, index: int | None):
@@ -179,13 +199,19 @@ class CameraGlyphs:
     def set_frustrum_representation(self, actor: vtk.vtkActor, mode: str):
         """Set a frustrum's representation to surface or wireframe, based on their 'mode'.
         If that actor is an observer -> surface/filled representation.
-        Otherwise, if not an observer -> wireframe representation"""
+        Otherwise, if not an observer -> wireframe representation.
+
+        The two representations carry their own opacity rather than sharing
+        one. A faint wireframe is still a clear outline; a fill that faint is
+        a smudge, so the solid frustums are drawn much more strongly. What a
+        wireframe looks like is unchanged.
+        """
         if mode == "Observer":
             actor.GetProperty().SetRepresentationToSurface()
             actor.GetProperty().SetOpacity(1.0)
+        elif self.wireframe_enabled:
+            actor.GetProperty().SetOpacity(GLYPH_WIREFRAME_OPACITY)
+            actor.GetProperty().SetRepresentationToWireframe()
         else:
-            actor.GetProperty().SetOpacity(0.2)  # change opacity regardless
-            if self.wireframe_enabled:
-                actor.GetProperty().SetRepresentationToWireframe()
-            else:
-                actor.GetProperty().SetRepresentationToSurface()
+            actor.GetProperty().SetOpacity(GLYPH_SOLID_OPACITY)
+            actor.GetProperty().SetRepresentationToSurface()

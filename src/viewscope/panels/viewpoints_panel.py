@@ -48,16 +48,6 @@ class ViewpointsPanel(QWidget):
 
         self._suppress = False
 
-<<<<<<< HEAD
-        # Add new camera button
-        self.add_camera_button = QPushButton("Add Camera")
-        self.add_camera_button.clicked.connect(self._on_button_add_camera_clicked)
-
-        # Duplicate camera button
-        self.duplicate_camera_button = QPushButton("Duplicate Camera")
-        self.duplicate_camera_button.clicked.connect(self._on_button_duplicate_camera_clicked)
-        self.duplicate_camera_button.setEnabled(False)  # Only enabled when a camera is selected
-=======
         # Add new camera button. Two ways to say where it goes, so the button
         # asks which rather than assuming the one it always used to.
         self.button = QPushButton("Add Camera")
@@ -75,14 +65,18 @@ class ViewpointsPanel(QWidget):
         self.place_action.triggered.connect(self.place_requested)
 
         self.button.setMenu(self.menu)
->>>>>>> 48db10e (camera)
+
+        # Duplicate camera button
+        self.duplicate_camera_button = QPushButton("Duplicate Camera")
+        self.duplicate_camera_button.clicked.connect(self._on_button_duplicate_camera_clicked)
+        self.duplicate_camera_button.setEnabled(False)  # Only enabled when a camera is selected
 
         # Layout
         layout = QVBoxLayout(self)
         layout.addWidget(self.table)
 
         button_layout = QHBoxLayout()
-        button_layout.addWidget(self.add_camera_button)
+        button_layout.addWidget(self.button)
         button_layout.addWidget(self.duplicate_camera_button)
         layout.addLayout(button_layout)
 
@@ -152,7 +146,7 @@ class ViewpointsPanel(QWidget):
         if SCENE_STORE.scene is None:
             return
 
-        dialog = AddCameraDialog(title=self.add_camera_button.text(), parent=self)
+        dialog = AddCameraDialog(title=self.button.text(), parent=self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 

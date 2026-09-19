@@ -225,11 +225,15 @@ def test_a_new_set_keeps_the_frustum_you_are_sitting_inside_hidden(plan, bigger_
 
 
 def test_a_new_set_left_alone_is_drawn_the_way_it_always_was(bigger_plan):
-    """Nothing to adopt from, so the defaults stand: visible, wireframe."""
+    """Nothing to adopt from, so the defaults stand: visible, solid.
+
+    Solid because that is what the display panel's wireframe box is unchecked
+    at: the two say the same thing about a scene nobody has touched yet.
+    """
     glyphs = CameraGlyphs(bigger_plan)
     glyphs._refresh()
 
-    assert glyphs.wireframe_enabled is True
+    assert glyphs.wireframe_enabled is False
     assert all(glyph(glyphs, index).GetVisibility() == 1 for index in range(5))
 
 

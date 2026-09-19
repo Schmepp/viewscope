@@ -35,7 +35,7 @@ from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
 from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode, SceneCameraController
-<<<<<<< HEAD
+from viewscope.scene.flight_path import FlightPathLine
 from viewscope.scene.gizmos import (
     CameraGlyphs,
     CameraModeGizmo,
@@ -43,9 +43,6 @@ from viewscope.scene.gizmos import (
     FloorGrid,
     TranslationGizmo,
 )
-
-from viewscope.scene.flight_path import FlightPathLine
-
 from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.stats import FieldStats
 from viewscope.scene.still import StillRenderer
