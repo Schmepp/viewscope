@@ -35,8 +35,13 @@ from viewscope.data import (
     plan_path,
 )
 from viewscope.dialogs import FileErrorDialog
-from viewscope.DisplayPanel import DisplayPanel
-from viewscope.panels import MetricsPanel, PlanRoutePanel, TargetPanel, ViewpointsPanel
+from viewscope.panels import (
+    DisplayPanel,
+    MetricsPanel,
+    PlanRoutePanel,
+    TargetPanel,
+    ViewpointsPanel,
+)
 from viewscope.route_report import write_report
 from viewscope.scene import (
     PhotoMesh,

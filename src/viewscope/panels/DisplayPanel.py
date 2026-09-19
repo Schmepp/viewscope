@@ -1,5 +1,4 @@
 """
-
 Display panel. this is the top right panel
 """
 

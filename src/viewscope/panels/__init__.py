@@ -1,3 +1,4 @@
+from .DisplayPanel import DisplayPanel
 from .metrics_panel import MetricsPanel
 from .plan_route_panel import PlanRoutePanel
 from .route_charts import CoverageBar, SectorBars
@@ -6,6 +7,7 @@ from .target_panel import TargetPanel
 from .viewpoints_panel import ViewpointsPanel
 
 __all__ = [
+    "DisplayPanel",
     "MetricsPanel",
     "PlanRoutePanel",
     "CoverageBar",
