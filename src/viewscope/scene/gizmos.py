@@ -657,7 +657,12 @@ class AxisHandleWidget:
         intersection = [0.0, 0.0, 0.0]
         t_line = vtk.reference(0.0)
         hit = vtk.vtkPlane.IntersectWithLine(
-            near, far, self._drag_plane_normal, self._drag_plane_origin, t_line, intersection
+            near,
+            far,
+            self._drag_plane_normal.tolist(),
+            self._drag_plane_origin.tolist(),
+            t_line,  # type: ignore[ty:invalid-argument-type]
+            intersection,
         )
         if not hit:
             return None
@@ -672,6 +677,7 @@ class AxisHandleWidget:
         translate: it works regardless of whatever rotation/scale the
         existing transform carries, without needing to decompose it.
         """
+        assert self._target is not None
         matrix = vtk.vtkMatrix4x4()
         existing = self._target.GetUserTransform()
         if existing is not None:
