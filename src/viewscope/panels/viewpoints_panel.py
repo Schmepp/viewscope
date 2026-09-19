@@ -51,7 +51,7 @@ class ViewpointsPanel(QWidget):
         # Duplicate camera button
         self.duplicate_camera_button = QPushButton("Duplicate Camera")
         self.duplicate_camera_button.clicked.connect(self._on_button_duplicate_camera_clicked)
-        self.duplicate_camera_button.setEnabled(False) # Only enabled when a camera is selected
+        self.duplicate_camera_button.setEnabled(False)  # Only enabled when a camera is selected
 
         # Layout
         layout = QVBoxLayout(self)
