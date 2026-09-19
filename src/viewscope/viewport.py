@@ -400,10 +400,16 @@ class Viewport(QVTKRenderWindowInteractor):
                 actor = self.glyphs.actor_of_id(info.index)
                 if actor is not None:
                     self.axis_gizmo.attach(
-                        actor, on_move=lambda pos, idx=info.index: SCENE_STORE.move_camera(idx, pos)
+                        actor,
+                        heading_deg=info.yaw,
+                        on_move=lambda pos, idx=info.index: SCENE_STORE.move_camera(idx, pos),
+                        on_rotate=lambda axis, delta, idx=info.index: SCENE_STORE.rotate_camera(
+                            idx,
+                            delta_yaw_deg=delta if axis == "yaw" else 0.0,
+                            delta_pitch_deg=delta if axis == "pitch" else 0.0,
+                        ),
                     )
 
-            # self.axis_gizmo.attach(self.actor)
         else:
             self.axis_gizmo.detach()
 

@@ -86,6 +86,30 @@ class SceneStore(QObject):
 
         self.camera_moved.emit(index)
 
+    def rotate_camera(
+        self, index: int, delta_yaw_deg: float = 0.0, delta_pitch_deg: float = 0.0
+    ) -> None:
+        """Nudge one camera's yaw/pitch in place. Mirrors move_camera - see its
+        note about why this doesn't emit plan_changed."""
+        if self.scene is None:
+            return
+
+        old_plan = self.scene.plan
+        new_yaws = old_plan.yaws_deg.copy()
+        new_pitches = old_plan.pitches_deg.copy()
+        new_yaws[index] = float(new_yaws[index] + delta_yaw_deg)
+        new_pitches[index] = float(new_pitches[index] + delta_pitch_deg)
+
+        self.scene.plan = Plan(
+            camera=old_plan.camera,
+            ids=old_plan.ids,
+            positions=old_plan.positions,
+            yaws_deg=new_yaws,
+            pitches_deg=new_pitches,
+        )
+
+        self.camera_moved.emit(index)
+
     def ensure_cameras(self, entries) -> tuple[tuple[int, ...], int]:
         """
         Make sure the plan holds every one of these viewpoints.
