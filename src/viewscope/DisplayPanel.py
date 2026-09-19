@@ -65,8 +65,8 @@ class DisplayPanel(QWidget):
         self.grid.toggled.connect(self.grid_toggled)
         form.addRow(self.grid)
 
-        self.glyph_wireframe = QCheckBox("Toggle Camera Wireframe")
-        self.glyph_wireframe.setChecked(True)
+        self.glyph_wireframe = QCheckBox("Show camera wireframe")
+        self.glyph_wireframe.setChecked(False)
         self.glyph_wireframe.toggled.connect(self.glyph_wireframe_toggled)
         form.addRow(self.glyph_wireframe)
 

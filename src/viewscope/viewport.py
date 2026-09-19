@@ -824,13 +824,13 @@ class Viewport(QVTKRenderWindowInteractor):
             }
         )
 
-    def toggle_glyph_wireframe(self, bool):
+    def toggle_glyph_wireframe(self, enabled: bool):
         """Toggle between the solid and wireframe representation for CameraGlyph.
         Render scene as soon as bool updates."""
         # INVARIANT: The glyphs cannot be uninitialized at this stage!
         assert self.glyphs is not None
 
-        self.glyphs.wireframe_enabled = bool
+        self.glyphs.wireframe_enabled = enabled
         self.glyphs._refresh()
         self.render()
 

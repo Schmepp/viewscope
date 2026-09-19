@@ -32,6 +32,7 @@ from scipy.ndimage import distance_transform_edt
 from trimesh.visual.color import uv_to_color
 
 import viewscope_core as vc
+from viewscope.config import PHOTO_MESH_DIR
 from viewscope_core import constants
 
 # The one camera every viewpoint uses, from the project brief.
@@ -44,11 +45,12 @@ VOXEL_M = 0.2
 ENVELOPE_GROWTH_M = 11.0
 
 
-# -- the mesh --------------------------------------------------------------
+# -- Mesh ----------------------------------------------------------------
 
 
 def load_coloured(obj_path: Path) -> trimesh.Trimesh:
-    """Load an OBJ as a single vertex coloured mesh.
+    """
+    Load an OBJ as a single vertex coloured mesh.
 
     The viewer draws scene.obj straight from its vertex colours, so per part
     textures and flat material colours are both baked down to one colour per
@@ -62,11 +64,13 @@ def load_coloured(obj_path: Path) -> trimesh.Trimesh:
     mesh = trimesh.util.concatenate(parts)
     if not isinstance(mesh, trimesh.Trimesh) or len(mesh.faces) == 0:
         raise SystemExit(f"{obj_path} holds no triangle mesh")
+
     return mesh
 
 
 def _with_local_textures(obj_path: Path, work: Path) -> Path:
-    """Copy the OBJ and its material next to the textures, with paths rewritten.
+    """
+    Copy the OBJ and its material next to the textures, with paths rewritten.
 
     Exporters routinely write map_Kd as an absolute path from the machine that
     made the file. Those never resolve here, so every map_* line is pointed at
@@ -89,6 +93,7 @@ def _with_local_textures(obj_path: Path, work: Path) -> Path:
             return f"{match.group(1)}{source.name}"
 
         (work / material.name).write_text(re.sub(r"(map_\w+\s+)(\S.*)", relocate, text))
+
     return copy
 
 
@@ -109,28 +114,84 @@ def _coloured_part(part: trimesh.Trimesh) -> trimesh.Trimesh:
     return part
 
 
-def to_world_frame(mesh: trimesh.Trimesh, length_m: float, up: str) -> trimesh.Trimesh:
-    """Right handed, +Z up, metres, longest axis along +X, standing on z = 0."""
-    if up == "y":
-        # Model (x, y, z) with y up becomes world (z, x, y): a cyclic swap, so
-        # the frame stays right handed.
-        vertices = mesh.vertices[:, [2, 0, 1]]
-    else:
-        vertices = np.array(mesh.vertices, dtype=np.float64)
-
+def compute_world_transform(vertices, length_m: float, up: str):
+    """
+    The scale and translation that puts these vertices into the app's
+    frame: right handed, +Z up, metres, standing on z = 0, centred in X/Y.
+    """
+    vertices = _swap_up_axis(vertices, up)
     span = vertices.max(axis=0) - vertices.min(axis=0)
-    vertices = vertices * (float(length_m) / float(span.max()))
+    scale = float(length_m) / float(span.max())
 
-    low, high = vertices.min(axis=0), vertices.max(axis=0)
-    vertices[:, 0] -= (low[0] + high[0]) / 2.0
-    vertices[:, 1] -= (low[1] + high[1]) / 2.0
-    vertices[:, 2] -= low[2]
+    scaled = vertices * scale
+    low, high = scaled.min(axis=0), scaled.max(axis=0)
+    translate = np.array(
+        [-(low[0] + high[0]) / 2.0, -(low[1] + high[1]) / 2.0, -low[2]], dtype=np.float64
+    )
 
-    mesh.vertices = vertices
-    return mesh
+    return scale, translate
 
 
-# -- targets ---------------------------------------------------------------
+def apply_world_transform(vertices, up: str, scale: float, translate):
+    """
+    Reapply a transform compute_world_transform derived, to another
+    vertex array from the same source (e.g. the full-resolution geometry).
+    """
+    return _swap_up_axis(vertices, up) * scale + translate
+
+
+def _swap_up_axis(vertices, up: str):
+    if up == "y":
+        # Model (x, y, z) with y up becomes world (z, x, y): a cyclic swap,
+        # keeping the frame right handed.
+        return vertices[:, [2, 0, 1]]
+
+    return np.array(vertices, dtype=np.float64)
+
+
+def to_world_frame(
+    mesh: trimesh.Trimesh, length_m: float, up: str
+) -> tuple[trimesh.Trimesh, tuple[float, np.ndarray]]:
+    """Right handed, +Z up, metres, longest axis along +X, standing on z = 0."""
+    scale, translate = compute_world_transform(mesh.vertices, length_m, up)
+    mesh.vertices = apply_world_transform(mesh.vertices, up, scale, translate)
+
+    return mesh, (scale, translate)
+
+
+def export_full_resolution_mesh(
+    source: Path, out_dir: Path, up: str, world_transform: tuple[float, np.ndarray]
+):
+    """
+    A full-quality copy of the source model, reoriented and rescaled into
+    the same frame as scene.obj - but with none of load_coloured's lossy
+    steps applied: no baking to vertex colours, no concatenating parts into
+    one mesh, no touching triangle count or texture resolution at all.
+    """
+    scale, translate = world_transform
+
+    with tempfile.TemporaryDirectory() as work:
+        loaded = trimesh.load(_with_local_textures(source, Path(work)), process=False)
+        geometries = (
+            dict(loaded.geometry) if isinstance(loaded, trimesh.Scene) else {"mesh": loaded}
+        )
+
+        for part in geometries.values():
+            if not isinstance(part, trimesh.Trimesh):
+                continue
+
+            part.vertices = apply_world_transform(part.vertices, up, scale, translate)
+
+        scene = trimesh.Scene(geometry=geometries)
+
+        out_folder = out_dir / PHOTO_MESH_DIR
+        out_folder.mkdir(parents=True, exist_ok=True)
+        out_path = out_folder / source.name
+
+        scene.export(str(out_path), file_type="obj")
+
+
+# -- Targets ---------------------------------------------------------------
 
 
 def sample_targets(mesh: trimesh.Trimesh, count: int, seed: int):
@@ -379,7 +440,7 @@ def build_flyable(mesh, targets, voxel=VOXEL_M):
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
+    parser = argparse.ArgumentParser(description="" if __doc__ is None else __doc__.splitlines()[1])
     parser.add_argument("source", type=Path, help="the OBJ to convert")
     parser.add_argument("out_dir", type=Path, help="bundle directory to write")
     parser.add_argument(
@@ -395,9 +456,12 @@ def main(argv=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
 
     print(f"[1/6] reading {args.source}")
-    mesh = to_world_frame(load_coloured(args.source), args.length, args.up)
+    mesh, world_transform = to_world_frame(load_coloured(args.source), args.length, args.up)
     print(f"      {len(mesh.faces)} faces, extents {mesh.extents.round(2)} m")
     mesh.export(out / "scene.obj", include_color=True)
+
+    print("      writing full-resolution mesh for the camera view...")
+    export_full_resolution_mesh(args.source, out, args.up, world_transform)
 
     print(f"[2/6] sampling {args.targets} targets")
     targets, normals = sample_targets(mesh, args.targets, args.seed)

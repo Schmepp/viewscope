@@ -1,0 +1,123 @@
+# Blender 5.1.2 MTL File: 'None'
+# www.blender.org
+
+newmtl phong45SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc01_d.jpg
+map_Ks wtc01_s.jpg
+map_Bump wtc01_n.jpg -bm 1
+
+newmtl phong46SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc02_d.jpg
+map_Ks wtc02_s.jpg
+map_Bump wtc02_n.jpg -bm 1
+
+newmtl phong47SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc03_d.jpg
+map_Ks wtc03_s.jpg
+map_Bump wtc03_n.jpg -bm 1
+
+newmtl phong48SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc04_d.jpg
+map_Ks wtc04_s.jpg
+map_Bump wtc04_n.jpg -bm 1
+
+newmtl phong49SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc05_d.jpg
+map_Ks wtc05_s.jpg
+map_Bump wtc05_n.jpg -bm 1
+
+newmtl phong50SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc06_d.jpg
+map_Ks wtc06_s.jpg
+map_Bump wtc06_n.jpg -bm 1
+
+newmtl phong51SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc07_d.jpg
+map_Ks wtc07_s.jpg
+map_Bump wtc07_n.jpg -bm 1
+
+newmtl phong52SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc08_d.jpg
+map_Ks wtc08_s.jpg
+map_Bump wtc08_n.jpg -bm 1
+
+newmtl phong53SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc09_d.jpg
+map_Ks wtc09_s.jpg
+map_Bump wtc09_n.jpg -bm 1
+
+newmtl phong54SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc10_d.jpg
+map_Ks wtc10_s.jpg
+map_Bump wtc10_n.jpg -bm 1
+
+newmtl phong55SG
+Ns 18.000004
+Ka 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd wtc11_d.jpg
+map_Ks wtc11_s.jpg
+map_Bump wtc11_n.jpg -bm 1
