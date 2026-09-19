@@ -19,10 +19,12 @@ from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -57,7 +59,14 @@ class PlanRoutePanel(QWidget):
     def __init__(self):
         super().__init__()
 
-        layout = QVBoxLayout(self)
+        # Everything goes inside a scroller, the way the target panel does it.
+        # Two charts, a group box and seven buttons come to some eight hundred
+        # pixels, and a dock that cannot be made shorter than its contents
+        # makes the whole window taller than the screen: the viewport is left
+        # a narrow strip, and the model is no longer where the middle of the
+        # screen is. Scrolled, the panel asks for no height of its own.
+        body = QWidget()
+        layout = QVBoxLayout(body)
 
         self.hint = QLabel(IDLE_HINT)
         self.hint.setWordWrap(True)
@@ -108,6 +117,16 @@ class PlanRoutePanel(QWidget):
         self.note = QLabel("")
         self.note.setWordWrap(True)
         layout.addWidget(self.note)
+
+        scroller = QScrollArea()
+        scroller.setWidgetResizable(True)
+        scroller.setWidget(body)
+        # The dock draws its own edge; a second one inside it is a box in a box.
+        scroller.setFrameShape(QFrame.Shape.NoFrame)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroller)
 
         self.show_route(None)
 
