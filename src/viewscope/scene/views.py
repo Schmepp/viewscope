@@ -13,8 +13,9 @@ from viewscope.config import (
     UNOBSERVED_POINT_GROWTH,
     VISIBLE_COLOUR,
 )
-from viewscope.scene import transform
-from viewscope.scene.stats import FieldStats
+
+from .stats import FieldStats
+from .transform import cloud_polydata, texture_from_mesh, trimesh_to_polydata
 
 
 class MeshView:
@@ -22,12 +23,12 @@ class MeshView:
 
     def __init__(self, mesh: trimesh.Geometry):
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(transform.trimesh_to_polydata(mesh))
+        mapper.SetInputData(trimesh_to_polydata(mesh))
 
         self.actor = vtk.vtkActor()
         self.actor.SetMapper(mapper)
 
-        self.texture = transform.texture_from_mesh(mesh)
+        self.texture = texture_from_mesh(mesh)
         if self.texture is not None:
             self.actor.SetTexture(self.texture)
 
@@ -89,7 +90,7 @@ class UnobservedTargets:
             return
 
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputData(transform.cloud_polydata(points))
+        mapper.SetInputData(cloud_polydata(points))
         # No scalars of its own: one flat colour is the whole point of it.
         mapper.ScalarVisibilityOff()
 
@@ -123,7 +124,7 @@ class TargetCloudView:
 
     def __init__(self, targets: np.ndarray, scores: object | None = None, point_size: float = 2.0):
         self.scores = scores
-        self.polydata = transform.cloud_polydata(targets)
+        self.polydata = cloud_polydata(targets)
 
         mapper = vtk.vtkPolyDataMapper()
         mapper.SetInputData(self.polydata)

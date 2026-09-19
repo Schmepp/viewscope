@@ -17,9 +17,8 @@ from viewscope.config import (
     UNOBSERVED_COLOUR,
     UNOBSERVED_POINT_GROWTH,
 )
-from viewscope.scene.flight_path import FlightPathLine
+from viewscope.scene import FlightPathLine, UnobservedTargets
 from viewscope.scene.gizmos import CameraGlyphs
-from viewscope.scene.views import UnobservedTargets
 
 
 @pytest.fixture

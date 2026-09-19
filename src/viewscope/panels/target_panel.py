@@ -36,7 +36,7 @@ from viewscope.config import (
     OverlayOptions,
 )
 from viewscope.panels import SectorBarChart
-from viewscope.scene.target_report import TargetReport
+from viewscope.scene import TargetReport
 
 HINT = "Click a target in the 3D view to break it down."
 

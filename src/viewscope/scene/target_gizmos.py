@@ -27,8 +27,9 @@ from viewscope.config import (
     WEIGHT_VALUE_RANGE,
     OverlayOptions,
 )
-from viewscope.scene import transform
-from viewscope.scene.target_report import TargetReport
+
+from .target_report import TargetReport
+from .transform import cells, points
 
 
 def weight_lut() -> vtk.vtkLookupTable:
@@ -231,8 +232,8 @@ def _ray_bundle(position, rays) -> vtk.vtkPolyData:
         colours[i] = np.round(np.asarray(colour) * 255.0)
 
     poly = vtk.vtkPolyData()
-    poly.SetPoints(transform.points(vertices))
-    poly.SetLines(transform.cells(edges, 2))
+    poly.SetPoints(points(vertices))
+    poly.SetLines(cells(edges, 2))
 
     scalars = vtknp.numpy_to_vtk(np.ascontiguousarray(colours), deep=True)
     scalars.SetName("ray")

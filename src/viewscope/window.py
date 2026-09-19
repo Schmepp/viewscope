@@ -39,10 +39,15 @@ from viewscope.DisplayPanel import DisplayPanel
 from viewscope.MetricsPanel import MetricsPanel
 from viewscope.panels import PlanRoutePanel, TargetPanel, ViewpointsPanel
 from viewscope.route_report import write_report
-from viewscope.scene.photo_mesh import PhotoMesh, PhotoMeshLoader, find_photo_mesh
-from viewscope.scene.subset_scores import SubsetScores
-from viewscope.scene.target_report import TargetReport, TargetReports
-from viewscope.scene.visibility import TargetVisibility
+from viewscope.scene import (
+    PhotoMesh,
+    PhotoMeshLoader,
+    SubsetScores,
+    TargetReport,
+    TargetReports,
+    TargetVisibility,
+    find_photo_mesh,
+)
 from viewscope.viewport import Viewport
 
 

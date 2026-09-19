@@ -18,7 +18,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from viewscope.scene.target_report import TargetReport
+from viewscope.scene import TargetReport
 
 
 class SectorBarChart(QWidget):

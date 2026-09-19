@@ -3,7 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
 
-from viewscope.scene.camera import CameraMode
+from viewscope.scene import CameraMode
 
 
 class CameraModeGizmo(QFrame):

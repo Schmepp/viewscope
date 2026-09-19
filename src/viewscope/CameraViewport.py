@@ -22,8 +22,7 @@ from viewscope.config import (
     YFOV_DEG,
 )
 from viewscope.data import SceneData
-from viewscope.scene.photo_mesh import PhotoMesh
-from viewscope.scene.views import MeshView
+from viewscope.scene import MeshView, PhotoMesh
 
 
 def still_scale(shown: int, width: int) -> int:

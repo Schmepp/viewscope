@@ -11,8 +11,7 @@ import pytest
 import vtk
 
 from viewscope.data import cache
-from viewscope.scene import photo_mesh
-from viewscope.scene.photo_mesh import PhotoMeshLoader
+from viewscope.scene import PhotoMeshLoader, photo_mesh
 
 TEXTURE_DIM = 64
 CAP = 16

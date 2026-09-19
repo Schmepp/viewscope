@@ -32,9 +32,22 @@ from viewscope.config import (
     OverlayOptions,
 )
 from viewscope.data import SCENE_STORE, SceneData
-from viewscope.scene import transform
-from viewscope.scene.camera import CameraMode, SceneCameraController
-from viewscope.scene.flight_path import FlightPathLine
+from viewscope.scene import (
+    CameraMode,
+    FieldStats,
+    FlightPathLine,
+    MeshView,
+    PhotoMesh,
+    SceneCameraController,
+    StillRenderer,
+    TargetCloudView,
+    TargetOverlay,
+    TargetReport,
+    UnobservedTargets,
+    observer_colour,
+    transform,
+    weight_lut,
+)
 from viewscope.scene.gizmos import (
     CameraGlyphs,
     CameraModeGizmo,
@@ -42,12 +55,6 @@ from viewscope.scene.gizmos import (
     FloorGrid,
     TranslationGizmo,
 )
-from viewscope.scene.photo_mesh import PhotoMesh
-from viewscope.scene.stats import FieldStats
-from viewscope.scene.still import StillRenderer
-from viewscope.scene.target_gizmos import TargetOverlay, observer_colour, weight_lut
-from viewscope.scene.target_report import TargetReport
-from viewscope.scene.views import MeshView, TargetCloudView, UnobservedTargets
 
 
 class Viewport(QVTKRenderWindowInteractor):

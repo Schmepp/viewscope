@@ -8,7 +8,7 @@ import trimesh
 
 import viewscope_core as vc
 from viewscope.data import SceneData
-from viewscope.scene.target_report import (
+from viewscope.scene import (
     ANGLE,
     DISTANCE,
     EVEN,

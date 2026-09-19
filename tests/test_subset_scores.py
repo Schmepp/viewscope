@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 import viewscope_core as vc
-from viewscope.scene.subset_scores import SubsetScores
+from viewscope.scene import SubsetScores
 
 CAMERAS = 3
 TARGETS = 4
