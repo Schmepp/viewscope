@@ -7,42 +7,55 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 
 class AddCameraDialog(QDialog):
     """Dialog for creating a new camera viewpoint."""
 
-    # camera_created = Signal(float, float, float, float, float)
-
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        position: tuple[float, float, float] | None = None,
+        yaw: float | None = None,
+        pitch: float | None = None,
+        title: str = "Add Camera",
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
-
-        self.setWindowTitle("Add Camera")
+        self.setWindowTitle(title)
 
         # Position [x, y, z]
-        self.position = [QDoubleSpinBox(), QDoubleSpinBox(), QDoubleSpinBox()]
+        if position is None:
+            position = (0.0, 0.0, 0.0)
 
-        for widget in self.position:
-            widget.setRange(-1_000_000.0, 1_000_000.0)
-            widget.setDecimals(2)
+        self.position_widgets = [
+            QDoubleSpinBox(
+                decimals=2, minimum=-1_000_000.0, maximum=1_000_000.0, value=position[0]
+            ),
+            QDoubleSpinBox(
+                decimals=2, minimum=-1_000_000.0, maximum=1_000_000.0, value=position[1]
+            ),
+            QDoubleSpinBox(
+                decimals=2, minimum=-1_000_000.0, maximum=1_000_000.0, value=position[2]
+            ),
+        ]
 
         # Rotation
-        self.yaw = QDoubleSpinBox()
-        self.pitch = QDoubleSpinBox()
+        if yaw is None:
+            yaw = 0.0
+        if pitch is None:
+            pitch = 0.0
 
-        self.yaw.setRange(-360.0, 360.0)
-        self.pitch.setRange(-90.0, 90.0)
-
-        self.yaw.setDecimals(1)
-        self.pitch.setDecimals(1)
+        self.yaw_widget = QDoubleSpinBox(decimals=1, minimum=-360.0, maximum=360.0, value=yaw)
+        self.pitch_widget = QDoubleSpinBox(decimals=1, minimum=-90.0, maximum=90.0, value=pitch)
 
         self.form = QFormLayout()
-        self.form.addRow("X:", self.position[0])
-        self.form.addRow("Y:", self.position[1])
-        self.form.addRow("Z:", self.position[2])
-        self.form.addRow("Yaw:", self.yaw)
-        self.form.addRow("Pitch:", self.pitch)
+        self.form.addRow("X:", self.position_widgets[0])
+        self.form.addRow("Y:", self.position_widgets[1])
+        self.form.addRow("Z:", self.position_widgets[2])
+        self.form.addRow("Yaw:", self.yaw_widget)
+        self.form.addRow("Pitch:", self.pitch_widget)
 
         self.ok_button = QPushButton("OK")
         self.cancel_button = QPushButton("Cancel")
@@ -63,11 +76,11 @@ class AddCameraDialog(QDialog):
 
     def values(self) -> tuple[float, float, float, float, float]:
         return (
-            self.position[0].value(),
-            self.position[1].value(),
-            self.position[2].value(),
-            self.yaw.value(),
-            self.pitch.value(),
+            self.position_widgets[0].value(),
+            self.position_widgets[1].value(),
+            self.position_widgets[2].value(),
+            self.yaw_widget.value(),
+            self.pitch_widget.value(),
         )
 
     def _on_button_clicked(self, button: QPushButton):
@@ -75,9 +88,8 @@ class AddCameraDialog(QDialog):
             self._reset()
 
     def _reset(self):
-        """Reset button logic."""
-        for widget in self.position:
+        for widget in self.position_widgets:
             widget.setValue(0.0)
 
-        self.yaw.setValue(0.0)
-        self.pitch.setValue(0.0)
+        self.yaw_widget.setValue(0.0)
+        self.pitch_widget.setValue(0.0)

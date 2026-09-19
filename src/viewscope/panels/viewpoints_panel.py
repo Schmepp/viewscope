@@ -116,7 +116,7 @@ class ViewpointsPanel(QWidget):
         if SCENE_STORE.scene is None:
             return
 
-        dialog = AddCameraDialog(self)
+        dialog = AddCameraDialog(parent=self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
@@ -132,17 +132,29 @@ class ViewpointsPanel(QWidget):
 
         rows = self.table.selectionModel().selectedRows()
         if not rows:
-            # Indicate that no camera was selected
+            # TODO(Adam): Indicate that no camera was selected OR disable the button when no camera is selected.
             return
 
-        index = rows[0].row()  # get index of current selected row
+        index = rows[0].row()
         plan = SCENE_STORE.scene.plan
 
-        position = np.asarray(plan.positions[index], dtype=float)
-        yaw = float(plan.yaws_deg[index])
-        pitch = float(plan.pitches_deg[index])
+        current_position = tuple(np.asarray(plan.positions[index], dtype=float).tolist())
+        current_yaw = float(plan.yaws_deg[index])
+        current_pitch = float(plan.pitches_deg[index])
 
-        new_position = position + np.array([0, 0, 1.0])  # shift new camera above existing
+        dialog = AddCameraDialog(
+            position=current_position,
+            yaw=current_yaw,
+            pitch=current_pitch,
+            title="Duplicate Camera",
+            parent=self,
+        )
 
-        SCENE_STORE.add_camera(tuple(new_position), yaw, pitch)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        x, y, z, yaw, pitch = dialog.values()
+        position = (x, y, z)
+
+        SCENE_STORE.add_camera(position, yaw, pitch)
         print(f"Duplicating camera: position={position}, yaw={yaw}, pitch={pitch}.")
