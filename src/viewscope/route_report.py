@@ -372,7 +372,9 @@ def _chart_images(status: RouteStatus) -> dict:
         chart.resize(width, height)
         # The chart lays itself out when it is given a size, and draws when it
         # is asked for its pixels: neither needs it to have been on screen.
-        chart.layout().activate()
+        layout = chart.layout()
+        if layout is not None:
+            layout.activate()
         images[key] = chart.grab().toImage()
         chart.deleteLater()
 

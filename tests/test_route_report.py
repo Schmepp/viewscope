@@ -6,6 +6,8 @@ order, by name and by co-ordinate, and every figure the panel would have
 shown. Drawing it onto a page is Qt's, and is not re-tested.
 """
 
+from typing import Any
+
 import numpy as np
 import pytest
 
@@ -58,7 +60,7 @@ def status():
 def html(status, path):
     def build(**overrides):
         drone = overrides.pop("drone", Drone())
-        settings = {
+        settings: dict[str, Any] = {
             "name": "north_face",
             "bundle": "kiri",
             "status": status,

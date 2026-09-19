@@ -10,6 +10,7 @@ through `show_*`. It touches neither VTK nor the scene.
 """
 
 from __future__ import annotations
+
 import contextlib
 
 from PySide6.QtCore import Qt, Signal

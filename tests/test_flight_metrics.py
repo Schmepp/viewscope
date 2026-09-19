@@ -15,6 +15,7 @@ from viewscope.data.flight_metrics import (
     GRAVITY,
     SECONDS_PER_HOUR,
     Drone,
+    Turn,
     estimate_flight,
     sharpest_turn,
 )
@@ -23,6 +24,14 @@ from viewscope.data.flight_metrics import (
 @pytest.fixture
 def drone():
     return Drone()
+
+
+def turn_in(line) -> Turn:
+    """The sharpest turn in a line that has one, which every line here has."""
+    turn = sharpest_turn(line)
+    assert turn is not None, "this line has a corner to turn at"
+
+    return turn
 
 
 # -----------------------------------------------------------------------------
@@ -34,26 +43,26 @@ def test_a_straight_line_never_turns():
     """Straight on is 180 degrees, which is the mildest corner there is."""
     line = np.array([[0.0, 0, 0], [5, 0, 0], [12, 0, 0]])
 
-    assert sharpest_turn(line).angle_deg == pytest.approx(180.0)
+    assert turn_in(line).angle_deg == pytest.approx(180.0)
 
 
 def test_a_right_angle_is_ninety_degrees():
     line = np.array([[0.0, 0, 0], [10, 0, 0], [10, 10, 0]])
 
-    assert sharpest_turn(line).angle_deg == pytest.approx(90.0)
+    assert turn_in(line).angle_deg == pytest.approx(90.0)
 
 
 def test_doubling_back_is_nothing_at_all():
     """The tightest corner a drone can be asked to fly: stop and return."""
     line = np.array([[0.0, 0, 0], [10, 0, 0], [0, 0, 0]])
 
-    assert sharpest_turn(line).angle_deg == pytest.approx(0.0, abs=1e-6)
+    assert turn_in(line).angle_deg == pytest.approx(0.0, abs=1e-6)
 
 
 def test_the_sharpest_of_several_is_the_one_reported():
     line = np.array([[0.0, 0, 0], [10, 0, 0], [10, 10, 0], [10.0, 10, 1]])
 
-    turn = sharpest_turn(line)
+    turn = turn_in(line)
 
     assert turn.angle_deg == pytest.approx(90.0)
     assert turn.corners == 2
@@ -62,7 +71,7 @@ def test_the_sharpest_of_several_is_the_one_reported():
 def test_the_turn_says_where_it_is_and_how_far_in():
     line = np.array([[0.0, 0, 0], [10, 0, 0], [10, 10, 0], [20, 10, 0]])
 
-    turn = sharpest_turn(line)
+    turn = turn_in(line)
 
     assert turn.index == 1, "the first corner, which is as sharp as the second"
     assert turn.distance_m == pytest.approx(10.0)
@@ -72,7 +81,7 @@ def test_a_climb_turns_as_readily_as_a_corner_on_the_ground():
     """Nothing here is measured in the ground plane; a drone flies in three."""
     line = np.array([[0.0, 0, 0], [10, 0, 0], [10, 0, 10]])
 
-    assert sharpest_turn(line).angle_deg == pytest.approx(90.0)
+    assert turn_in(line).angle_deg == pytest.approx(90.0)
 
 
 @pytest.mark.parametrize(
@@ -91,7 +100,7 @@ def test_a_point_repeated_is_not_a_corner():
     """A path round a building can leave one; a hop of no length has no way of facing."""
     line = np.array([[0.0, 0, 0], [10, 0, 0], [10, 0, 0], [10, 10, 0]])
 
-    turn = sharpest_turn(line)
+    turn = turn_in(line)
 
     assert turn.corners == 1
     assert turn.angle_deg == pytest.approx(90.0)

@@ -772,7 +772,7 @@ class MainWindow(QMainWindow):
         """True to save the route, False to drop it, None to keep planning."""
         ask = QMessageBox(self)
         ask.setWindowTitle("ViewScope")
-        ask.setIcon(QMessageBox.NoIcon)
+        ask.setIcon(QMessageBox.Icon.NoIcon)
         ask.setText("Stop planning the route?")
         count = len(self.route)
         lines = [f"The route has {count} viewpoint{'' if count == 1 else 's'}."]
@@ -785,8 +785,8 @@ class MainWindow(QMainWindow):
 
         ask.setInformativeText(" ".join(lines))
 
-        save = ask.addButton("Save route", QMessageBox.AcceptRole)
-        leave = ask.addButton("Exit", QMessageBox.DestructiveRole)
+        save = ask.addButton("Save route", QMessageBox.ButtonRole.AcceptRole)
+        leave = ask.addButton("Exit", QMessageBox.ButtonRole.DestructiveRole)
         ask.setDefaultButton(save)
         ask.exec()
 
