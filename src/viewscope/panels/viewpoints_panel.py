@@ -12,6 +12,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
+    QHBoxLayout,
     QHeaderView,
     QPushButton,
     QTableWidget,
@@ -44,14 +45,21 @@ class ViewpointsPanel(QWidget):
         self._suppress = False
 
         # Add new camera button
-        self.button = QPushButton("Duplicate Camera")
-        # self.button.clicked.connect(self._on_button_add_camera_clicked)
-        self.button.clicked.connect(self._on_button_duplicate_camera_clicked)
+        self.add_camera_button = QPushButton("Add Camera")
+        self.add_camera_button.clicked.connect(self._on_button_add_camera_clicked)
+
+        # Duplicate camera button
+        self.duplicate_camera_button = QPushButton("Duplicate Camera")
+        self.duplicate_camera_button.clicked.connect(self._on_button_duplicate_camera_clicked)
 
         # Layout
         layout = QVBoxLayout(self)
         layout.addWidget(self.table)
-        layout.addWidget(self.button)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.add_camera_button)
+        button_layout.addWidget(self.duplicate_camera_button)
+        layout.addLayout(button_layout)
 
         # Call refresh() whenever the plan is changed (e.g, if a camera is added)
         SCENE_STORE.plan_changed.connect(self.refresh)
@@ -116,7 +124,7 @@ class ViewpointsPanel(QWidget):
         if SCENE_STORE.scene is None:
             return
 
-        dialog = AddCameraDialog(parent=self)
+        dialog = AddCameraDialog(title=self.add_camera_button.text(), parent=self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
@@ -146,7 +154,7 @@ class ViewpointsPanel(QWidget):
             position=current_position,
             yaw=current_yaw,
             pitch=current_pitch,
-            title="Duplicate Camera",
+            title=self.duplicate_camera_button.text(),
             parent=self,
         )
 
