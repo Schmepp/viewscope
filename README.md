@@ -33,7 +33,7 @@ The startup screen lists the projects. "Add a project..." takes a folder that al
 - **Viewpoints**: each planned camera is a frustum glyph in the scene.
   Click one to select it (or use the Viewpoints panel), step through them
   with `N`/`P` or the arrow keys, and drag it into place with the move gizmo.
-  "Overview" (O) returns to free-look.
+  "Overview" (`O`) returns to free-look.
 - **Targets**: click a point on the surface to see which cameras observe
   it, from what angle and distance, and how its visibility is spread across
   sectors around it. Occlusion mode paints the surface by what the selected
@@ -43,8 +43,8 @@ The startup screen lists the projects. "Add a project..." takes a folder that al
 - **Full-resolution model**: if a bundle ships one, the camera-view panel
   (and, optionally, the main viewport) swaps the simplified mesh for the
   full-quality textured model the bundle was built from. Reading it once is
-  cached to disk, so later loads skip re-parsing the source OBJ.
-- **Render Still** (Ctrl+R): save a pyrender image of whatever the viewport
+  cached to disk, so later loads skip re-parsing the source `OBJ`.
+- **Render Still** (`Ctrl+R`): save a pyrender image of whatever the viewport
   is currently looking at, shaded the same way the planning results were
   computed.
 
