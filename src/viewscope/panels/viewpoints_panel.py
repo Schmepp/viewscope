@@ -12,6 +12,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
+    QHBoxLayout,
     QHeaderView,
     QPushButton,
     QTableWidget,
@@ -44,14 +45,22 @@ class ViewpointsPanel(QWidget):
         self._suppress = False
 
         # Add new camera button
-        self.button = QPushButton("Duplicate Camera")
-        # self.button.clicked.connect(self._on_button_add_camera_clicked)
-        self.button.clicked.connect(self._on_button_duplicate_camera_clicked)
+        self.add_camera_button = QPushButton("Add Camera")
+        self.add_camera_button.clicked.connect(self._on_button_add_camera_clicked)
+
+        # Duplicate camera button
+        self.duplicate_camera_button = QPushButton("Duplicate Camera")
+        self.duplicate_camera_button.clicked.connect(self._on_button_duplicate_camera_clicked)
+        self.duplicate_camera_button.setEnabled(False)  # Only enabled when a camera is selected
 
         # Layout
         layout = QVBoxLayout(self)
         layout.addWidget(self.table)
-        layout.addWidget(self.button)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.add_camera_button)
+        button_layout.addWidget(self.duplicate_camera_button)
+        layout.addLayout(button_layout)
 
         # Call refresh() whenever the plan is changed (e.g, if a camera is added)
         SCENE_STORE.plan_changed.connect(self.refresh)
@@ -98,6 +107,7 @@ class ViewpointsPanel(QWidget):
             return
 
         rows = self.table.selectionModel().selectedRows()
+        self.duplicate_camera_button.setEnabled(bool(rows))
         if rows:
             self.camera_picked.emit(rows[0].row())
 
@@ -105,6 +115,7 @@ class ViewpointsPanel(QWidget):
         """Reflect a selection made elsewhere without re-emitting."""
         self._suppress = True
 
+        self.duplicate_camera_button.setEnabled(index is not None)
         if index is None:
             self.table.clearSelection()
         else:
@@ -116,7 +127,7 @@ class ViewpointsPanel(QWidget):
         if SCENE_STORE.scene is None:
             return
 
-        dialog = AddCameraDialog(self)
+        dialog = AddCameraDialog(title=self.add_camera_button.text(), parent=self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
@@ -130,19 +141,31 @@ class ViewpointsPanel(QWidget):
         if SCENE_STORE.scene is None:
             return
 
+        # INVARIANT: This button is only enabled when a camera is selected,
+        #            it should be impossible to reach this point without a selection.
         rows = self.table.selectionModel().selectedRows()
-        if not rows:
-            # Indicate that no camera was selected
-            return
+        assert rows
 
-        index = rows[0].row()  # get index of current selected row
+        index = rows[0].row()
         plan = SCENE_STORE.scene.plan
 
-        position = np.asarray(plan.positions[index], dtype=float)
-        yaw = float(plan.yaws_deg[index])
-        pitch = float(plan.pitches_deg[index])
+        current_position = tuple(np.asarray(plan.positions[index], dtype=float).tolist())
+        current_yaw = float(plan.yaws_deg[index])
+        current_pitch = float(plan.pitches_deg[index])
 
-        new_position = position + np.array([0, 0, 1.0])  # shift new camera above existing
+        dialog = AddCameraDialog(
+            position=current_position,
+            yaw=current_yaw,
+            pitch=current_pitch,
+            title=self.duplicate_camera_button.text(),
+            parent=self,
+        )
 
-        SCENE_STORE.add_camera(tuple(new_position), yaw, pitch)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        x, y, z, yaw, pitch = dialog.values()
+        position = (x, y, z)
+
+        SCENE_STORE.add_camera(position, yaw, pitch)
         print(f"Duplicating camera: position={position}, yaw={yaw}, pitch={pitch}.")
