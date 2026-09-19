@@ -66,9 +66,8 @@ class SceneStore(QObject):
 
     def move_camera(self, index: int, position: tuple[float, float, float]) -> None:
         """
-        Update one camera's position in place. Doesn't touch yaw/pitch or ids,
-        and deliberately doesn't emit plan_changed - see the note above about
-        why a per-tick rebuild of every glyph would be far too expensive here.
+        Update selected camera's position in place. Doesn't touch yaw/pitch or ids,
+        and deliberately doesn't emit plan_changed.
         """
         if self.scene is None:
             return

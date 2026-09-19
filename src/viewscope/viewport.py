@@ -34,7 +34,13 @@ from viewscope.data.scene import SceneData
 from viewscope.data.store import SCENE_STORE
 from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode, SceneCameraController
-from viewscope.scene.gizmos import CameraGlyphs, CameraModeGizmo, CameraOutline, FloorGrid, AxisHandleWidget
+from viewscope.scene.gizmos import (
+    AxisHandleWidget,
+    CameraGlyphs,
+    CameraModeGizmo,
+    CameraOutline,
+    FloorGrid,
+)
 from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.stats import FieldStats
 from viewscope.scene.still import StillRenderer
@@ -140,7 +146,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.set_camera_orientation_visible(True)
 
-        self.axis_gizmo = AxisHandleWidget(self.renderer) #NEW
+        self.axis_gizmo = AxisHandleWidget(self.renderer)  # NEW
 
         # CameraMode gizmo configuration
         self.camera_mode_gizmo = CameraModeGizmo(self)
@@ -606,7 +612,7 @@ class Viewport(QVTKRenderWindowInteractor):
         if self.axis_gizmo.active:
             self.axis_gizmo.end_drag()
             return
-#         super().mouseReleaseEvent(ev)
+        #         super().mouseReleaseEvent(ev)
         super().mouseReleaseEvent(ev)
 
         if self._mouse_locked and not (

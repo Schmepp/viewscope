@@ -199,6 +199,7 @@ class MainWindow(QMainWindow):
 
         SCENE_STORE.plan_changed.connect(self._on_plan_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
+        SCENE_STORE.camera_moved.connect(self.camera_viewport.on_camera_moved)
 
     def _build_actions(self):
         project_bar = self.addToolBar("Project")

@@ -1,6 +1,9 @@
 from __future__ import annotations
-from typing import Callable
 
+import math
+from collections.abc import Callable
+
+import numpy as np
 import vtk
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QPushButton, QVBoxLayout
@@ -444,13 +447,6 @@ class CameraModeGizmo(QFrame):
             button.setChecked(button_mode == mode)
 
 
-# from __future__ import annotations
-
-import math
-
-import numpy as np
-import vtk
-
 class AxisHandleWidget:
     """Three arrow handles (X/Y/Z) that translate an attached actor."""
 
@@ -501,7 +497,9 @@ class AxisHandleWidget:
             actor = vtk.vtkActor()
             actor.SetMapper(mapper)
             actor.GetProperty().SetColor(*colour)
-            actor.GetProperty().SetLighting(False)  # flat: reads as a UI control, not scene geometry
+            actor.GetProperty().SetLighting(
+                False
+            )  # flat: reads as a UI control, not scene geometry
 
             self._axis_of[actor] = np.array(direction, dtype=np.float64)
             self._actors.append(actor)
@@ -546,7 +544,9 @@ class AxisHandleWidget:
         # a constant on-screen size as the camera dollies in and out - if you
         # want that, rescale each render by distance-to-camera instead.
         diag = math.sqrt(
-            (bounds[1] - bounds[0]) ** 2 + (bounds[3] - bounds[2]) ** 2 + (bounds[5] - bounds[4]) ** 2
+            (bounds[1] - bounds[0]) ** 2
+            + (bounds[3] - bounds[2]) ** 2
+            + (bounds[5] - bounds[4]) ** 2
         )
         length = max(diag, 1e-3)
 
@@ -554,7 +554,9 @@ class AxisHandleWidget:
             actor.SetUserTransform(self._handle_transform(centre, direction, length))
 
     @staticmethod
-    def _handle_transform(centre: np.ndarray, direction: np.ndarray, length: float) -> vtk.vtkTransform:
+    def _handle_transform(
+        centre: np.ndarray, direction: np.ndarray, length: float
+    ) -> vtk.vtkTransform:
         """vtkArrowSource points along +X by default; rotate it onto `direction`."""
         transform = vtk.vtkTransform()
         transform.Translate(*centre)
@@ -629,7 +631,11 @@ class AxisHandleWidget:
         if self._on_move is not None:
             bounds = self._target.GetBounds()
             centre = np.array(
-                [(bounds[0] + bounds[1]) / 2, (bounds[2] + bounds[3]) / 2, (bounds[4] + bounds[5]) / 2]
+                [
+                    (bounds[0] + bounds[1]) / 2,
+                    (bounds[2] + bounds[3]) / 2,
+                    (bounds[4] + bounds[5]) / 2,
+                ]
             )
             self._on_move(centre)
 
