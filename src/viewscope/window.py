@@ -37,9 +37,7 @@ from viewscope.data import (
 from viewscope.dialogs import FileErrorDialog
 from viewscope.DisplayPanel import DisplayPanel
 from viewscope.MetricsPanel import MetricsPanel
-from viewscope.panels.plan_route_panel import PlanRoutePanel
-from viewscope.panels.target_panel import TargetPanel
-from viewscope.panels.viewpoints_panel import ViewpointsPanel
+from viewscope.panels import PlanRoutePanel, TargetPanel, ViewpointsPanel
 from viewscope.route_report import write_report
 from viewscope.scene.photo_mesh import PhotoMesh, PhotoMeshLoader, find_photo_mesh
 from viewscope.scene.subset_scores import SubsetScores

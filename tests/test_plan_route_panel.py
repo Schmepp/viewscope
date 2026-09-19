@@ -9,7 +9,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from viewscope.data import RouteStatus
-from viewscope.panels.plan_route_panel import PlanRoutePanel
+from viewscope.panels import PlanRoutePanel
 
 
 @pytest.fixture(scope="module")

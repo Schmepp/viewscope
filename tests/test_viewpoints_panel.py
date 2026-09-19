@@ -10,7 +10,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 import viewscope_core as vc
-from viewscope.panels.viewpoints_panel import ViewpointsPanel
+from viewscope.panels import ViewpointsPanel
 
 
 @pytest.fixture(scope="module")

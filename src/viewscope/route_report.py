@@ -42,7 +42,7 @@ from viewscope.data import (
     estimate_flight,
     sharpest_turn,
 )
-from viewscope.panels.route_charts import CoverageBar, SectorBars
+from viewscope.panels import CoverageBar, SectorBars
 
 #: The charts are drawn far larger than they are printed, so the print has
 #: something to be sharp with. Pixels.
