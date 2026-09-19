@@ -178,9 +178,12 @@ class CameraViewport(QVTKRenderWindowInteractor):
         self.render()
 
     def on_camera_moved(self, index: int):
-        """Triggers a reframe of a selected camera,
+        """
+        Triggers a reframe of a selected camera,
         when SCENE_STORE's move_camera method is executed.
-        This viewport will change and re-render from the view of the moving camera."""
+        This viewport will change and re-render from the view of the moving camera.
+        """
         if self.camera is None or self.camera.index != index:
             return
+
         self._moved(self.camera.show(index))

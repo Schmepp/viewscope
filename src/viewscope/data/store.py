@@ -92,9 +92,8 @@ class SceneStore(QObject):
 
         self.camera_moved.emit(index)
 
-    def rotate_camera(
-        self, index: int, delta_yaw_deg: float = 0.0, delta_pitch_deg: float = 0.0
-    ) -> None:
+    # Unused
+    def rotate_camera(self, index: int, delta_yaw_deg: float = 0.0, delta_pitch_deg: float = 0.0):
         """Nudge one camera's yaw/pitch in place. Mirrors move_camera - see its
         note about why this doesn't emit plan_changed."""
         if self.scene is None:

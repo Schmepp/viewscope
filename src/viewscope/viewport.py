@@ -405,11 +405,6 @@ class Viewport(QVTKRenderWindowInteractor):
                         actor,
                         heading_deg=info.yaw,
                         on_move=lambda pos, idx=info.index: SCENE_STORE.move_camera(idx, pos),
-                        on_rotate=lambda axis, delta, idx=info.index: SCENE_STORE.rotate_camera(
-                            idx,
-                            delta_yaw_deg=delta if axis == "yaw" else 0.0,
-                            delta_pitch_deg=delta if axis == "pitch" else 0.0,
-                        ),
                     )
         else:
             self.axis_gizmo.detach()
