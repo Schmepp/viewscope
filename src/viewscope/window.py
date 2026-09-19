@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 
 import viewscope_core as vc
 from viewscope.camera import CameraInfo
-from viewscope.CameraViewport import CameraViewport
+from viewscope.camera_viewport import CameraViewport
 from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME, ROUTE_FILENAME
 from viewscope.data import (
     SCENE_STORE,

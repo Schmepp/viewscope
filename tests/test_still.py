@@ -7,7 +7,7 @@ check is that the tile count asked for matches the pixels wanted.
 
 import pytest
 
-from viewscope.CameraViewport import still_scale
+from viewscope.camera_viewport import still_scale
 from viewscope.config import STILL_MAX_SCALE, STILL_WIDTH
 
 # -----------------------------------------------------------------------------
