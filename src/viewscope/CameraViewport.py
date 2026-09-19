@@ -11,8 +11,7 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import (
 from vtkmodules.util import numpy_support as vtknp
 
 import viewscope.qt  # noqa: F401
-from viewscope.camera.controller import CameraController
-from viewscope.camera.structs import CameraInfo
+from viewscope.camera import CameraController, CameraInfo
 from viewscope.config import (
     BACKGROUND,
     MODE_ALL,

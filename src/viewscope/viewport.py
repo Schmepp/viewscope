@@ -19,7 +19,7 @@ from vtkmodules.vtkInteractionWidgets import (
 
 import viewscope.qt  # noqa: F401
 import viewscope_core as vc
-from viewscope.camera.structs import CameraInfo
+from viewscope.camera import CameraInfo
 from viewscope.config import (
     BACKGROUND,
     MODE_ALL,

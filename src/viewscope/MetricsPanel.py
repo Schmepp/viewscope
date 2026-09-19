@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from viewscope.camera.structs import CameraInfo
+from viewscope.camera import CameraInfo
 from viewscope.data.store import SCENE_STORE
 from viewscope.scene.stats import FieldStats
 
