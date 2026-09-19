@@ -18,7 +18,7 @@ Run the setup script found in the `scripts/` folder. Then run the following comm
 uv run viewscope 
 ```
 
-The startup screen lists the projects. "Add a project..." takes a folder that already holds a bundle; "Build a project from a model..." turns an .obj into one. The viewer's toolbar has "<- Projects" (Ctrl+Shift+P) to come back.
+The startup screen lists the projects. "Add a project..." takes a folder that already holds a bundle; "Build a project from a model..." turns an `.obj` into one. The viewer's toolbar has "<- Projects" (`Ctrl+Shift+P`) to come back.
 
 ---
 
