@@ -35,11 +35,11 @@ from viewscope.data.store import SCENE_STORE
 from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode, SceneCameraController
 from viewscope.scene.gizmos import (
-    AxisHandleWidget,
     CameraGlyphs,
     CameraModeGizmo,
     CameraOutline,
     FloorGrid,
+    TranslationGizmo,
 )
 from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.stats import FieldStats
@@ -148,7 +148,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
         self.set_camera_orientation_visible(True)
 
-        self.axis_gizmo = AxisHandleWidget(self.renderer)  # NEW
+        self.translation_gizmo = TranslationGizmo(self.renderer)
 
         # CameraMode gizmo configuration
         self.camera_mode_gizmo = CameraModeGizmo(self)
@@ -401,13 +401,15 @@ class Viewport(QVTKRenderWindowInteractor):
 
                 actor = self.glyphs.actor_of_id(info.index)
                 if actor is not None:
-                    self.axis_gizmo.attach(
+                    self.translation_gizmo.attach(
                         actor,
                         heading_deg=info.yaw,
-                        on_move=lambda pos, idx=info.index: SCENE_STORE.move_camera(idx, pos),
+                        on_move=lambda pos, idx=info.index: SCENE_STORE.move_camera(
+                            idx, tuple(pos.tolist())
+                        ),
                     )
         else:
-            self.axis_gizmo.detach()
+            self.translation_gizmo.detach()
 
         self.render()
 
@@ -586,7 +588,7 @@ class Viewport(QVTKRenderWindowInteractor):
 
         if ev.button() == Qt.MouseButton.LeftButton:
             x, y = self._display_position(ev.position())
-            if self.axis_gizmo.try_start_drag(x, y):
+            if self.translation_gizmo.try_start_drag(x, y):
                 super().mousePressEvent(ev)
                 return
             if self._pick_camera_glyph(ev):
@@ -616,8 +618,8 @@ class Viewport(QVTKRenderWindowInteractor):
     def mouseReleaseEvent(self, ev: QMouseEvent):
         """Unlock the mouse when all tracked mouse buttons have been released."""
 
-        if self.axis_gizmo.active:
-            self.axis_gizmo.end_drag()
+        if self.translation_gizmo.active:
+            self.translation_gizmo.end_drag()
             return
         #         super().mouseReleaseEvent(ev)
         super().mouseReleaseEvent(ev)
@@ -645,9 +647,9 @@ class Viewport(QVTKRenderWindowInteractor):
         is reset back to its initial anchor position to allow infinite range-of-motion
         without running off-screen.
         """
-        if self.axis_gizmo.active:
+        if self.translation_gizmo.active:
             x, y = self._display_position(ev.position())
-            self.axis_gizmo.drag(x, y)
+            self.translation_gizmo.drag(x, y)
             self.render()
             return
         if not self._mouse_locked:

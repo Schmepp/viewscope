@@ -7,7 +7,7 @@ import numpy as np
 import vtk
 
 
-class AxisHandleWidget:
+class TranslationGizmo:
     """
     Three translate arrows (X/Y/Z).
 
@@ -145,7 +145,7 @@ class AxisHandleWidget:
         """vtkArrowSource points along +X by default; rotate it onto `direction`."""
         transform = vtk.vtkTransform()
         transform.Translate(*centre)
-        transform.Concatenate(AxisHandleWidget._align_matrix(np.array([1.0, 0.0, 0.0]), direction))
+        transform.Concatenate(TranslationGizmo._align_matrix(np.array([1.0, 0.0, 0.0]), direction))
         transform.Scale(length, length, length)
         return transform
 
