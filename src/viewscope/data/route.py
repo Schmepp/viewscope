@@ -87,6 +87,19 @@ class RoutePlan:
         self._selected: set[int] = set()
         self.planning = False
 
+        # The file this route belongs to: the one it was loaded from, or the
+        # one it was last written to. None until it has been either, which is
+        # what a route planned from scratch is.
+        self.path: Path | None = None
+
+    def came_from(self, path):
+        """Remember the file this route was read out of."""
+        self.path = None if path is None else Path(path)
+
+    def forget_file(self):
+        """Let go of that file, for when another bundle is opened."""
+        self.path = None
+
     # -- selection -----------------------------------------------------
 
     def start(self, camera_count: int):
@@ -192,9 +205,14 @@ class RoutePlan:
         }
 
     def save(self, path, plan, observed: int = 0, targets: int = 0) -> Path:
-        """Write the route out. Returns the path actually written."""
+        """Write the route out. Returns the path actually written.
+
+        The route belongs to that file afterwards, so saving it again offers
+        the same one rather than starting the naming over.
+        """
         path = Path(path)
         path.write_text(json.dumps(self.document(plan, observed, targets), indent=2))
+        self.path = path
 
         return path
 

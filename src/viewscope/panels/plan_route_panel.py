@@ -209,15 +209,26 @@ class PlanRoutePanel(QWidget):
         """Say where the route went, or clear the line when given None."""
         self.note.setText("" if path is None else f"Saved to {path}")
 
-    def show_loaded(self, path, added: int = 0):
+    def show_loaded(self, path, added: int = 0, unscored: int = 0):
         """Say which file the route came from, and what it brought with it."""
         appended = ""
         if added:
             appended = f", adding {added} viewpoint{'' if added == 1 else 's'} to the plan"
-        self.note.setText(
+
+        lines = [
             f"Loaded from {path}{appended}. Its viewpoints are the route; "
             "the rest of the plan is still on screen, out of it."
-        )
+        ]
+
+        # The route is flown and saved all the same; it is the colouring that
+        # cannot speak for a viewpoint nothing was ever measured from.
+        if unscored:
+            lines.append(
+                f"The bundle scored the plan it shipped, so the heat map counts nothing "
+                f"for {unscored} of them."
+            )
+
+        self.note.setText(" ".join(lines))
 
     # -- internals -----------------------------------------------------
 

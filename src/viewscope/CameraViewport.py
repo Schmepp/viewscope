@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import numpy as np
 import vtk
 from PySide6.QtCore import Signal
 from vtkmodules.qt.QVTKRenderWindowInteractor import (
     QVTKRenderWindowInteractor,
 )
+from vtkmodules.util import numpy_support as vtknp
 
 import viewscope.qt  # noqa: F401
 from viewscope.camera.controller import CameraController
@@ -16,11 +18,28 @@ from viewscope.config import (
     MODE_ALL,
     MODE_GEOMETRY,
     MODE_TEXTURED,
+    STILL_MAX_SCALE,
+    STILL_WIDTH,
     YFOV_DEG,
 )
 from viewscope.data.scene import SceneData
 from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.views import MeshView
+
+
+def still_scale(shown: int, width: int) -> int:
+    """
+    How many tiles across the still is drawn in, to get `width` pixels out.
+
+    Whole tiles only, so the still keeps the aspect of the view it came from
+    and the width asked for is a floor rather than a promise. Clamped, because
+    a dock dragged narrow would otherwise ask for a grid deep enough to stall
+    the window.
+    """
+    if shown < 1:
+        return 1
+
+    return max(1, min(STILL_MAX_SCALE, -(-int(width) // int(shown))))
 
 
 class CameraViewport(QVTKRenderWindowInteractor):
@@ -172,6 +191,63 @@ class CameraViewport(QVTKRenderWindowInteractor):
         # INVARIANT: Camera should not be uninitialized at this stage!
         assert self.camera is not None
         self._moved(self.camera.step(-1))
+
+    # -- Stills --------------------------------------------------------
+
+    def render_still(self, width: int = STILL_WIDTH):
+        """
+        This view, exactly as it stands, as an image far larger than the dock.
+
+        VTK renders it in tiles: the camera, the model and the mode are the
+        ones on screen, and only the number of pixels they are drawn into
+        changes, so the still is the shot the dock is showing with the detail
+        the dock has no room for. Comes back as height x width x 3 uint8, or
+        None when there is no scene to shoot.
+        """
+        if not self.has_scene:
+            return None
+
+        window = self.GetRenderWindow()
+        shown = window.GetSize()
+        if shown[0] < 1 or shown[1] < 1:
+            return None
+
+        scale = still_scale(shown[0], width)
+
+        # Every tile is a whole render of this window, and each one presented
+        # is a frame of the view leaping about at a corner of the shot. Drawn
+        # into an offscreen buffer and never swapped to the front, the capture
+        # leaves what is on screen where it is.
+        offscreen = window.GetUseOffScreenBuffers()
+        swapping = window.GetSwapBuffers()
+        window.SetUseOffScreenBuffers(True)
+        window.SetSwapBuffers(False)
+
+        try:
+            shot = vtk.vtkWindowToImageFilter()
+            shot.SetInput(window)
+            shot.SetScale(scale)
+            shot.SetInputBufferTypeToRGB()
+            # The front buffer holds whatever the desktop last let through;
+            # the tiles are drawn into the back one.
+            shot.ReadFrontBufferOff()
+            shot.Update()
+
+            image = shot.GetOutput()
+            columns, rows, _ = image.GetDimensions()
+            pixels = vtknp.vtk_to_numpy(image.GetPointData().GetScalars())
+
+            # VTK counts rows up from the bottom of the image; every format
+            # worth writing counts them down from the top. Reversing copies,
+            # which is what takes the pixels out of the filter's hands.
+            still = np.ascontiguousarray(pixels.reshape(rows, columns, -1)[::-1])
+        finally:
+            window.SetUseOffScreenBuffers(offscreen)
+            window.SetSwapBuffers(swapping)
+            # Tiling left the window sized and centred for the last tile.
+            self.render()
+
+        return still
 
     def _moved(self, info: CameraInfo | None):
         self.camera_changed.emit(info)

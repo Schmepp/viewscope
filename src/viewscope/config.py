@@ -40,6 +40,17 @@ OCCLUDED_COLOUR = (0.42, 0.43, 0.47)
 # carry one keep it in this subfolder, beside its .mtl and textures.
 PHOTO_MESH_DIR = "Mesh"
 
+# An exported still is the camera view blown up, not the camera view at the
+# size the dock happens to be: the dock is a few hundred pixels across, and a
+# simulated photograph is worth having at something nearer print size. VTK
+# renders it in tiles, so this width costs render time and memory rather than
+# screen, and the shot keeps the aspect the dock is showing.
+STILL_WIDTH = 3840
+
+# A ceiling on that blow-up. A dock dragged narrow would otherwise ask for a
+# grid of tiles deep enough to stall the window for the length of a coffee.
+STILL_MAX_SCALE = 12
+
 # -- target inspection -----------------------------------------------------
 
 # Sector counts the inspector offers. Eight is the default; four is the

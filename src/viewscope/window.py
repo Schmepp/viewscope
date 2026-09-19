@@ -263,7 +263,7 @@ class MainWindow(QMainWindow):
 
         self.act_still = QAction("Render Still", self)
         self.act_still.setShortcut(QKeySequence("Ctrl+R"))
-        self.act_still.setToolTip("Render this view with pyrender and save it (Ctrl+R)")
+        self.act_still.setToolTip("Save the camera view as a high-resolution image (Ctrl+R)")
         self.act_still.triggered.connect(self.render_still)
 
         self.toggle_orientation = QAction("Toggle Orientation", self, checkable=True)
@@ -325,6 +325,8 @@ class MainWindow(QMainWindow):
         # answer to what nothing can see.
         self.obstacle = None
         self.plan_mask = None
+        # Another bundle's route.json is not this bundle's to overwrite.
+        self.route.forget_file()
         self.subset_scores = (
             None
             if scene.scores is None
@@ -413,6 +415,13 @@ class MainWindow(QMainWindow):
             self.subset_scores.full_range(field),
         )
 
+    def _unscored(self, rows) -> int:
+        """How many of these viewpoints the bundle's score table cannot credit."""
+        if self.subset_scores is None:
+            return 0
+
+        return len(self.subset_scores.unscored(rows))
+
     def _rescoring(self, field: str) -> bool:
         """Whether the heat map should follow the route rather than the plan."""
         return (
@@ -462,10 +471,16 @@ class MainWindow(QMainWindow):
         self.plan_mask = None
 
         # The score table describes the plan the bundle shipped, and this is
-        # no longer that plan: there are no rows for the new camera to score
-        # by. The heat map goes back to the shipped columns, which is what it
-        # showed before any of this.
-        self.subset_scores = None
+        # no longer that plan: the new camera has no rows to score by. That
+        # is a reason to credit it nothing, which the rescorer already does
+        # for any row past the table, and not a reason to throw the rescorer
+        # away: dropping it would put the heat map back on the shipped
+        # columns, where it answers what the whole plan covers no matter what
+        # is in the route, and the route would stop colouring anything at all.
+        if self.subset_scores is not None and self.route.planning:
+            self.statusBar().showMessage(
+                "The heat map counts nothing for a viewpoint the bundle never scored", 6000
+            )
 
         # on_plan_changed built fresh glyphs, which know nothing of the route.
         self.route.forget_beyond(SCENE_STORE.camera_count)
@@ -484,9 +499,11 @@ class MainWindow(QMainWindow):
 
     def render_still(self):
         """
-        Save a pyrender image of the shot the viewport is holding.
-        The window draws with VTK; this is the same view handed to pyrender,
-        which renders it offscreen at the size the viewport is showing.
+        Save the camera view as an image, at far more pixels than it is shown.
+        The shot is the one in the Camera View dock -- same viewpoint, same
+        model, same display mode -- drawn again in tiles at around
+        `STILL_WIDTH` across, so the exported photograph carries the detail
+        the dock has no room for.
         """
         if SCENE_STORE.scene is None:
             return
@@ -500,7 +517,7 @@ class MainWindow(QMainWindow):
 
         self.statusBar().showMessage("Rendering...")
         try:
-            colour = self.viewport.render_still()
+            colour = self.camera_viewport.render_still()
             if colour is None:
                 self.statusBar().showMessage("Nothing to render")
                 return
@@ -511,7 +528,8 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "ViewScope", f"Could not render the still.\n\n{exc}")
             return
 
-        self.statusBar().showMessage(f"Rendered {Path(path).name}", 5000)
+        height, width = colour.shape[:2]
+        self.statusBar().showMessage(f"Rendered {Path(path).name} at {width}x{height}", 5000)
 
     def _load_photo_mesh(self, data_dir: Path):
         """
@@ -701,8 +719,11 @@ class MainWindow(QMainWindow):
         # cannot click back in.
         self.route.select(rows)
         self.route.resume()
+        # Saving this route again writes back to the file it came out of,
+        # rather than starting the naming over at route.json.
+        self.route.came_from(path)
         self._refresh_route()
-        self.plan_route_panel.show_loaded(path, added)
+        self.plan_route_panel.show_loaded(path, added, self._unscored(rows))
         self.statusBar().showMessage(f"Planning the {len(rows)} viewpoints of {path.name}", 6000)
 
     def stop_route_planning(self):
@@ -752,10 +773,15 @@ class MainWindow(QMainWindow):
         ask.setIcon(QMessageBox.NoIcon)
         ask.setText("Stop planning the route?")
         count = len(self.route)
-        ask.setInformativeText(
-            f"The route has {count} viewpoint{'' if count == 1 else 's'}. "
-            "Exit leaves planning without saving it."
-        )
+        lines = [f"The route has {count} viewpoint{'' if count == 1 else 's'}."]
+        if self.route.path is None:
+            lines.append("Exit leaves planning without saving it.")
+        else:
+            # Named, because this is the press that overwrites it.
+            lines.append(f"Saving writes back to {self.route.path.name}.")
+            lines.append("Exit leaves planning and that file as it is.")
+
+        ask.setInformativeText(" ".join(lines))
 
         save = ask.addButton("Save route", QMessageBox.AcceptRole)
         leave = ask.addButton("Exit", QMessageBox.DestructiveRole)
@@ -771,8 +797,14 @@ class MainWindow(QMainWindow):
         return None
 
     def _ask_route_path(self):
-        """Where to write the route, or None if the user changed their mind."""
-        suggested = Path(self.loader.data_dir) / ROUTE_FILENAME
+        """Where to write the route, or None if the user changed their mind.
+
+        Opens on the file the route belongs to -- the one it was loaded from,
+        or the one it was last saved to -- so a route read out of a file goes
+        back into it by pressing return. Anything else is a save-as, which is
+        the dialog's own business.
+        """
+        suggested = self.route.path or Path(self.loader.data_dir) / ROUTE_FILENAME
         chosen, _filter = QFileDialog.getSaveFileName(
             self, "Save route", str(suggested), "JSON (*.json)"
         )

@@ -312,6 +312,59 @@ def test_saving_an_empty_route_is_refused_by_the_plan_loader(route, plan, tmp_pa
 
 
 # -----------------------------------------------------------------------------
+# The file the route belongs to
+# -----------------------------------------------------------------------------
+
+
+def test_a_route_planned_from_scratch_belongs_to_no_file(route):
+    assert route.path is None
+
+
+def test_saving_makes_the_route_belong_to_what_it_was_written_to(route, plan, tmp_path):
+    """So stopping again offers that file rather than starting the naming over."""
+    route.start(4)
+
+    written = route.save(tmp_path / "somewhere.json", plan)
+
+    assert route.path == written
+
+
+def test_a_route_read_out_of_a_file_belongs_to_it(route, tmp_path):
+    route.came_from(tmp_path / "loaded.json")
+
+    assert route.path == tmp_path / "loaded.json"
+
+
+def test_a_loaded_route_saved_back_belongs_to_wherever_it_went(route, plan, tmp_path):
+    """Save-as moves it: what is offered next is where it last went."""
+    route.came_from(tmp_path / "loaded.json")
+    route.start(4)
+
+    route.save(tmp_path / "elsewhere.json", plan)
+
+    assert route.path == tmp_path / "elsewhere.json"
+
+
+def test_another_bundle_takes_the_file_away(route, tmp_path):
+    """One bundle's route.json is not the next one's to overwrite."""
+    route.came_from(tmp_path / "loaded.json")
+
+    route.forget_file()
+
+    assert route.path is None
+
+
+def test_leaving_planning_keeps_the_file(route, plan, tmp_path):
+    """Exit saves nothing, but the route is still the one that file holds."""
+    route.came_from(tmp_path / "loaded.json")
+    route.start(4)
+
+    route.stop()
+
+    assert route.path == tmp_path / "loaded.json"
+
+
+# -----------------------------------------------------------------------------
 # Loading
 # -----------------------------------------------------------------------------
 

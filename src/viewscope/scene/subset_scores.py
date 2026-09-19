@@ -66,6 +66,18 @@ class SubsetScores:
         """Whether a subset score can be worked out for this field at all."""
         return field in FIELDS
 
+    def unscored(self, selected) -> tuple[int, ...]:
+        """The rows of `selected` the shipped table knows nothing about.
+
+        A viewpoint the user placed, or one a loaded route brought with it,
+        has no rows in `scores.npz`: nothing was ever measured from there. It
+        can still be in the route, and the route can still be flown and
+        saved, but it earns the targets it sees nothing, so the heat map is
+        an under-count wherever such a viewpoint is the only observer. Worth
+        saying out loud, which is what this is for.
+        """
+        return tuple(int(row) for row in selected if int(row) >= self._cameras)
+
     def full_range(self, field: str) -> tuple[float, float]:
         """The scale to colour by, which is the whole plan's, not the route's.
 

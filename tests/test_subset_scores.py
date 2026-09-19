@@ -163,3 +163,24 @@ def test_a_field_it_cannot_rescore_is_turned_down(subset):
     """So the caller falls back to the shipped column instead of guessing."""
     assert not SubsetScores.handles("f_rho")
     assert not SubsetScores.handles("nonsense")
+
+
+# -----------------------------------------------------------------------------
+# Viewpoints the table never knew about
+# -----------------------------------------------------------------------------
+
+
+def test_a_viewpoint_past_the_table_is_named_as_unscored(subset):
+    """A loaded route can bring one; the heat map has nothing to credit it with."""
+    assert subset.unscored([0, 1, CAMERAS, CAMERAS + 4]) == (CAMERAS, CAMERAS + 4)
+
+
+def test_a_route_the_bundle_scored_has_nothing_unscored(subset):
+    assert subset.unscored(range(CAMERAS)) == ()
+
+
+def test_an_unscored_viewpoint_does_not_stop_the_rest_being_rescored(subset):
+    """The route still colours: what it cannot answer for is one viewpoint."""
+    assert subset.values("score_8", [0, CAMERAS + 7]) == pytest.approx(
+        subset.values("score_8", [0])
+    )
