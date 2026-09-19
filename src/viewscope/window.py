@@ -36,6 +36,7 @@ from viewscope.MetricsPanel import MetricsPanel
 from viewscope.panels.plan_route_panel import PlanRoutePanel
 from viewscope.panels.target_panel import TargetPanel
 from viewscope.panels.viewpoints_panel import ViewpointsPanel
+from viewscope.route_report import write_report
 from viewscope.scene.photo_mesh import PhotoMesh, PhotoMeshLoader, find_photo_mesh
 from viewscope.scene.subset_scores import SubsetScores
 from viewscope.scene.target_report import TargetReport, TargetReports
@@ -217,6 +218,7 @@ class MainWindow(QMainWindow):
         self.plan_route_panel.select_all_requested.connect(self._on_route_select_all)
         self.plan_route_panel.clear_requested.connect(self._on_route_clear)
         self.plan_route_panel.path_requested.connect(self._on_flight_path_toggled)
+        self.plan_route_panel.report_requested.connect(self.generate_route_report)
 
         SCENE_STORE.plan_changed.connect(self._on_plan_changed)
         self.camera_viewport.camera_changed.connect(self._on_camera_changed)
@@ -932,21 +934,111 @@ class MainWindow(QMainWindow):
 
         return self.obstacle
 
+    def _plan_flight_path(self):
+        """The path through the route as it stands, or None without a scene.
+
+        Planned rather than remembered: the route moves on every click, and
+        the path is cheap enough to find again that keeping one would only be
+        a second answer to go stale.
+        """
+        scene = SCENE_STORE.scene
+        if scene is None:
+            return None
+
+        rows = self._flight_path_rows()
+
+        return plan_path(scene.plan.positions[list(rows)], self._obstacle()), rows
+
     def _refresh_flight_path(self):
         """Replan and redraw the path, after anything that could move it."""
-        scene = SCENE_STORE.scene
-        if not self.flight_path_on or scene is None:
+        if not self.flight_path_on or SCENE_STORE.scene is None:
             self.viewport.clear_flight_path()
             self.plan_route_panel.show_path(None)
             return
 
-        rows = self._flight_path_rows()
-        positions = scene.plan.positions[list(rows)]
-
-        path = plan_path(positions, self._obstacle())
+        path, _rows = self._plan_flight_path()
 
         self.viewport.show_flight_path(path.points)
         self.plan_route_panel.show_path(path)
+
+    def generate_route_report(self):
+        """Write the route, its charts and its flight path out as a document.
+
+        The path is planned for the report whether or not it is on screen:
+        the report is about the flight, and asking the user to switch a line
+        on first would only be a way of getting an empty document.
+        """
+        scene = SCENE_STORE.scene
+        if scene is None:
+            return
+
+        if not len(self.route) and not SCENE_STORE.camera_count:
+            self.statusBar().showMessage("Nothing to report on", 4000)
+            return
+
+        path = self._ask_report_path()
+        if path is None:
+            return
+
+        self.statusBar().showMessage("Writing the report...")
+        try:
+            planned, rows = self._plan_flight_path()
+            # The route is what the report is about; with nothing in it the
+            # path falls back to the whole plan, and the report follows it
+            # rather than describing a route that is not there.
+            status = self._report_status(self.route.selected or rows, scene)
+
+            written = write_report(
+                path,
+                name=self._route_name(),
+                bundle=Path(self.loader.data_dir).name,
+                status=status,
+                path=planned,
+                ids=scene.plan.ids,
+                positions=scene.plan.positions,
+            )
+        except Exception as exc:
+            self.statusBar().showMessage("Report failed")
+            QMessageBox.critical(self, "ViewScope", f"Could not write the report.\n\n{exc}")
+            return
+
+        self.plan_route_panel.show_report(written)
+        self.statusBar().showMessage(f"Report written to {written}", 6000)
+
+    def _report_status(self, rows, scene):
+        """What the report describes, counted for these viewpoints.
+
+        The coverage the panel is showing is only kept while planning is on,
+        and a report is worth as much after it as during it, so anything that
+        is not to hand is counted again here.
+        """
+        described = RoutePlan()
+        described.select(rows)
+
+        observed = 0
+        if self.route_mask is not None and tuple(rows) == self.route.selected:
+            observed = int(self.route_mask.sum())
+        elif self.visibility is not None:
+            observed = int(self.visibility.union_mask(rows).sum())
+
+        return described.status(scene.plan, observed, len(scene.targets), scene.centre)
+
+    def _route_name(self) -> str:
+        """What to call this route in the report."""
+        if self.route.path is not None:
+            return self.route.path.stem
+
+        return "Unsaved route" if self.route.planning else "The whole plan"
+
+    def _ask_report_path(self):
+        """Where to write the report, or None if the user changed their mind."""
+        stem = self.route.path.stem if self.route.path is not None else "route"
+        suggested = Path(self.loader.data_dir) / f"{stem}_report.pdf"
+        chosen, _filter = QFileDialog.getSaveFileName(
+            self, "Generate report", str(suggested), "PDF (*.pdf)"
+        )
+
+        return Path(chosen) if chosen else None
 
     def _route_coverage(self):
         """The targets the route can see between them, or None when it sees none."""
@@ -977,9 +1069,9 @@ class MainWindow(QMainWindow):
             # The route colours are only worn while planning; outside it
             # every frustum goes back to its own.
             self.viewport.set_route_selection(selected if self.route.planning else None)
-            # Quadrants are read about the model, not about the world origin:
+            # Sectors are read about the model, not about the world origin:
             # a bundle carrying a larger survey's coordinates would otherwise
-            # show its whole route standing in one quadrant.
+            # show its whole route standing in one sector.
             self.plan_route_panel.show_route(
                 self.route.status(scene.plan, observed, len(scene.targets), scene.centre)
             )

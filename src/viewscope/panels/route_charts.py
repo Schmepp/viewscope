@@ -3,20 +3,20 @@ The two charts the route panel reads itself through.
 
 `CoverageBar` answers the question route planning is about - how much of the
 model the cameras still in the route can see - as one bar filled to the share
-of targets they observe between them. `QuadrantPie` answers the other half:
+of targets they observe between them. `SectorBars` answers the other half:
 whether those cameras stand all around the model or bunched on one side of it,
-as the share of the route in each quadrant of the ground plane it sits on.
+as a bar per sector of the ground plane it sits on.
 
-Both are fed a `RouteStatus` and nothing else. Each builds its series, its
-axes and its slices once and then only rewrites the numbers in them: a chart
-that drops them on every update draws the old ones over the new, and the route
-changes on every click.
+Both are fed a `RouteStatus` and nothing else. Each builds its series and its
+axes once and then only rewrites the numbers in them: a chart that drops them
+on every update draws the old ones over the new, and the route changes on
+every click.
 
-A quadrant keeps its colour whether or not the route puts a camera in it, so
-the pie means the same thing from one click to the next. The four are a
-validated categorical set - they hold apart under deuteranopia, protanopia and
-tritanopia - and each slice is labelled as well as coloured, so the chart never
-rests on colour alone.
+The sectors are one series, so they are one colour: which sector a bar is, is
+said by where it stands on the axis and by the count written over it, and a
+colour per sector would be eight hues carrying nothing the position does not.
+Empty sectors keep their place on the axis rather than being left out, because
+the gap in the route is the thing worth seeing.
 
 Built with QtCharts, the way `sector_barchart.py` builds the target's chart.
 """
@@ -24,24 +24,30 @@ Built with QtCharts, the way `sector_barchart.py` builds the target's chart.
 from __future__ import annotations
 
 from PySide6.QtCharts import (
+    QAbstractBarSeries,
     QBarCategoryAxis,
+    QBarSeries,
     QBarSet,
     QChart,
     QChartView,
     QHorizontalStackedBarSeries,
-    QPieSeries,
-    QPieSlice,
     QValueAxis,
 )
 from PySide6.QtCore import QMargins, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from viewscope.data.route import QUADRANTS, RouteStatus
+from viewscope.data.route import SECTORS, RouteStatus
 
-#: One colour per quadrant, in quadrant order, and never reassigned: the
-#: colour says which quadrant, not how big the slice is.
-QUADRANT_COLOURS = ("#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7")
+#: One series, so one colour. It is read on the panel's dark surface and again
+#: on the white of a printed report, and holds up on both.
+SECTOR_COLOUR = "#2a78d6"
+
+#: The count written over each bar, and the line the bars stand on. Ink
+#: rather than the series colour: the bar carries the colour, the number
+#: carries the reading.
+BAR_LABEL_COLOUR = "#3a3a3a"
+AXIS_COLOUR = "#b8b6b0"
 
 #: The two ends of the coverage bar: what the route sees, and what is left.
 OBSERVED_COLOUR = "#e34948"
@@ -52,9 +58,8 @@ UNOBSERVED_COLOUR = "#ffffff"
 #: stopped where the coverage ended, with no whole to be a part of.
 UNOBSERVED_EDGE = "#b8b6b0"
 
-#: The pie stands to the left of its legend, which is the only way four
-#: labelled quadrants fit across a dock this narrow.
-PIE_WIDTH = 0.62
+#: Room over the tallest bar for the count written above it.
+BAR_HEADROOM = 1.18
 
 
 class _ChartWidget(QWidget):
@@ -132,72 +137,73 @@ class CoverageBar(_ChartWidget):
         self._axis_targets.setLabelsVisible(bool(targets))
 
 
-class QuadrantPie(_ChartWidget):
-    """A slice per quadrant of the ground plane, holding the route's share."""
+class SectorBars(_ChartWidget):
+    """A bar per sector of the ground plane, holding the route's share."""
 
     def __init__(self):
-        super().__init__(230)
+        super().__init__(210)
 
-        # Down the side rather than along the bottom: four entries carrying a
-        # count and a share would be cut to "Q1 3 (..." on one row.
-        self.chart.legend().setVisible(True)
-        self.chart.legend().setAlignment(Qt.AlignmentFlag.AlignRight)
+        # One series: the bars are all the same thing counted in different
+        # places, and a legend would only name the one thing twice.
+        self.chart.legend().setVisible(False)
 
-        self._series = QPieSeries()
-        # Qt draws the first slice from twelve o'clock clockwise, which would
-        # run the quadrants backwards; starting at three and going the other
-        # way lays them out the way the plane numbers them.
-        self._series.setPieStartAngle(90.0)
-        self._series.setPieEndAngle(-270.0)
-        self._series.setPieSize(0.88)
-        self._series.setHorizontalPosition(PIE_WIDTH / 2.0)
-        self._series.setVerticalPosition(0.5)
+        self._counts = QBarSet("Cameras")
+        self._counts.setColor(QColor(SECTOR_COLOUR))
+        self._counts.setPen(QPen(Qt.PenStyle.NoPen))
+        self._counts.setLabelColor(QColor(BAR_LABEL_COLOUR))
+        self._counts.append([0.0] * SECTORS)
 
-        self._slices = []
-        for quadrant in range(QUADRANTS):
-            piece = QPieSlice(f"Q{quadrant + 1}", 0.0)
-            piece.setColor(QColor(QUADRANT_COLOURS[quadrant]))
-            # The surface showing between the slices is what keeps two of them
-            # apart for a reader who cannot tell the two colours apart.
-            piece.setBorderColor(QColor(Qt.GlobalColor.white))
-            piece.setBorderWidth(2)
-            # The legend carries the figures, so nothing is written over the
-            # slices themselves - a thin one has no room for it.
-            piece.setLabelVisible(False)
-            self._series.append(piece)
-            self._slices.append(piece)
-
+        self._series = QBarSeries()
+        self._series.append(self._counts)
+        # A bar wide enough to read in a dock this narrow, with the surface
+        # showing between one and the next.
+        self._series.setBarWidth(0.78)
+        # Written over each bar, so the count is read off the bar itself
+        # rather than tracked back to the axis.
+        self._series.setLabelsVisible(True)
+        self._series.setLabelsPosition(QAbstractBarSeries.LabelsPosition.LabelsOutsideEnd)
+        # Counts, written as counts. The precision is significant digits, and
+        # one of them turns a route of thirty cameras into "3e+01".
+        self._series.setLabelsFormat("@value")
+        self._series.setLabelsPrecision(6)
         self.chart.addSeries(self._series)
+
+        self._axis_sectors = QBarCategoryAxis()
+        self._axis_sectors.append([str(sector + 1) for sector in range(SECTORS)])
+        # The bars are the thing; the lines between them are not.
+        self._axis_sectors.setGridLineVisible(False)
+        self._axis_sectors.setLinePen(QPen(QColor(AXIS_COLOUR), 1))
+        self.chart.addAxis(self._axis_sectors, Qt.AlignmentFlag.AlignBottom)
+        self._series.attachAxis(self._axis_sectors)
+
+        # The count is written on the bars, so the scale behind them is there
+        # to be glanced at rather than read: no labels, no grid to draw the
+        # eye off the bars.
+        self._axis_count = QValueAxis()
+        self._axis_count.setLabelsVisible(False)
+        self._axis_count.setGridLineVisible(False)
+        self._axis_count.setLineVisible(False)
+        self.chart.addAxis(self._axis_count, Qt.AlignmentFlag.AlignLeft)
+        self._series.attachAxis(self._axis_count)
 
         self.update_chart(None)
 
     def update_chart(self, status: RouteStatus | None):
-        """Redraw for this route, or empty the pie when there is no scene."""
-        counts = () if status is None else status.quadrants
-        shares = () if status is None else status.quadrant_shares
+        """Redraw for this route, or empty the bars when there is no scene."""
+        counts = () if status is None else status.sectors
         cameras = sum(counts)
 
         self.chart.setTitle(
-            "Cameras by quadrant: --"
+            "Cameras by sector: --"
             if not cameras
-            else f"Cameras by quadrant: {cameras} in the route"
+            else f"Cameras by sector: {cameras} in {sum(1 for c in counts if c)} of {SECTORS}"
         )
 
-        # A pie of four zeroes has no whole to be part of, and Qt fills the
-        # circle with the last slice rather than drawing nothing, so an empty
-        # route takes the pie off the chart altogether and is left to the
-        # title, which says the same thing without saying something false.
-        self._series.setVisible(bool(cameras))
+        for sector in range(SECTORS):
+            count = counts[sector] if sector < len(counts) else 0
+            self._counts.replace(sector, float(count))
 
-        for quadrant, piece in enumerate(self._slices):
-            count = counts[quadrant] if quadrant < len(counts) else 0
-            share = shares[quadrant] if quadrant < len(shares) else 0.0
-
-            # An empty quadrant keeps its place in the legend, so the reader
-            # can see it is empty rather than wonder where it went.
-            piece.setValue(float(count))
-            piece.setLabel(
-                f"Q{quadrant + 1}   {count}"
-                if not cameras
-                else f"Q{quadrant + 1}   {count}  {share:.0%}"
-            )
+        # Room for the labels over the tallest bar, and a nominal scale while
+        # there is nothing to scale to.
+        tallest = max(counts, default=0)
+        self._axis_count.setRange(0.0, float(tallest) * BAR_HEADROOM if tallest else 1.0)

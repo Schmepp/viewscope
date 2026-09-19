@@ -51,6 +51,47 @@ STILL_WIDTH = 3840
 # grid of tiles deep enough to stall the window for the length of a coffee.
 STILL_MAX_SCALE = 12
 
+# -- the drone the route is costed against ---------------------------------
+
+# The energy figure in the route report is an estimate, and an estimate is
+# only as good as what it assumes, so everything it assumes is here rather
+# than buried in the arithmetic. These are a small survey quadrotor: change
+# them and the report changes with them, because the report prints them.
+
+#: All-up mass, in kilograms: airframe, battery and camera.
+DRONE_MASS_KG = 1.5
+
+#: How many rotors, and how long each blade is, in metres. Together they give
+#: the disc the thrust is made over, which is what sets the hover power.
+DRONE_ROTORS = 4
+DRONE_ROTOR_RADIUS_M = 0.12
+
+#: Air density at sea level, in kg/m^3.
+AIR_DENSITY = 1.225
+
+#: What the rotors make of the power they are given, and what the motors and
+#: speed controllers make of the power the battery gives them. Momentum
+#: theory gives the ideal; these are what a real aircraft gets for it.
+DRONE_FIGURE_OF_MERIT = 0.70
+DRONE_DRIVE_EFFICIENCY = 0.80
+
+#: Everything that draws power without lifting anything: flight controller,
+#: radio, camera, gimbal. In watts.
+DRONE_AVIONICS_W = 12.0
+
+#: How fast it flies between viewpoints and how hard it accelerates, in m/s
+#: and m/s^2. Survey speeds, not sport ones.
+DRONE_CRUISE_SPEED_MS = 5.0
+DRONE_ACCELERATION_MS2 = 2.0
+
+#: How long it holds still at each viewpoint to take the photograph, in
+#: seconds. A survey shot is taken stopped, not on the fly.
+DRONE_DWELL_S = 2.0
+
+#: A typical pack, in watt-hours: 4 cells at 5,000 mAh. The report says what
+#: share of one the flight would take, which is the number a pilot plans by.
+DRONE_BATTERY_WH = 74.0
+
 # -- target inspection -----------------------------------------------------
 
 # Sector counts the inspector offers. Eight is the default; four is the

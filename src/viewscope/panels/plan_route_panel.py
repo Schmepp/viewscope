@@ -8,7 +8,7 @@ saved earlier, or from another plan's json, instead of from the whole plan,
 and hides every viewpoint that file did not name.
 Two charts answer the questions the whole exercise is about: how many targets
 the cameras still in the route can see between them, and whether those cameras
-stand all around the model or bunched in one quadrant of it. Below them,
+stand all around the model or bunched on one side of it. Below them,
 "Plan flight path" draws the order the route would be flown in.
 
 Like the other panels it reports intent through signals and takes state
@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 
 from viewscope.data.flight_path import FlightPath
 from viewscope.data.route import RouteStatus
-from viewscope.panels.route_charts import CoverageBar, QuadrantPie
+from viewscope.panels.route_charts import CoverageBar, SectorBars
 
 IDLE_HINT = "Plan a route to choose which viewpoints get flown."
 PLANNING_HINT = "Click a camera in the 3D view to take it out of the route, or put it back."
@@ -51,6 +51,8 @@ class PlanRoutePanel(QWidget):
     clear_requested = Signal()
     #: Show the flight path through the route, or take it off the scene.
     path_requested = Signal(bool)
+    #: Write the route, its charts and its flight path out as a document.
+    report_requested = Signal()
 
     def __init__(self):
         super().__init__()
@@ -91,8 +93,8 @@ class PlanRoutePanel(QWidget):
         self.coverage_bar = CoverageBar()
         layout.addWidget(self.coverage_bar)
 
-        self.quadrant_pie = QuadrantPie()
-        layout.addWidget(self.quadrant_pie)
+        self.sector_bars = SectorBars()
+        layout.addWidget(self.sector_bars)
 
         layout.addWidget(self._build_path())
 
@@ -128,6 +130,18 @@ class PlanRoutePanel(QWidget):
         self.path_note.setWordWrap(True)
         form.addWidget(self.path_note)
 
+        self.report_button = QPushButton("Generate report")
+        self.report_button.setToolTip(
+            "Write the route out as a PDF: both charts, the path by viewpoint and by "
+            "co-ordinate, how far it runs, how hard it turns and what it would cost to fly"
+        )
+        self.report_button.clicked.connect(self.report_requested)
+        form.addWidget(self.report_button)
+
+        self.report_note = QLabel("")
+        self.report_note.setWordWrap(True)
+        form.addWidget(self.report_note)
+
         return box
 
     def _build_summary(self) -> QGroupBox:
@@ -157,17 +171,21 @@ class PlanRoutePanel(QWidget):
             button.setEnabled(planning)
 
         # The path can be drawn through a plan as readily as through a route,
-        # so it needs a scene and nothing more.
+        # so it needs a scene and nothing more. The report is a document about
+        # that same path, so it asks for no more than the path does.
         self.path_button.setEnabled(status is not None)
+        self.report_button.setEnabled(status is not None)
         if status is None and self.path_button.isChecked():
             self.path_button.setChecked(False)
 
         self.coverage_bar.update_chart(status)
-        self.quadrant_pie.update_chart(status)
+        self.sector_bars.update_chart(status)
 
         if status is None:
             self.cameras.setText("--")
             self.coverage.setText("--")
+            # A report written of another bundle's route is not this one's.
+            self.report_note.setText("")
             return
 
         self.cameras.setText(f"Cameras: {len(status.selected)} of {status.camera_count} selected")
@@ -208,6 +226,10 @@ class PlanRoutePanel(QWidget):
     def show_saved(self, path):
         """Say where the route went, or clear the line when given None."""
         self.note.setText("" if path is None else f"Saved to {path}")
+
+    def show_report(self, path):
+        """Say where the report went, or clear the line when given None."""
+        self.report_note.setText("" if path is None else f"Report written to {path}")
 
     def show_loaded(self, path, added: int = 0, unscored: int = 0):
         """Say which file the route came from, and what it brought with it."""
