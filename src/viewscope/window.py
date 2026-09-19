@@ -34,7 +34,7 @@ from viewscope.data import (
     load_route,
     plan_path,
 )
-from viewscope.dialogs.file_error_dialog import FileErrorDialog
+from viewscope.dialogs import FileErrorDialog
 from viewscope.DisplayPanel import DisplayPanel
 from viewscope.MetricsPanel import MetricsPanel
 from viewscope.panels.plan_route_panel import PlanRoutePanel

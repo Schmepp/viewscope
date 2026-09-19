@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QApplication
 
 from viewscope.config import Project
 from viewscope.data import STAGE_COUNT
-from viewscope.dialogs.build_dialog import BuildBundleDialog
+from viewscope.dialogs import BuildBundleDialog
 from viewscope.startup import (
     QUALITY_HIGH,
     QUALITY_LOW,

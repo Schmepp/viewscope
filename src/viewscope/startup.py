@@ -36,7 +36,7 @@ from viewscope import config
 from viewscope import window as wd
 from viewscope.config import APP_NAME, ORG_NAME, Project
 from viewscope.data import STAGE_COUNT, validate_required_files
-from viewscope.dialogs.build_dialog import BuildBundleDialog
+from viewscope.dialogs import BuildBundleDialog
 from viewscope.scene.photo_mesh import PhotoMeshLoader
 
 CARD_SPACING = 10
