@@ -449,7 +449,7 @@ class CameraModeGizmo(QFrame):
 
 class AxisHandleWidget:
     """Three arrow handles (X/Y/Z) that translate an attached actor.
-    Claude was used to generate this class, the building of handles, 
+    Claude was used to generate this class, the building of handles,
     the picker and draggging logic, and handling translations.
     Wiring this into viewport.py and window.py, was done manually"""
 
@@ -466,7 +466,7 @@ class AxisHandleWidget:
         # A picker of its own, restricted to just the handle actors, so a
         # click on a handle is never confused with a click on scene geometry.
         self.picker = vtk.vtkCellPicker()
-        self.picker.SetTolerance(0.000) # 0.005
+        self.picker.SetTolerance(0.000)  # 0.005
         self.picker.PickFromListOn()
 
         self._axis_of: dict[vtk.vtkActor, np.ndarray] = {}
@@ -494,9 +494,9 @@ class AxisHandleWidget:
             arrow.SetTipResolution(16)
             arrow.SetShaftResolution(16)
 
-            arrow.SetShaftRadius(0.03)   # was 0.03
-            arrow.SetTipRadius(0.1)     # was 0.1
-            arrow.SetTipLength(0.25)     # was 0.35
+            arrow.SetShaftRadius(0.03)  # was 0.03
+            arrow.SetTipRadius(0.1)  # was 0.1
+            arrow.SetTipLength(0.25)  # was 0.35
 
             mapper = vtk.vtkPolyDataMapper()
             mapper.SetInputConnection(arrow.GetOutputPort())
