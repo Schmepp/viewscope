@@ -706,9 +706,26 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Planning the {len(rows)} viewpoints of {path.name}", 6000)
 
     def stop_route_planning(self):
-        """Write the route out, then leave planning. Cancelling keeps planning on."""
+        """Leave planning, with or without writing the route out first.
+
+        Stopping asks which of the two it is to be. Saving leaves planning
+        once the route is written; exiting leaves it and keeps nothing.
+        Backing out of either dialog keeps planning on.
+        """
         scene = SCENE_STORE.scene
         if scene is None or not self.route.planning:
+            return
+
+        save = self._ask_stop_choice()
+        if save is None:
+            self.statusBar().showMessage("Still planning", 4000)
+            return
+
+        if not save:
+            self.route.stop()
+            self._refresh_route()
+            self.plan_route_panel.show_saved(None)
+            self.statusBar().showMessage("Left planning: the route was not saved", 6000)
             return
 
         path = self._ask_route_path()
@@ -727,6 +744,31 @@ class MainWindow(QMainWindow):
         self._refresh_route()
         self.plan_route_panel.show_saved(written)
         self.statusBar().showMessage(f"Route saved to {written}", 6000)
+
+    def _ask_stop_choice(self):
+        """True to save the route, False to drop it, None to keep planning."""
+        ask = QMessageBox(self)
+        ask.setWindowTitle("ViewScope")
+        ask.setIcon(QMessageBox.NoIcon)
+        ask.setText("Stop planning the route?")
+        count = len(self.route)
+        ask.setInformativeText(
+            f"The route has {count} viewpoint{'' if count == 1 else 's'}. "
+            "Exit leaves planning without saving it."
+        )
+
+        save = ask.addButton("Save route", QMessageBox.AcceptRole)
+        leave = ask.addButton("Exit", QMessageBox.DestructiveRole)
+        ask.setDefaultButton(save)
+        ask.exec()
+
+        clicked = ask.clickedButton()
+        if clicked is save:
+            return True
+        if clicked is leave:
+            return False
+
+        return None
 
     def _ask_route_path(self):
         """Where to write the route, or None if the user changed their mind."""

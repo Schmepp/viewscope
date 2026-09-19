@@ -43,7 +43,7 @@ class PlanRoutePanel(QWidget):
 
     #: Start planning, with every camera in the route.
     plan_requested = Signal()
-    #: Stop planning and write the route out.
+    #: Stop planning, saving the route out or dropping it.
     stop_requested = Signal()
     #: Plan a route from the viewpoints named by a json file the user picks.
     load_requested = Signal()
@@ -97,7 +97,9 @@ class PlanRoutePanel(QWidget):
         layout.addWidget(self._build_path())
 
         self.stop_button = QPushButton("Stop planning")
-        self.stop_button.setToolTip("Save the route to a JSON file and stop choosing")
+        self.stop_button.setToolTip(
+            "Stop choosing, saving the route to a JSON file or leaving it unsaved"
+        )
         self.stop_button.clicked.connect(self.stop_requested)
         layout.addWidget(self.stop_button)
 
