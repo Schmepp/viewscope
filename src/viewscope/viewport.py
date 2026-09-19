@@ -411,7 +411,6 @@ class Viewport(QVTKRenderWindowInteractor):
                             delta_pitch_deg=delta if axis == "pitch" else 0.0,
                         ),
                     )
-
         else:
             self.axis_gizmo.detach()
 
