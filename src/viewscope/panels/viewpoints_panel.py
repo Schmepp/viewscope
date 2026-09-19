@@ -51,6 +51,7 @@ class ViewpointsPanel(QWidget):
         # Duplicate camera button
         self.duplicate_camera_button = QPushButton("Duplicate Camera")
         self.duplicate_camera_button.clicked.connect(self._on_button_duplicate_camera_clicked)
+        self.duplicate_camera_button.setEnabled(False) # Only enabled when a camera is selected
 
         # Layout
         layout = QVBoxLayout(self)
@@ -106,6 +107,7 @@ class ViewpointsPanel(QWidget):
             return
 
         rows = self.table.selectionModel().selectedRows()
+        self.duplicate_camera_button.setEnabled(bool(rows))
         if rows:
             self.camera_picked.emit(rows[0].row())
 
@@ -113,6 +115,7 @@ class ViewpointsPanel(QWidget):
         """Reflect a selection made elsewhere without re-emitting."""
         self._suppress = True
 
+        self.duplicate_camera_button.setEnabled(index is not None)
         if index is None:
             self.table.clearSelection()
         else:
@@ -138,10 +141,10 @@ class ViewpointsPanel(QWidget):
         if SCENE_STORE.scene is None:
             return
 
+        # INVARIANT: This button is only enabled when a camera is selected,
+        #            it should be impossible to reach this point without a selection.
         rows = self.table.selectionModel().selectedRows()
-        if not rows:
-            # TODO(Adam): Indicate that no camera was selected OR disable the button when no camera is selected.
-            return
+        assert rows
 
         index = rows[0].row()
         plan = SCENE_STORE.scene.plan
