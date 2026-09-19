@@ -448,7 +448,10 @@ class CameraModeGizmo(QFrame):
 
 
 class AxisHandleWidget:
-    """Three arrow handles (X/Y/Z) that translate an attached actor."""
+    """Three arrow handles (X/Y/Z) that translate an attached actor.
+    Claude was used to generate this class, the building of handles, 
+    the picker and draggging logic, and handling translations.
+    Wiring this into viewport.py and window.py, was done manually"""
 
     # direction (in world space) -> handle colour
     _AXES: dict[str, tuple[tuple[float, float, float], tuple[float, float, float]]] = {
@@ -463,7 +466,7 @@ class AxisHandleWidget:
         # A picker of its own, restricted to just the handle actors, so a
         # click on a handle is never confused with a click on scene geometry.
         self.picker = vtk.vtkCellPicker()
-        self.picker.SetTolerance(0.005)
+        self.picker.SetTolerance(0.000) # 0.005
         self.picker.PickFromListOn()
 
         self._axis_of: dict[vtk.vtkActor, np.ndarray] = {}
@@ -490,6 +493,10 @@ class AxisHandleWidget:
             arrow = vtk.vtkArrowSource()
             arrow.SetTipResolution(16)
             arrow.SetShaftResolution(16)
+
+            arrow.SetShaftRadius(0.03)   # was 0.03
+            arrow.SetTipRadius(0.1)     # was 0.1
+            arrow.SetTipLength(0.25)     # was 0.35
 
             mapper = vtk.vtkPolyDataMapper()
             mapper.SetInputConnection(arrow.GetOutputPort())
@@ -548,7 +555,7 @@ class AxisHandleWidget:
             + (bounds[3] - bounds[2]) ** 2
             + (bounds[5] - bounds[4]) ** 2
         )
-        length = max(diag, 1e-3)
+        length = max(diag, 1e-3) * 3.5
 
         for actor, direction in self._axis_of.items():
             actor.SetUserTransform(self._handle_transform(centre, direction, length))
@@ -689,66 +696,3 @@ class AxisHandleWidget:
         transform = vtk.vtkTransform()
         transform.SetMatrix(matrix)
         self._target.SetUserTransform(transform)
-
-
-# ---------------------------------------------------------------------------
-# Wiring into Viewport (viewport.py) - shown here rather than applied
-# directly, since it touches methods you already have logic in.
-# ---------------------------------------------------------------------------
-#
-# 1. In Viewport.__init__, next to orientation_widget / affine_gizmo / box_gizmo:
-#
-#     self.axis_gizmo = AxisHandleWidget(self.renderer)
-#
-# 2. Attach/detach it the same place you attach the other gizmos, e.g. in
-#    on_camera_changed:
-#
-#     if info is not None:
-#         ...
-#         self.axis_gizmo.attach(actor)
-#     else:
-#         self.axis_gizmo.detach()
-#
-# 3. In mousePressEvent, check it *before* _pick_camera_glyph, so a handle
-#    sitting over a glyph wins:
-#
-#     def mousePressEvent(self, ev: QMouseEvent):
-#         self._press_position = ev.position()
-#         self._drag_px = 0.0
-#         self._picked_glyph = False
-#
-#         if ev.button() == Qt.MouseButton.LeftButton:
-#             x, y = self._display_position(ev.position())
-#             if self.axis_gizmo.try_start_drag(x, y):
-#                 super().mousePressEvent(ev)
-#                 return
-#             if self._pick_camera_glyph(ev):
-#                 self._picked_glyph = True
-#                 super().mousePressEvent(ev)
-#                 return
-#
-#         if (ev.button() in (...) and not self._mouse_locked):
-#             self._mouse_lock_enter(ev)
-#         super().mousePressEvent(ev)
-#
-# 4. In mouseMoveEvent, handle an active drag before anything mouse-lock
-#    related runs:
-#
-#     def mouseMoveEvent(self, ev: QMouseEvent):
-#         if self.axis_gizmo.active:
-#             x, y = self._display_position(ev.position())
-#             self.axis_gizmo.drag(x, y)
-#             self.render()
-#             return
-#         if not self._mouse_locked:
-#             ...
-#
-# 5. In mouseReleaseEvent, end the drag before the existing release logic
-#    (no mouse lock was ever entered for this path, so nothing else to undo):
-#
-#     def mouseReleaseEvent(self, ev: QMouseEvent):
-#         if self.axis_gizmo.active:
-#             self.axis_gizmo.end_drag()
-#             return
-#         super().mouseReleaseEvent(ev)
-#         ...

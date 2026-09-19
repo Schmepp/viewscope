@@ -81,7 +81,9 @@ class Viewport(QVTKRenderWindowInteractor):
         self._interactor = self.GetRenderWindow().GetInteractor()
         self._interactor.SetInteractorStyle(vtk.vtkInteractorStyleUser())
 
-        self._mouse_picker = vtk.vtkPropPicker()
+        # self._mouse_picker = vtk.vtkPropPicker()
+        self._mouse_picker = vtk.vtkCellPicker()
+        # self._mouse_picker.SetTolerance(0.0)
         self._mouse_picker.PickFromListOn()
 
         # Targets are picked off the surface they sit on, so a click never
