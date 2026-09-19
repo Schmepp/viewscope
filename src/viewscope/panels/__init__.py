@@ -1,4 +1,4 @@
-from .DisplayPanel import DisplayPanel
+from .display_panel import DisplayPanel
 from .metrics_panel import MetricsPanel
 from .plan_route_panel import PlanRoutePanel
 from .route_charts import CoverageBar, SectorBars
