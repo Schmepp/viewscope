@@ -859,7 +859,14 @@ class AxisHandleWidget:
 
         intersection = [0.0, 0.0, 0.0]
         t_line = vtk.reference(0.0)
-        hit = vtk.vtkPlane.IntersectWithLine(near, far, normal, origin, t_line, intersection)
+        hit = vtk.vtkPlane.IntersectWithLine(
+            near.tolist(),
+            far.tolist(),
+            normal.tolist(),
+            origin.tolist(),
+            t_line,  # type: ignore[ty:invalid-argument-type]
+            intersection,
+        )
         if not hit:
             return None
 
@@ -868,6 +875,8 @@ class AxisHandleWidget:
     def _translate_target(self, delta: np.ndarray):
         """Apply a world-space translation on top of whatever transform is
         already there."""
+        assert self._target is not None
+
         matrix = vtk.vtkMatrix4x4()
         existing = self._target.GetUserTransform()
         if existing is not None:
@@ -883,6 +892,8 @@ class AxisHandleWidget:
     def _rotate_target(self, axis_world: np.ndarray, origin_world: np.ndarray, delta_deg: float):
         """Rotate the target by `delta_deg` about `axis_world`, pivoting at
         `origin_world`, on top of whatever transform is already there."""
+        assert self._target is not None
+
         delta = vtk.vtkTransform()
         delta.Translate(*origin_world)
         delta.RotateWXYZ(delta_deg, *axis_world)
