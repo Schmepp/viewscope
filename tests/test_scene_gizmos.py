@@ -172,6 +172,68 @@ def test_the_camera_being_looked_at_outranks_the_route(plan):
 
 
 # -----------------------------------------------------------------------------
+# A plan that grows is drawn by a whole new set of frustums
+# -----------------------------------------------------------------------------
+
+
+@pytest.fixture
+def bigger_plan(plan):
+    """The same plan with one more viewpoint, as adding a camera makes."""
+    return vc.Plan(
+        camera=plan.camera,
+        ids=(*plan.ids, "vp004"),
+        positions=np.vstack([plan.positions, [[4.0, 0.0, 5.0]]]),
+        yaws_deg=np.append(plan.yaws_deg, 45.0),
+        pitches_deg=np.append(plan.pitches_deg, -15.0),
+    )
+
+
+def test_a_new_set_keeps_the_representation_the_old_one_was_shown_in(plan, bigger_plan):
+    """Adding a camera used to quietly put the frustums back into wireframe."""
+    before = CameraGlyphs(plan)
+    before.wireframe_enabled = False
+    before._refresh()
+
+    after = CameraGlyphs(bigger_plan)
+    after.adopt_display(before)
+
+    assert after.wireframe_enabled is False
+    assert worn(after, 0)[0] == "Surface"
+    assert worn(after, 4)[0] == "Surface", "the camera just added too"
+
+
+def test_a_new_set_keeps_the_frustums_switched_off(plan, bigger_plan):
+    """Show camera frustum is the viewer's setting, not the plan's."""
+    before = CameraGlyphs(plan)
+    before.set_visible(False)
+
+    after = CameraGlyphs(bigger_plan)
+    after.adopt_display(before)
+
+    assert all(glyph(after, index).GetVisibility() == 0 for index in range(5))
+
+
+def test_a_new_set_keeps_the_frustum_you_are_sitting_inside_hidden(plan, bigger_plan):
+    before = CameraGlyphs(plan)
+    before.set_active(2)
+
+    after = CameraGlyphs(bigger_plan)
+    after.adopt_display(before)
+
+    assert glyph(after, 2).GetVisibility() == 0
+    assert glyph(after, 4).GetVisibility() == 1
+
+
+def test_a_new_set_left_alone_is_drawn_the_way_it_always_was(bigger_plan):
+    """Nothing to adopt from, so the defaults stand: visible, wireframe."""
+    glyphs = CameraGlyphs(bigger_plan)
+    glyphs._refresh()
+
+    assert glyphs.wireframe_enabled is True
+    assert all(glyph(glyphs, index).GetVisibility() == 1 for index in range(5))
+
+
+# -----------------------------------------------------------------------------
 # What the flight path line does to everything else
 # -----------------------------------------------------------------------------
 

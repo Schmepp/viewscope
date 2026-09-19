@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QStatusBar,
 )
 
+import viewscope_core as vc
 from viewscope.camera.structs import CameraInfo
 from viewscope.CameraViewport import CameraViewport
 from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME, ROUTE_FILENAME
@@ -190,6 +191,9 @@ class MainWindow(QMainWindow):
         # This updates the camera in FPV viewport
         # TODO(Adam): In future, I would prefer if camera_picked
         #             returned a CameraInfo and was wired into self._on_camera_changed.
+        self.viewpoints_panel.place_requested.connect(self.viewport.begin_placement)
+        self.viewport.placing_changed.connect(self._on_placing_changed)
+        self.viewport.camera_placed.connect(self._on_camera_placed)
         self.viewpoints_panel.camera_picked.connect(self.camera_viewport.show_camera)
         self.viewport.camera_picked.connect(self.camera_viewport.show_camera)
         self.viewport.camera_picked.connect(self.viewpoints_panel.select_row)
@@ -251,7 +255,9 @@ class MainWindow(QMainWindow):
 
         self.act_clear_target = QAction("Clear Target", self)
         self.act_clear_target.setShortcut(QKeySequence(Qt.Key.Key_Escape))
-        self.act_clear_target.setToolTip("Let go of the picked target (Esc)")
+        self.act_clear_target.setToolTip(
+            "Let go of the picked target, or stop placing a camera (Esc)"
+        )
         self.act_clear_target.triggered.connect(self.clear_target)
         self.act_clear_target.setEnabled(False)
 
@@ -345,6 +351,44 @@ class MainWindow(QMainWindow):
 
         if scene.data_dir is not None:
             self._load_photo_mesh(scene.data_dir)
+
+    # -- placing a camera by clicking ----------------------------------
+
+    def _on_placing_changed(self, step: int):
+        """Say what the next click will do, or that there is nothing to click for."""
+        # Escape is what stops it, and it shares the action that lets go of a
+        # picked target, so that action has to be live while placing.
+        self.act_clear_target.setEnabled(step >= 0 or self.selected_target is not None)
+
+        if step == 0:
+            self.statusBar().showMessage(
+                "Placing a camera: click the model where it should stand. Escape to stop."
+            )
+        elif step == 1:
+            self.statusBar().showMessage("Now click what it should look at. Escape to stop.")
+        else:
+            self.statusBar().clearMessage()
+
+    def _on_camera_placed(self, standpoint, target):
+        """Add the camera the user has just clicked out."""
+        try:
+            yaw, pitch = vc.look_at_angles(standpoint, target)
+        except ValueError:
+            # The two clicks landed on the same spot, so there is no direction
+            # to face. Nothing is added and the user is told why.
+            self.statusBar().showMessage(
+                "Those two clicks are the same point, so there is nothing to face", 5000
+            )
+            return
+
+        x, y, z = (float(v) for v in standpoint)
+        SCENE_STORE.add_camera((x, y, z), yaw, pitch)
+
+        position = f"{x:.1f}, {y:.1f}, {z:.1f}"
+        self.statusBar().showMessage(
+            f"Camera placed at {position}, facing {yaw:.0f} deg yaw, {pitch:.0f} deg pitch",
+            6000,
+        )
 
     def _on_field_changed(self, field):
         self.metrics_panel.show_field(self._paint_field(field))
@@ -572,7 +616,16 @@ class MainWindow(QMainWindow):
         self._rebuild_target()
 
     def clear_target(self):
-        """Let go of the picked target, in the panel and in the view."""
+        """Let go of whatever Escape should let go of.
+
+        Placing a camera first, because that is the thing with a click owed
+        on it: stopping halfway through would otherwise need the mouse.
+        """
+        if self.viewport.placing:
+            self.viewport.cancel_placement()
+            self.statusBar().showMessage("Placing stopped; no camera was added", 4000)
+            return
+
         if self.selected_target is None:
             return
 
