@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import viewscope_core as vc
-from viewscope.data.route import ROUTE_VERSION, SECTORS, RoutePlan, count_sectors, load_route
+from viewscope.data import ROUTE_VERSION, SECTORS, RoutePlan, count_sectors, load_route
 
 
 @pytest.fixture

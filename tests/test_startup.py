@@ -5,16 +5,16 @@ import os
 # Must be set before Qt picks a platform plugin, so these run without a display.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from pathlib import Path  # noqa: E402
+from pathlib import Path
 
-import pytest  # noqa: E402
-from PySide6.QtCore import QSettings  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
+import pytest
+from PySide6.QtCore import QSettings
+from PySide6.QtWidgets import QApplication
 
-from viewscope.config import Project  # noqa: E402
-from viewscope.data.loader import STAGE_COUNT  # noqa: E402
-from viewscope.dialogs.build_dialog import BuildBundleDialog  # noqa: E402
-from viewscope.startup import (  # noqa: E402
+from viewscope.config import Project
+from viewscope.data import STAGE_COUNT
+from viewscope.dialogs.build_dialog import BuildBundleDialog
+from viewscope.startup import (
     QUALITY_HIGH,
     QUALITY_LOW,
     QUALITY_MEDIUM,

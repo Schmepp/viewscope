@@ -5,14 +5,14 @@ import os
 # Must be set before Qt picks a platform plugin, so these run without a display.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from dataclasses import dataclass, field  # noqa: E402
+from dataclasses import dataclass, field
 
-import pytest  # noqa: E402
-import vtk  # noqa: E402
+import pytest
+import vtk
 
-from viewscope.data import cache  # noqa: E402
-from viewscope.scene import photo_mesh  # noqa: E402
-from viewscope.scene.photo_mesh import PhotoMeshLoader  # noqa: E402
+from viewscope.data import cache
+from viewscope.scene import photo_mesh
+from viewscope.scene.photo_mesh import PhotoMeshLoader
 
 TEXTURE_DIM = 64
 CAP = 16

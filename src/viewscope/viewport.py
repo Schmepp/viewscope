@@ -31,8 +31,7 @@ from viewscope.config import (
     YFOV_DEG,
     OverlayOptions,
 )
-from viewscope.data.scene import SceneData
-from viewscope.data.store import SCENE_STORE
+from viewscope.data import SCENE_STORE, SceneData
 from viewscope.scene import transform
 from viewscope.scene.camera import CameraMode, SceneCameraController
 from viewscope.scene.flight_path import FlightPathLine

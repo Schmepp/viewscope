@@ -5,7 +5,7 @@ import pytest
 import trimesh
 
 import viewscope.data.flight_path as fp
-from viewscope.data.flight_path import Obstacle, plan_path
+from viewscope.data import Obstacle, plan_path
 
 # -----------------------------------------------------------------------------
 # Fixtures

@@ -2,7 +2,7 @@
 
 import vtk
 
-from viewscope.data import cache
+import viewscope.data.cache as cache
 
 
 def polydata() -> vtk.vtkPolyData:

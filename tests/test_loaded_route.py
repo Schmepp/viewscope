@@ -10,7 +10,7 @@ window -- glyphs, targets, the path line -- are not the parts under test.
 
 import pytest
 
-from viewscope.data.route import RoutePlan
+from viewscope.data import RoutePlan
 from viewscope.window import MainWindow
 
 

@@ -11,7 +11,7 @@ import math
 import numpy as np
 import pytest
 
-from viewscope.data.flight_metrics import (
+from viewscope.data import (
     GRAVITY,
     SECONDS_PER_HOUR,
     Drone,

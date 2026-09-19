@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 import viewscope_core as vc
-from viewscope.data.scene import SceneData
+from viewscope.data import SceneData
 
 
 class TargetVisibility:

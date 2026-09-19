@@ -21,7 +21,7 @@ from viewscope.config import (
     STILL_WIDTH,
     YFOV_DEG,
 )
-from viewscope.data.scene import SceneData
+from viewscope.data import SceneData
 from viewscope.scene.photo_mesh import PhotoMesh
 from viewscope.scene.views import MeshView
 

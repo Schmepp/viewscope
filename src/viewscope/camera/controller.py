@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 import viewscope_core as vc
-from viewscope.data.store import SCENE_STORE
+from viewscope.data import SCENE_STORE
 from viewscope.scene import transform
 
 from .structs import CameraInfo

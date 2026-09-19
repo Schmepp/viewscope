@@ -23,7 +23,7 @@ from dataclasses import dataclass
 import numpy as np
 
 import viewscope_core as vc
-from viewscope.data.scene import SceneData
+from viewscope.data import SceneData
 
 #: Sector counts the bundle stores columns for; any other count is derived.
 STORED_SECTOR_COUNTS = (

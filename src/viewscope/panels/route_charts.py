@@ -37,7 +37,7 @@ from PySide6.QtCore import QMargins, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from viewscope.data.route import SECTORS, RouteStatus
+from viewscope.data import SECTORS, RouteStatus
 
 #: One series, so one colour. It is read on the panel's dark surface and again
 #: on the white of a printed report, and holds up on both.

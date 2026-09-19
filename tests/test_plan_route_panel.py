@@ -8,7 +8,7 @@ is checked here.
 import pytest
 from PySide6.QtWidgets import QApplication
 
-from viewscope.data.route import RouteStatus
+from viewscope.data import RouteStatus
 from viewscope.panels.plan_route_panel import PlanRoutePanel
 
 

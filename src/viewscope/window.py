@@ -25,11 +25,15 @@ import viewscope_core as vc
 from viewscope.camera import CameraInfo
 from viewscope.CameraViewport import CameraViewport
 from viewscope.config import APP_NAME, DATA_DIR, MODES, ORG_NAME, ROUTE_FILENAME
-from viewscope.data.flight_path import Obstacle, plan_path
-from viewscope.data.loader import SceneLoader
-from viewscope.data.route import RoutePlan, load_route
-from viewscope.data.scene import SceneData
-from viewscope.data.store import SCENE_STORE
+from viewscope.data import (
+    SCENE_STORE,
+    Obstacle,
+    RoutePlan,
+    SceneData,
+    SceneLoader,
+    load_route,
+    plan_path,
+)
 from viewscope.dialogs.file_error_dialog import FileErrorDialog
 from viewscope.DisplayPanel import DisplayPanel
 from viewscope.MetricsPanel import MetricsPanel
