@@ -17,9 +17,19 @@ from viewscope.startup import StartupWindow
 
 
 def main() -> int:
-    # Required for running headless on Linux
+    
+    # Configure Linux graphics and Qt platform settings before
+    # QApplication initialization, since Qt selects its platform
+    # plugin when the application instance is created.
     if platform.system() == "Linux":
         os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
+
+        # Wayland restricts global cursor positioning, which is required by
+        # ViewScope's viewport interaction. Use XCB through XWayland to preserve
+        # this funtionality.
+        if os.environ.get("WAYLAND_DISPLAY"):
+            os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+            print("[Warning]: Wayland detected, using X11 compatibility mode...")
 
     app = QApplication(sys.argv)
     app.setOrganizationName(config.ORG_NAME)
@@ -30,15 +40,12 @@ def main() -> int:
     # describing.
     app.setStyleSheet(config.TOOLTIP_STYLE)
 
-    # Wayland doesn't allow clients to warp the global cursor for
-    # security reasons - which is done by the viewport.
-    # To work around this, we force the application into X11 compatibility mode
-    if app.platformName() == "wayland":
-        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
-        print(
-            "[Warning]: Viewscope is not fully-compatible with Wayland. "
-            "Switching to X11 compatibility mode..."
-        )
+    # Display which platform is being selected during QApplication initialization
+    if app.platformName() == "xcb":
+        print("[Info]: Running with XCB compatibility.")
+
+    elif app.platformName() == "wayland":
+        print("[Info]: Running with native Wayland.")
 
     # The startup screen opens the viewer itself, once a project is loaded.
     startup = StartupWindow()
